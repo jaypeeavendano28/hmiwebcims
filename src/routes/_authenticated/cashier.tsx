@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { PostData, WithAccess, isNullOrUndefinedOrBlank } from "../../helpers";
 import useAppStore from "../../store";

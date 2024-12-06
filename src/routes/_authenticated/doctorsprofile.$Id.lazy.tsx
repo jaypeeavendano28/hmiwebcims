@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import {
@@ -171,6 +172,7 @@ const DoctorProfile = () => {
             Tin: x.Tin,
             Sonologist: x.Sonologist,
             Pathologist: x.Pathologist,
+            Cardiologist: x.Cardiologist,
           });
 
              res = await PostData("GetRecords", {
@@ -313,6 +315,14 @@ const DoctorProfile = () => {
               name="Pathologist"
               label="Pathologist"
               extra="Check if pathologist"
+              valuePropName="checked"
+            >
+              <Checkbox />
+            </Form.Item>
+            <Form.Item
+              name="Cardiologist"
+              label="Cardiologist"
+              extra="Check if cardiologist"
               valuePropName="checked"
             >
               <Checkbox />

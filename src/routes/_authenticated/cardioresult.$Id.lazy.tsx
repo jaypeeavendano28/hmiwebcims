@@ -1,10 +1,27 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
-import { TAppointments, TRadiologyResult } from "../../types";
+import { TAppointments, TDoctors, TRadiologyResult } from "../../types";
 import { useEffect, useState } from "react";
+import {
+  PdfViewerComponent,
+  Toolbar,
+  Magnification,
+  Navigation,
+  LinkAnnotation,
+  BookmarkView,
+  ThumbnailView,
+  Print,
+  TextSelection,
+  Annotation,
+  TextSearch,
+  FormFields,
+  FormDesigner,
+  Inject,
+} from "@syncfusion/ej2-react-pdfviewer";
 import {
   Button,
   DatePicker,
+  DatePickerProps,
   Divider,
   Form,
   Input,
@@ -49,7 +66,8 @@ const formItemLayout = {
     sm: { span: 18 },
   },
 };
-const CardioResult = () => {
+function CardioResult  () {
+  let viewer: PdfViewerComponent | null;
   const [showFinalize, setShowFinalize] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
   const [Key, setKey] = useState<string>(Math.random().toString());
@@ -58,18 +76,25 @@ const CardioResult = () => {
   const [chargeId, setChargeId] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [Radiologist, setRadiologist] = useState([]);
-  const [radtechs, setRadTechs] = useState([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
   const [IsSaving, setIsSaving] = useState(false);
   const [ResultNo, setResultNo] = useState("");
   const [ResultId, setResultId] = useState(0);
+  const [pdfFIle,setPdfFile] = useState("")
   const [form] = Form.useForm();
   const store = useAppStore();
-  const [templates, setTemplates] = useState([]);
+
   const Id = Route.useParams().Id;
   const [appointmentDetails, setAppointmentDetails] = useState<
     TAppointments | undefined
   >();
+  const templates = [{
+    Description:"2D-Echo Report",
+    TemplateName:"2decho.pdf"
+  },{
+    Description:"ECG Report",
+    TemplateName:"ecgreport.pdf"
+  }]
 
   const handleGetAppointmentDetails = async () => {
     let res = await PostData("GetRecords", {
@@ -84,6 +109,9 @@ const CardioResult = () => {
   };
 
   const handleSubmitForm = async (values: any) => {
+  var xx= await viewer!.saveAsBlob()
+  console.log(xx)
+    return;
     try {
       setIsProcessing(true);
       const valuesToSave = {
@@ -182,7 +210,7 @@ const CardioResult = () => {
     }
 
     res = await PostData("GetRecords", {
-      sp: "udp_GetListOfRadiologist",
+      sp: "udp_GetListOfCardiologist",
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -191,15 +219,7 @@ const CardioResult = () => {
       setRadiologist(res.parameters.lst);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetListOfMedtechs",
-      parameters: {
-        Type: "R",
-      },
-    });
-    if (res) {
-      setRadTechs(res.parameters.lst);
-    }
+
   };
   const handlePrint = async () => {
     setIsProcessing(true);
@@ -252,36 +272,8 @@ const CardioResult = () => {
       return { Status: 0, Message: errorString.Message };
     }
   };
-  const handleGetTemplate = async (e: any) => {
-    try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetTemplateByDoctor",
-        parameters: {
-          Department: "XR",
-          DoctorId: e,
-        },
-      });
-      if (res) {
-        setTemplates(res.parameters.lst);
-      }
-    } catch (error: any) {
-      notification.error({
-        message: error.message,
-        placement: "topRight",
-        duration: 3,
-      });
-    }
-  };
-  const handleChangeTemplate = (v: any) => {
-    const t = templates.filter((f: any) => f.Id === v);
-    const x: any = t[0];
+  
 
-    form.setFieldsValue({
-      Findings: x.Findings,
-      Impression: x.Impression,
-      Note: x.Note,
-    });
-  };
   const handleOpenResult = async (Id: number) => {
     const res = await PostData("GetRecords", {
       sp: "udp_GetRadiologyResult",
@@ -312,8 +304,6 @@ const CardioResult = () => {
         FinalizedBy: r.FinalizedBy,
         DateFinalized: r.DateFinalized,
       });
-
-      handleGetTemplate(r.Rad1);
       form.setFieldValue("Template", r.Template);
       setAllowSave(true);
       if (!isNullOrUndefinedOrBlank(r.FinalizedBy)) {
@@ -342,11 +332,68 @@ const CardioResult = () => {
       handleOpenResult(v.ResultId);
     }
   };
+  const handleChangeTemnplate = (e:any)=>{
+   
+    if (!isNullOrUndefinedOrBlank(e)) {
+      setPdfFile(e)
+    }
+  }
+  const handleChangeDateOfExamination: DatePickerProps['onChange'] = async(dateString)=>{
+    var formFields = await viewer!.retrieveFormFields();
+    formFields.forEach((element, index) => {
+      if (element.name === "DateOfExamination") {
+        formFields[index].value = dayjs(dateString).format("MM/DD/YYYY");
+        viewer!.updateFormFieldsValue(formFields[index]);
+      }
+    });
+  }
+
+
+  const handleFillFields =async ()=> {
+   
+    var formFields = await viewer!.retrieveFormFields();
+    if (formFields) {
+      formFields.forEach((element, index) => {
+        if (element.name === "PatientName") {
+          formFields[index].value = appointmentDetails?.Name;
+          viewer!.updateFormFieldsValue(formFields[index]);
+        } else if (element.name === "Age") {
+          formFields[index].value = appointmentDetails?.AgeYears  ;
+          viewer!.updateFormFieldsValue(formFields[index]);
+        } else if (element.name === "Gender") {
+          formFields[index].value = appointmentDetails?.Sex  ;
+          viewer!.updateFormFieldsValue(formFields[index]);
+        }  else if (element.name === "DateOfExamination") {
+          formFields[index].value =dayjs(form.getFieldValue("DateOfExamination")).format("MM/DD/YYYY")  ;
+          viewer!.updateFormFieldsValue(formFields[index]);
+        } else if (element.name === "RequestingPhysician") {
+          const x:TDoctors = RequestingPhysician.filter((f:TDoctors)=>f.Id===form.getFieldValue("RequestingPhysician"))[0]
+          formFields[index].value =x.Name  ;
+          viewer!.updateFormFieldsValue(formFields[index]);
+        }  else if (element.name === "Diagnosis") {
+          formFields[index].value = appointmentDetails?.Diagnosis ;
+          viewer!.updateFormFieldsValue(formFields[index]);
+        }  else if (element.name === "Cardiologist") {
+          const x:TDoctors = Radiologist.filter((f:TDoctors)=>f.Id===form.getFieldValue("Cardiologist"))[0]
+          formFields[index].value =x.Name  ;
+          viewer!.updateFormFieldsValue("Cardiologist")
+        }  else if (element.name === "LicenseNo") {
+          const x:TDoctors = Radiologist.filter((f:TDoctors)=>f.Id===form.getFieldValue("Cardiologist"))[0]
+          formFields[index].value =x.LicNo  ;
+          viewer!.updateFormFieldsValue(formFields[index]);
+        } 
+      });
+    }
+  }
+
   useEffect(() => {
     handleGetAppointmentDetails();
     handleInitialize();
     setKey(Math.random().toString());
   }, []);
+  useEffect(()=>{
+    handleFillFields()
+  },[pdfFIle])
   return (
     <div className="cardBackGround">
       <div className="grid lg:grid-cols-3">
@@ -366,7 +413,7 @@ const CardioResult = () => {
           <p className="font-bold">{appointmentDetails?.Sex}</p>
         </div>
       </div>
-      <Divider>X-Ray Result</Divider>
+      <Divider>Cardiology Department Result</Divider>
       <div className="grid lg:grid-cols-12 gap-4">
         <div className="col-span-3">
           <div className="mt-2">
@@ -406,8 +453,12 @@ const CardioResult = () => {
         </div>
         <div className="col-span-9">
           <h1 className="text-center font-bold">
-            X-ray Result for - {chargeDescription}
+            Cardiology Result for - {chargeDescription}
           </h1>
+          {/* Templates */}
+          <div>
+
+          </div>
 
           <Form
             {...formItemLayout}
@@ -422,9 +473,19 @@ const CardioResult = () => {
             <Form.Item label="Result No." name="ResultNo">
               <strong>{ResultNo}</strong>
             </Form.Item>
+            
+            <Form.Item label="Template" name="Template">
+              <Select onChange={handleChangeTemnplate}>
+                {templates.map((d: any) => (
+                  <Select.Option key={d.Id} title={d.Description} value={d.TemplateName}>
+                    {d.Description}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
             <Form.Item
-              label="Report Date"
-              name="ReportDate"
+              label="Date Of Examination"
+              name="DateOfExamination"
               rules={[
                 {
                   required: true,
@@ -432,48 +493,9 @@ const CardioResult = () => {
                 },
               ]}
             >
-              <DatePicker showTime format="MM/DD/YYYY hh:mm A" />
+              <DatePicker onChange={handleChangeDateOfExamination}  format="MM/DD/YYYY" />
             </Form.Item>
-            <Form.Item
-              label="Date X-rayed"
-              name="DateXrayed"
-              rules={[
-                {
-                  required: true,
-                  message: "Date x-rayed is required!",
-                },
-              ]}
-            >
-              <DatePicker showTime format="MM/DD/YYYY hh:mm A" />
-            </Form.Item>
-            <Form.Item
-              label="Date Read"
-              name="DateRead"
-              rules={[
-                {
-                  required: true,
-                  message: "Date read is required!",
-                },
-              ]}
-            >
-              <DatePicker showTime format="MM/DD/YYYY hh:mm A" />
-            </Form.Item>
-
-            {/* <Form.Item
-              label="Xray No."
-              name="XrayNo"
-              normalize={(v) => v.toUpperCase()}
-            >
-              <Input />
-            </Form.Item> */}
-            <Form.Item
-              label="Study No."
-              name="StudyNo"
-              normalize={(v) => v.toUpperCase()}
-            >
-              <Input />
-            </Form.Item>
-
+           
             <Form.Item label="Requesting Physician" name="RequestingPhysician">
               <Select
                 showSearch
@@ -483,6 +505,7 @@ const CardioResult = () => {
                     .toUpperCase()
                     .indexOf(inputValue.toUpperCase()) !== -1
                 }
+                onChange={handleFillFields}
               >
                 {RequestingPhysician.map((d: any) => (
                   <Select.Option key={d.Id} value={d.Id} title={d.Name}>
@@ -491,13 +514,14 @@ const CardioResult = () => {
                 ))}
               </Select>
             </Form.Item>
+         
             <Form.Item
-              label="Rad. Technologist"
-              name="RadTech"
+              label="Cardiologist"
+              name="Cardiologist"
               rules={[
                 {
                   required: true,
-                  message: "Rad. Technologist is required!",
+                  message: "Cardiologist is required!",
                 },
               ]}
             >
@@ -509,33 +533,7 @@ const CardioResult = () => {
                     .toUpperCase()
                     .indexOf(inputValue.toUpperCase()) !== -1
                 }
-              >
-                {radtechs.map((d: any) => (
-                  <Select.Option key={d.Id} title={d.Name} value={d.Id}>
-                    {d.Name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <Form.Item
-              label="Radiologist 1"
-              name="Rad1"
-              rules={[
-                {
-                  required: true,
-                  message: "Radiologist 1 is required!",
-                },
-              ]}
-            >
-              <Select
-                showSearch
-                allowClear
-                filterOption={(inputValue, option: any) =>
-                  option.title
-                    .toUpperCase()
-                    .indexOf(inputValue.toUpperCase()) !== -1
-                }
-                onChange={handleGetTemplate}
+             
               >
                 {Radiologist.map((d: any) => (
                   <Select.Option key={d.Id} title={d.Name} value={d.Id}>
@@ -543,60 +541,6 @@ const CardioResult = () => {
                   </Select.Option>
                 ))}
               </Select>
-            </Form.Item>
-            <Form.Item label="Radiologist 2" name="Rad2">
-              <Select
-                showSearch
-                allowClear
-                filterOption={(inputValue, option: any) =>
-                  option.title
-                    .toUpperCase()
-                    .indexOf(inputValue.toUpperCase()) !== -1
-                }
-              >
-                {Radiologist.map((d: any) => (
-                  <Select.Option key={d.Id} title={d.Name} value={d.Id}>
-                    {d.Name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <Form.Item label="Radiologist 3" name="Rad3">
-              <Select
-                showSearch
-                allowClear
-                filterOption={(inputValue, option: any) =>
-                  option.title
-                    .toUpperCase()
-                    .indexOf(inputValue.toUpperCase()) !== -1
-                }
-              >
-                {Radiologist.map((d: any) => (
-                  <Select.Option key={d.Id} title={d.Name} value={d.Id}>
-                    {d.Name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item label="Template" name="Template">
-              <Select onChange={handleChangeTemplate}>
-                {templates.map((d: any) => (
-                  <Select.Option key={d.Id} title={d.Examination} value={d.Id}>
-                    {d.Examination}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item label="Findings" name="Findings">
-              <Input.TextArea rows={4} />
-            </Form.Item>
-            <Form.Item label="Impression" name="Impression">
-              <Input.TextArea rows={4} />
-            </Form.Item>
-            <Form.Item label="Note" name="Note">
-              <Input.TextArea rows={4} />
             </Form.Item>
             {isFinalized && (
               <>
@@ -674,7 +618,36 @@ const CardioResult = () => {
             </Form.Item>
           </Form>
         </div>
+      
       </div>
+    
+      <PdfViewerComponent
+        id="container"
+        ref={(scope) => { viewer = scope; }}
+        documentPath={pdfFIle}
+        serviceUrl={apiUrl + "pdfviewer"}
+       
+        enableFormFieldsValidation={true}
+        showNotificationDialog={false}
+        style={{ height: "640px" }}
+      >
+        <Inject
+          services={[
+            Toolbar,
+            Magnification,
+            Navigation,
+            LinkAnnotation,
+            BookmarkView,
+            ThumbnailView,
+            TextSelection,
+            TextSearch,
+            Annotation,
+            FormFields,
+            FormDesigner,
+            Print,
+          ]}
+        />
+      </PdfViewerComponent>
       <Modal
         open={showFinalize}
         destroyOnClose

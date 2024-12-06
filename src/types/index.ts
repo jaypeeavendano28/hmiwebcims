@@ -327,6 +327,7 @@ export type TDoctors = {
   Type: string;
   NameAndSpecialty?: string;
   Department?: string;
+  Cardiologist: boolean;
 };
 
 export type TCharges = {

@@ -509,7 +509,10 @@ const ItemProfile = () => {
               </div>
             </div>
             <div className="grid md:grid-cols-3 gap-4">
-              <Form.Item name="ForGender" label="For Gender">
+              <Form.Item name="ForGender" label="For Gender" rules={[{
+                required:true,
+                message:"This field is required!"
+              }]}>
                 <Select>
                   <Select.Option key="A" value="A">
                     All Gender

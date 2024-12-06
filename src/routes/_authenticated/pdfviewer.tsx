@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/pdfviewer")({
 });
 
 const PdfViewer = () => {
-  let viewer: PdfViewerComponent;
+  // let viewer: PdfViewerComponent;
   //   const ajaxRequestInitiate = (args: any) => {
   //     var viewer = document.getElementById("container").ej2_instances[0];
   //     if (viewer.serverActionSettings.load === "Load") {
@@ -35,47 +35,47 @@ const PdfViewer = () => {
   //     }
   //   };
 
-  function validateFormFields(args: any) {
-    console.log(args);
-    var errorMessage = "Required Field(s): ";
-    var forms = viewer.formFieldCollections;
-    var flag = false;
-    var radioGroupName = "";
-    for (var i = 0; i < forms.length; i++) {
-     // var text = "";
-      if (forms[i].isRequired == true) {
-        // if (
-        //   forms[i].type?.toString() == "Checkbox" &&
-        //   forms[i].isChecked == false
-        // ) {
-        //   text = forms[i].name;
-        // } else if (forms[i].type == "RadioButton" && flag == false) {
-        //   radioGroupName = forms[i].name;
-        //   if (forms[i].isSelected == true) flag = true;
-        // } else if (
-        //   forms[i].type.toString() != "Checkbox" &&
-        //   forms[i].type != "RadioButton" &&
-        //   forms[i].value == ""
-        // ) {
-        //   text = forms[i].name;
-        // }
-        // if (text != "") {
-        //   if (errorMessage == "Required Field(s): ") {
-        //     errorMessage += text;
-        //   } else {
-        //     errorMessage += ", " + text;
-        //   }
-        // }
-      }
-    }
-    if (!flag && radioGroupName != "") {
-      if (errorMessage == "Required Field(s): ") errorMessage += radioGroupName;
-      else errorMessage += ", " + radioGroupName;
-    }
-    if (errorMessage != "Required Field(s): ") {
-      viewer.showNotificationPopup(errorMessage);
-    }
-  }
+  // function validateFormFields(args: any) {
+  //   console.log(args);
+  //   var errorMessage = "Required Field(s): ";
+  //   var forms = viewer.formFieldCollections;
+  //   var flag = false;
+  //   var radioGroupName = "";
+  //   for (var i = 0; i < forms.length; i++) {
+  //    // var text = "";
+  //     if (forms[i].isRequired == true) {
+  //       // if (
+  //       //   forms[i].type?.toString() == "Checkbox" &&
+  //       //   forms[i].isChecked == false
+  //       // ) {
+  //       //   text = forms[i].name;
+  //       // } else if (forms[i].type == "RadioButton" && flag == false) {
+  //       //   radioGroupName = forms[i].name;
+  //       //   if (forms[i].isSelected == true) flag = true;
+  //       // } else if (
+  //       //   forms[i].type.toString() != "Checkbox" &&
+  //       //   forms[i].type != "RadioButton" &&
+  //       //   forms[i].value == ""
+  //       // ) {
+  //       //   text = forms[i].name;
+  //       // }
+  //       // if (text != "") {
+  //       //   if (errorMessage == "Required Field(s): ") {
+  //       //     errorMessage += text;
+  //       //   } else {
+  //       //     errorMessage += ", " + text;
+  //       //   }
+  //       // }
+  //     }
+  //   }
+  //   if (!flag && radioGroupName != "") {
+  //     if (errorMessage == "Required Field(s): ") errorMessage += radioGroupName;
+  //     else errorMessage += ", " + radioGroupName;
+  //   }
+  //   if (errorMessage != "Required Field(s): ") {
+  //     viewer.showNotificationPopup(errorMessage);
+  //   }
+  // }
   // function change(args: any) {
   //   if (args.checked) {
   //     viewer.serviceUrl = "";
@@ -124,7 +124,7 @@ const PdfViewer = () => {
         // }}
         documentPath="PsychReportOfw.pdf"
         serviceUrl={apiUrl + "pdfviewer"}
-        validateFormFields={validateFormFields}
+        // validateFormFields={validateFormFields}
         enableFormFieldsValidation={true}
         showNotificationDialog={false}
         style={{ height: "640px" }}
