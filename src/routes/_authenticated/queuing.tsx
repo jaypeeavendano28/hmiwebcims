@@ -138,7 +138,7 @@ const Queuing = () => {
         const speech = new SpeechSynthesisUtterance();
         const voices = window.speechSynthesis.getVoices();
         speech.voice = voices[0]; // change voice
-
+        speech.rate=.7;
         if (counter.Station !== "2") {
           speech.text =
             "Patient " + counter.QNo + " please proceed to " + counter.Counter;

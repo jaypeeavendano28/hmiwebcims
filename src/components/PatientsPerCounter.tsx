@@ -56,6 +56,7 @@ const PatientsPerCounter: FC<Props> = ({
   };
 
   const handleCall = async (data: any) => {
+ 
     setIsSubmitting(true);
     // if (data.Status === "C") {
     //   const speech = new SpeechSynthesisUtterance();
@@ -85,7 +86,10 @@ const PatientsPerCounter: FC<Props> = ({
       setIsSubmitting(false);
       if (res.status === 1) {
         if (data.Status === "C") {
-          setShowModal(true);
+         
+            setShowModal(true);
+         
+
         } else if (data.Status === "O") {
           setSelectedRecord({});
           setShowModal(false);
@@ -107,6 +111,14 @@ const PatientsPerCounter: FC<Props> = ({
     }
   };
   const items: MenuProps["items"] = [
+    {
+      key: "A",
+      label: "Attending",
+      onClick: () => {
+        handleCall({ ...selectedRecord, Status: "A" });
+        window.location.reload();
+      },
+    },
     {
       key: "D",
       label: "Done",
@@ -390,7 +402,10 @@ const PatientsPerCounter: FC<Props> = ({
           <Button
             type="primary"
             onClick={() => {
-              handleCall({ ...selectedRecord, Status: "A" });
+              if (Station==="1") {
+                handleCall({ ...selectedRecord, Status: "A" });
+              }
+            
               setShowModal(false);
             }}
           >

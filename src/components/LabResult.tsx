@@ -8,19 +8,24 @@ type Props = {
 };
 
 const LabResult: FC<Props> = ({ data, handleSaveResult }) => {
-  
-  const [ShowInPrintOut,setShowInPrintOut] = useState(data.ShowInPrintOut)
+  console.log(data);
+  const [ShowInPrintOut, setShowInPrintOut] = useState(
+    !isNullOrUndefinedOrBlank(data.ResultSi)
+      ? true
+      : data.IsHeader === "Y"
+        ? true
+        : false
+  );
   const [result, setResult] = useState(data.ResultSi);
   const [possibleValues, setPossibleValues] = useState([]);
   const handleSave = async () => {
-    let showInPrintOut:boolean = ShowInPrintOut;
-    if (!isNullOrUndefinedOrBlank(result))
-    {
+    let showInPrintOut: boolean = ShowInPrintOut;
+    if (!isNullOrUndefinedOrBlank(result)) {
       showInPrintOut = true;
     } else {
       showInPrintOut = false;
     }
-    setShowInPrintOut(showInPrintOut)
+    setShowInPrintOut(showInPrintOut);
     handleSaveResult({
       ...data,
       ResultSi: result,
@@ -38,18 +43,17 @@ const LabResult: FC<Props> = ({ data, handleSaveResult }) => {
       setPossibleValues(res.parameters.lst);
     }
   };
-  const handleChange: CheckboxProps['onChange'] =(e)=>{
- setShowInPrintOut(e.target.checked)
-   handleSaveResult({
-     ...data,
-     ResultSi: result,
-     ShowInPrintOut: e.target.checked,
-   });
-   // handleSave()
-  }
+  const handleChange: CheckboxProps["onChange"] = (e) => {
+    setShowInPrintOut(e.target.checked);
+    handleSaveResult({
+      ...data,
+      ResultSi: result,
+      ShowInPrintOut: e.target.checked,
+    });
+    // handleSave()
+  };
   useEffect(() => {
     handleGetPossibleValues();
-   
   }, [data]);
   return (
     <>

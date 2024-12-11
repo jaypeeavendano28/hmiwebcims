@@ -29,6 +29,7 @@ import ListOfAppointments from "../../components/ListOfAppointments";
 import _ from "lodash";
 import { BsMegaphoneFill } from "react-icons/bs";
 import Cookies from "js-cookie";
+import ListOfOr from "../../components/ListOfOr";
 
 export const Route = createFileRoute("/_authenticated/cashier")({
   component: () => <Cashier />,
@@ -42,6 +43,7 @@ const Cashier = () => {
   const [AppointmentId, setAppointmentId] = useState<number | undefined>(
     undefined
   );
+  const [showListOfOr,setShowListOfOr]  = useState(false)
   const [showAddCharges, setShowAddCharges] = useState(false);
   const [isSubmitting, setSetIsSubmitting] = useState(false);
   const [change, setChange] = useState(0);
@@ -430,7 +432,7 @@ const Cashier = () => {
   return (
     <div className="cardBackGround">
       <Divider>Cashier</Divider>
-      <Button type="primary">List of Official Receipts</Button>
+      <Button type="primary" onClick={()=>setShowListOfOr(true)}>List of Official Receipts</Button>
       <div className="grid lg:grid-cols-12 gap-4">
         <div className="col-span-4">
           <Card title="In Queue">
@@ -719,6 +721,11 @@ const Cashier = () => {
             </Button>
           </div>
         </Form>
+      </Modal>
+      <Modal open={showListOfOr} onCancel={()=>setShowListOfOr(false)} footer={false}
+        width={screen.width - 200} destroyOnClose
+        >
+          <ListOfOr/>
       </Modal>
     </div>
   );

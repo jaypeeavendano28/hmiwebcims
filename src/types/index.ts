@@ -359,6 +359,7 @@ export type TCharges = {
   StatusDate?: string;
   StatusSetBy?: string;
   StatusRemarks?: string;
+  Diagnosis?:string
 };
 
 export type TQCounters = {
@@ -458,6 +459,9 @@ export type TPaymentsMain = {
   DeletedBy?: string;
   DateDeleted?: string;
   DeleteReason?: string;
+  UpdatedBy?:string;
+  DateUpdated?:string;
+  Amount2?:number;
 };
 
 export type TPaymentsDetail = {

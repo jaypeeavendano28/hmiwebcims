@@ -165,6 +165,7 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
         Price: ChargeDetails.Price,
         PaymentType: ChargeDetails.PaymentType,
         fk_Doctors_Id: ChargeDetails.fk_Doctors_Id,
+        Diagnosis : ChargeDetails.Diagnosis
       });
     }
   }, []);
@@ -265,6 +266,11 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
                       </Select.Option>
                     ))}
                 </Select>
+              </Form.Item>
+            </div>
+            <div>
+            <Form.Item name="Diagnosis" label="Diagnosis">
+                    <Input.TextArea rows={2}/>
               </Form.Item>
             </div>
 

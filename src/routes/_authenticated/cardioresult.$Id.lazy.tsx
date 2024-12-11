@@ -66,7 +66,7 @@ const formItemLayout = {
     sm: { span: 18 },
   },
 };
-function CardioResult  () {
+function CardioResult() {
   let viewer: PdfViewerComponent | null;
   const [showFinalize, setShowFinalize] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
@@ -80,7 +80,7 @@ function CardioResult  () {
   const [IsSaving, setIsSaving] = useState(false);
   const [ResultNo, setResultNo] = useState("");
   const [ResultId, setResultId] = useState(0);
-  const [pdfFIle,setPdfFile] = useState("")
+  const [pdfFIle, setPdfFile] = useState("");
   const [form] = Form.useForm();
   const store = useAppStore();
 
@@ -88,13 +88,20 @@ function CardioResult  () {
   const [appointmentDetails, setAppointmentDetails] = useState<
     TAppointments | undefined
   >();
-  const templates = [{
-    Description:"2D-Echo Report",
-    TemplateName:"2decho.pdf"
-  },{
-    Description:"ECG Report",
-    TemplateName:"ecgreport.pdf"
-  }]
+  const templates = [
+    {
+      Description: "2D-Echo Report",
+      TemplateName: "2decho.pdf",
+    },
+    {
+      Description: "ECG Report",
+      TemplateName: "ecgreport.pdf",
+    },
+    {
+      Description: "Treadmill Report",
+      TemplateName: "treadmill.pdf",
+    },
+  ];
 
   const handleGetAppointmentDetails = async () => {
     let res = await PostData("GetRecords", {
@@ -108,9 +115,17 @@ function CardioResult  () {
     }
   };
 
+  const ajaxRequestInitiate = (args: any) => {
+    if (viewer?.serverActionSettings.load === "Load") {
+      args.JsonData["PatientName"] = appointmentDetails?.Name;
+
+      viewer!.setJsonData(args.JsonData);
+    }
+  };
   const handleSubmitForm = async (values: any) => {
-  var xx= await viewer!.saveAsBlob()
-  console.log(xx)
+    viewer!.serverActionSettings.download = "SaveCardiologyResult";
+    viewer!.saveAsBlob();
+
     return;
     try {
       setIsProcessing(true);
@@ -218,8 +233,6 @@ function CardioResult  () {
     if (res) {
       setRadiologist(res.parameters.lst);
     }
-
-
   };
   const handlePrint = async () => {
     setIsProcessing(true);
@@ -272,7 +285,6 @@ function CardioResult  () {
       return { Status: 0, Message: errorString.Message };
     }
   };
-  
 
   const handleOpenResult = async (Id: number) => {
     const res = await PostData("GetRecords", {
@@ -332,13 +344,14 @@ function CardioResult  () {
       handleOpenResult(v.ResultId);
     }
   };
-  const handleChangeTemnplate = (e:any)=>{
-   
+  const handleChangeTemnplate = (e: any) => {
     if (!isNullOrUndefinedOrBlank(e)) {
-      setPdfFile(e)
+      setPdfFile(e);
     }
-  }
-  const handleChangeDateOfExamination: DatePickerProps['onChange'] = async(dateString)=>{
+  };
+  const handleChangeDateOfExamination: DatePickerProps["onChange"] = async (
+    dateString
+  ) => {
     var formFields = await viewer!.retrieveFormFields();
     formFields.forEach((element, index) => {
       if (element.name === "DateOfExamination") {
@@ -346,11 +359,9 @@ function CardioResult  () {
         viewer!.updateFormFieldsValue(formFields[index]);
       }
     });
-  }
+  };
 
-
-  const handleFillFields =async ()=> {
-   
+  const handleFillFields = async () => {
     var formFields = await viewer!.retrieveFormFields();
     if (formFields) {
       formFields.forEach((element, index) => {
@@ -358,42 +369,53 @@ function CardioResult  () {
           formFields[index].value = appointmentDetails?.Name;
           viewer!.updateFormFieldsValue(formFields[index]);
         } else if (element.name === "Age") {
-          formFields[index].value = appointmentDetails?.AgeYears  ;
+          formFields[index].value = appointmentDetails?.AgeYears;
           viewer!.updateFormFieldsValue(formFields[index]);
         } else if (element.name === "Gender") {
-          formFields[index].value = appointmentDetails?.Sex  ;
+          formFields[index].value = appointmentDetails?.Sex;
           viewer!.updateFormFieldsValue(formFields[index]);
-        }  else if (element.name === "DateOfExamination") {
-          formFields[index].value =dayjs(form.getFieldValue("DateOfExamination")).format("MM/DD/YYYY")  ;
+        } else if (element.name === "DateOfExamination") {
+          formFields[index].value = dayjs(
+            form.getFieldValue("DateOfExamination")
+          ).format("MM/DD/YYYY");
           viewer!.updateFormFieldsValue(formFields[index]);
         } else if (element.name === "RequestingPhysician") {
-          const x:TDoctors = RequestingPhysician.filter((f:TDoctors)=>f.Id===form.getFieldValue("RequestingPhysician"))[0]
-          formFields[index].value =x.Name  ;
+          const x: TDoctors = RequestingPhysician.filter(
+            (f: TDoctors) => f.Id === form.getFieldValue("RequestingPhysician")
+          )[0];
+          formFields[index].value = x.Name;
           viewer!.updateFormFieldsValue(formFields[index]);
-        }  else if (element.name === "Diagnosis") {
-          formFields[index].value = appointmentDetails?.Diagnosis ;
+        } else if (element.name === "Diagnosis") {
+          formFields[index].value = appointmentDetails?.Diagnosis;
           viewer!.updateFormFieldsValue(formFields[index]);
-        }  else if (element.name === "Cardiologist") {
-          const x:TDoctors = Radiologist.filter((f:TDoctors)=>f.Id===form.getFieldValue("Cardiologist"))[0]
-          formFields[index].value =x.Name  ;
-          viewer!.updateFormFieldsValue("Cardiologist")
-        }  else if (element.name === "LicenseNo") {
-          const x:TDoctors = Radiologist.filter((f:TDoctors)=>f.Id===form.getFieldValue("Cardiologist"))[0]
-          formFields[index].value =x.LicNo  ;
+        } else if (element.name === "Cardiologist") {
+          const x: TDoctors = Radiologist.filter(
+            (f: TDoctors) => f.Id === form.getFieldValue("Cardiologist")
+          )[0];
+          formFields[index].value = x.Name;
+          viewer!.updateFormFieldsValue("Cardiologist");
+        } else if (element.name === "LicenseNo") {
+          const x: TDoctors = Radiologist.filter(
+            (f: TDoctors) => f.Id === form.getFieldValue("Cardiologist")
+          )[0];
+          formFields[index].value = x.LicNo;
           viewer!.updateFormFieldsValue(formFields[index]);
-        } 
+        } else if (element.name === "Company") {
+          formFields[index].value = appointmentDetails!.HmoCompany?.toString();
+          viewer!.updateFormFieldsValue(formFields[index]);
+        }
       });
     }
-  }
+  };
 
   useEffect(() => {
     handleGetAppointmentDetails();
     handleInitialize();
     setKey(Math.random().toString());
   }, []);
-  useEffect(()=>{
-    handleFillFields()
-  },[pdfFIle])
+  useEffect(() => {
+    handleFillFields();
+  }, [pdfFIle]);
   return (
     <div className="cardBackGround">
       <div className="grid lg:grid-cols-3">
@@ -456,9 +478,7 @@ function CardioResult  () {
             Cardiology Result for - {chargeDescription}
           </h1>
           {/* Templates */}
-          <div>
-
-          </div>
+          <div></div>
 
           <Form
             {...formItemLayout}
@@ -473,11 +493,15 @@ function CardioResult  () {
             <Form.Item label="Result No." name="ResultNo">
               <strong>{ResultNo}</strong>
             </Form.Item>
-            
+
             <Form.Item label="Template" name="Template">
               <Select onChange={handleChangeTemnplate}>
                 {templates.map((d: any) => (
-                  <Select.Option key={d.Id} title={d.Description} value={d.TemplateName}>
+                  <Select.Option
+                    key={d.Id}
+                    title={d.Description}
+                    value={d.TemplateName}
+                  >
                     {d.Description}
                   </Select.Option>
                 ))}
@@ -493,9 +517,12 @@ function CardioResult  () {
                 },
               ]}
             >
-              <DatePicker onChange={handleChangeDateOfExamination}  format="MM/DD/YYYY" />
+              <DatePicker
+                onChange={handleChangeDateOfExamination}
+                format="MM/DD/YYYY"
+              />
             </Form.Item>
-           
+
             <Form.Item label="Requesting Physician" name="RequestingPhysician">
               <Select
                 showSearch
@@ -514,7 +541,7 @@ function CardioResult  () {
                 ))}
               </Select>
             </Form.Item>
-         
+
             <Form.Item
               label="Cardiologist"
               name="Cardiologist"
@@ -533,7 +560,6 @@ function CardioResult  () {
                     .toUpperCase()
                     .indexOf(inputValue.toUpperCase()) !== -1
                 }
-             
               >
                 {Radiologist.map((d: any) => (
                   <Select.Option key={d.Id} title={d.Name} value={d.Id}>
@@ -618,18 +644,21 @@ function CardioResult  () {
             </Form.Item>
           </Form>
         </div>
-      
       </div>
-    
+
       <PdfViewerComponent
         id="container"
-        ref={(scope) => { viewer = scope; }}
+        ref={(scope) => {
+          viewer = scope;
+        }}
         documentPath={pdfFIle}
         serviceUrl={apiUrl + "pdfviewer"}
-       
+        ajaxRequestInitiate={ajaxRequestInitiate}
         enableFormFieldsValidation={true}
         showNotificationDialog={false}
         style={{ height: "640px" }}
+        enableInkAnnotation={false}
+        enableToolbar={false}
       >
         <Inject
           services={[
@@ -658,4 +687,4 @@ function CardioResult  () {
       </Modal>
     </div>
   );
-};
+}

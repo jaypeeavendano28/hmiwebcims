@@ -204,7 +204,47 @@ const AppointmentDetails = () => {
 
   //udp_CheckListQCounters
   const handlePrintCheckList = async (qCounter: string) => {
-    axios.defaults.headers.common["Authorization"] =
+ 
+    if (qCounter==="*ALL*") {
+      qCounters!.forEach(async(e:any)=> {
+        axios.defaults.headers.common["Authorization"] =
+        "Bearer " + store.tokenIdWebCims;
+      const url =
+        ApiUrl +
+        "/api/GenerateReport?ReportName=checklist.rdl&AppointmentId=" +
+        Id +
+        "&QCounter=" +
+        e.label;
+  
+      try {
+        await axios({
+          url: url, //your url
+          method: "GET",
+          responseType: "blob",
+          params: {},
+        }).then((response) => {
+          let newBlob;
+          newBlob = new Blob([response.data], {
+            type: "application/pdf",
+          });
+  
+          const data = window.URL.createObjectURL(newBlob);
+  
+          const a = document.createElement("a");
+  
+          a.setAttribute("href", data);
+          a.setAttribute("target", "_blank");
+  
+          a.click();
+        });
+      } catch (error: any) {
+        let errorString = error.response.data;
+        errorString = JSON.parse(await error.response.data.text());
+        return { Status: 0, Message: errorString.Message };
+      }
+      });
+    } else {
+      axios.defaults.headers.common["Authorization"] =
       "Bearer " + store.tokenIdWebCims;
     const url =
       ApiUrl +
@@ -239,6 +279,9 @@ const AppointmentDetails = () => {
       errorString = JSON.parse(await error.response.data.text());
       return { Status: 0, Message: errorString.Message };
     }
+    }
+
+  
   };
   const handlePrintCs = async () => {
     axios.defaults.headers.common["Authorization"] =
@@ -366,7 +409,7 @@ const AppointmentDetails = () => {
           AppointmentType: x.AppointmentType,
           IsSeniorOrPwd: x.IsSeniorOrPwd,
           Occupation: x.Occupation,
-          Diagnosis: x.Diagnosis,
+      
         });
       }
 
@@ -551,7 +594,7 @@ const AppointmentDetails = () => {
               handleEdit(data);
               // setShowDelete(true);
             }}
-            color="red"
+            color="green"
             size="20"
             className="cursor-pointer"
           />
@@ -834,11 +877,11 @@ const AppointmentDetails = () => {
                 </AutoComplete>
               </Form.Item>
             </div>
-            <div>
+            {/* <div>
               <Form.Item name="Diagnosis" label="Diagnosis">
                     <Input.TextArea rows={4}/>
               </Form.Item>
-            </div>
+            </div> */}
 
             <div className="grid md:grid-cols-3 gap-4">
               <Form.Item
@@ -1030,6 +1073,7 @@ const AppointmentDetails = () => {
           setShowAddCharge(false);
           handleGetCharges();
           q.invalidateQueries({ queryKey: ["qcounters"] });
+          window.location.reload()
         }}
         title="Add Charges"
         footer={false}

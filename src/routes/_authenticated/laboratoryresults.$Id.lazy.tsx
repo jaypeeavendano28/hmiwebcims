@@ -61,6 +61,7 @@ const formItemLayout = {
 };
 
 const LaboratoryResults = () => {
+  const [allowSave, setAllowSave] = useState(false);
   const [key, setKey] = useState(Math.random().toString());
   const [isFinalized, setIsFinalized] = useState(false);
   const [showFinalize, setShowFinalize] = useState(false);
@@ -109,10 +110,13 @@ const LaboratoryResults = () => {
         FinalizedBy: x.FinalizedBy,
         DateFinalized: x.DateFinalized,
       });
+
       if (!isNullOrUndefinedOrBlank(x.FinalizedBy)) {
         setIsFinalized(true);
+        setAllowSave(false);
       } else {
         setIsFinalized(false);
+        setAllowSave(true);
       }
     }
     res = await PostData("GetRecords", {
@@ -188,6 +192,7 @@ const LaboratoryResults = () => {
     setResultNo("");
     setResultId(0);
     setIsFinalized(false);
+    setAllowSave(true);
   };
   const handleLoadTemplate = async () => {
     setRowsCol1([]);
@@ -548,6 +553,7 @@ const LaboratoryResults = () => {
                     <ExistingLabResults
                       PatientId={appointmentDetails?.fk_PatientInformation_Id}
                       handleOpen={(data) => handleOpenResult(data.Id)}
+                      Key={key}
                     />
                   ),
                 },
@@ -797,6 +803,23 @@ const LaboratoryResults = () => {
                   </Button>
                 </Space>
                 <Space>
+                  <Popconfirm
+                    title="Cancel Changes?"
+                    okText="Yes"
+                    cancelText="No"
+                    onConfirm={() => {
+                      window.location.reload();
+                    }}
+                  >
+                    <Button
+                      danger
+                      type="primary"
+                      loading={isProcessing}
+                      disabled={!allowSave}
+                    >
+                      Cancel Changes
+                    </Button>
+                  </Popconfirm>
                   <Button
                     type="primary"
                     onClick={() => {
@@ -807,6 +830,7 @@ const LaboratoryResults = () => {
                   >
                     {isFinalized ? "Un-Finalize Result" : "Finalize Result"}
                   </Button>
+
                   <Popconfirm
                     title="Delete this result?"
                     okText="Yes"

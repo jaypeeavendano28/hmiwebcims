@@ -96,6 +96,10 @@ const ListOfPatients = () => {
     return (
       <div className="grid lg:grid-cols-12 gap-4">
         <div className="cardBackGround p-3 col-span-2">
+          <div>Patient Id</div>
+          <div>
+            <strong>{data.Id}</strong>
+          </div>
           <div>Added By</div>
           <div>
             <strong>{data.AddedBy}</strong>

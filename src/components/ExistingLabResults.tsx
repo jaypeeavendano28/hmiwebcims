@@ -8,9 +8,10 @@ import { BiBookOpen } from "react-icons/bi";
 type Props = {
   PatientId?: number;
   handleOpen: (data: any) => void;
+  Key?: string;
 };
 
-const ExistingLabResults: FC<Props> = ({ PatientId, handleOpen }) => {
+const ExistingLabResults: FC<Props> = ({ PatientId, handleOpen, Key }) => {
   const [labresults, setLabResults] = useState([]);
   const handleLabResults = async () => {
     try {
@@ -42,7 +43,7 @@ const ExistingLabResults: FC<Props> = ({ PatientId, handleOpen }) => {
   };
   useEffect(() => {
     handleLabResults();
-  }, [PatientId]);
+  }, [PatientId, Key]);
   return (
     <div>
       <DataTable

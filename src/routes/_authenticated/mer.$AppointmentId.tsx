@@ -217,6 +217,10 @@ const Mer = () => {
           OthersResult: x.OthersResult,
         });
       } else {
+        form.setFieldsValue({
+          MerDate: dayjs(),
+        
+        });
         if (form.getFieldValue("Sex") === "M") {
           form.setFieldsValue({
             VaLeft: "20/20",
@@ -1247,7 +1251,7 @@ const Mer = () => {
           <Form.Item
             name="ClassOLabel"
             noStyle
-            initialValue={"Class O – Peding due to:"}
+            initialValue={"Class O – Pending due to:"}
           >
             <Input />
           </Form.Item>
