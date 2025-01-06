@@ -5,17 +5,11 @@ import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
 type Props = {
   data: any;
   handleSaveResult: (v: any) => void;
+  ResultId: number;
 };
 
-const LabResult: FC<Props> = ({ data, handleSaveResult }) => {
-  console.log(data);
-  const [ShowInPrintOut, setShowInPrintOut] = useState(
-    !isNullOrUndefinedOrBlank(data.ResultSi)
-      ? true
-      : data.IsHeader === "Y"
-        ? true
-        : false
-  );
+const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
+  const [ShowInPrintOut, setShowInPrintOut] = useState(false);
   const [result, setResult] = useState(data.ResultSi);
   const [possibleValues, setPossibleValues] = useState([]);
   const handleSave = async () => {
@@ -45,6 +39,7 @@ const LabResult: FC<Props> = ({ data, handleSaveResult }) => {
   };
   const handleChange: CheckboxProps["onChange"] = (e) => {
     setShowInPrintOut(e.target.checked);
+
     handleSaveResult({
       ...data,
       ResultSi: result,
@@ -54,6 +49,19 @@ const LabResult: FC<Props> = ({ data, handleSaveResult }) => {
   };
   useEffect(() => {
     handleGetPossibleValues();
+    if (ResultId > 0) {
+      if (!isNullOrUndefinedOrBlank(data.ResultSi)) {
+        setShowInPrintOut(true);
+      } else {
+        if (data.ShowInPrintOut === true) {
+          setShowInPrintOut(true);
+        } else {
+          setShowInPrintOut(false);
+        }
+      }
+    } else {
+      setShowInPrintOut(data.ShowInPrintOut);
+    }
   }, [data]);
   return (
     <>

@@ -245,6 +245,7 @@ const LaboratoryResults = () => {
     setRowsCol1(data);
   };
   const handleSubmitForm = async (values: any) => {
+    console.log(rowsCol1);
     try {
       const valuesToSave = {
         Main: {
@@ -587,6 +588,7 @@ const LaboratoryResults = () => {
                     data={v}
                     handleSaveResult={(x: any) => handleSaveResult(x)}
                     key={v.Id}
+                    ResultId={ResultId}
                   />
                 </>
                 {/* {v.IsWithResult === "Y" && (

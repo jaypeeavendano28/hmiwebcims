@@ -12,6 +12,7 @@ import {
   TMerOthers,
 } from "../../types";
 import {
+  AutoComplete,
   Button,
   Checkbox,
   DatePicker,
@@ -40,6 +41,7 @@ const prodApi = import.meta.env.VITE_PROD_API;
 const devApi = import.meta.env.VITE_DEV_API;
 const apiUrl = isDev ? devApi : prodApi;
 const Mer = () => {
+  const [peStatus, setPeStatus] = useState([]);
   const [chestXrayStatus, setChestXrayStatus] = useState<
     TCharges | undefined
   >();
@@ -78,12 +80,21 @@ const Mer = () => {
   const [form] = useForm();
 
   const handleInitialize = async () => {
-    const res = await PostData("GetRecords", {
+    let res = await PostData("GetRecords", {
       sp: "udp_GetFamilyMedicalHistory",
       parameters: {},
     });
     if (res) {
       setFamilyMedicalHistory(res.parameters.lst);
+    }
+    res = await PostData("GetRecords", {
+      sp: "udp_GetSettings",
+      parameters: {
+        Code: "PESTATUS",
+      },
+    });
+    if (res) {
+      setPeStatus(res.parameters.lst);
     }
   };
   const handleGetAppointmentDetails = async () => {
@@ -219,7 +230,12 @@ const Mer = () => {
       } else {
         form.setFieldsValue({
           MerDate: dayjs(),
-        
+          EentStatus: "NORMAL",
+          ChestStatus: "NORMAL",
+          HeartStatus: "NORMAL",
+          AbdomenStatus: "NORMAL",
+          ExtremitiesStatus: "NORMAL",
+          OthersStatus: "NORMAL",
         });
         if (form.getFieldValue("Sex") === "M") {
           form.setFieldsValue({
@@ -300,16 +316,16 @@ const Mer = () => {
       if (res) {
         setTreadmillStatus(res.parameters.lst[0]);
       }
-         res = await PostData("GetRecords", {
-           sp: "udp_GetMerProcedureStatus",
-           parameters: {
-             AppointmentId: AppointmentId,
-             ItemId: 2283,
-           },
-         });
-         if (res) {
-           setEcgStatus(res.parameters.lst[0]);
-         }
+      res = await PostData("GetRecords", {
+        sp: "udp_GetMerProcedureStatus",
+        parameters: {
+          AppointmentId: AppointmentId,
+          ItemId: 2283,
+        },
+      });
+      if (res) {
+        setEcgStatus(res.parameters.lst[0]);
+      }
 
       res = await PostData("GetRecords", {
         sp: "udp_GetMerProcedureStatus",
@@ -556,6 +572,135 @@ const Mer = () => {
       }
     }
 
+    if (v.Urea === true) {
+      if (otherResult === "") {
+        otherResult = "Urea-" + v.UreaValue2 + "-" + v.UreaValue;
+      } else {
+        otherResult =
+          otherResult + ",Creatinine-" + v.UreaValue2 + "-" + v.UreaValue;
+      }
+    }
+
+    if (v.UricAcid === true) {
+      if (otherResult === "") {
+        otherResult = "Uric Acid-" + v.UricAcidValue2 + "-" + v.UricAcidValue;
+      } else {
+        otherResult =
+          otherResult +
+          ",Uric Acid-" +
+          v.UricAcidValue2 +
+          "-" +
+          v.UricAcidValue;
+      }
+    }
+    if (v.Cholesterol === true) {
+      if (otherResult === "") {
+        otherResult =
+          "Cholesterol-" + v.CholesterolValue2 + "-" + v.CholesterolValue;
+      } else {
+        otherResult =
+          otherResult +
+          ",Cholesterol-" +
+          v.CholesterolValue2 +
+          "-" +
+          v.CholesterolValue;
+      }
+    }
+    if (v.Hdl === true) {
+      if (otherResult === "") {
+        otherResult = "HDL-" + v.HdlValue2 + "-" + v.HdlValue;
+      } else {
+        otherResult = otherResult + ",HDL-" + v.HdlValue2 + "-" + v.HdlValue;
+      }
+    }
+
+    if (v.Sgpt === true) {
+      if (otherResult === "") {
+        otherResult = "Sgpt-" + v.SgptValue2 + "-" + v.SgptValue;
+      } else {
+        otherResult = otherResult + ",Sgpt-" + v.SgptValue2 + "-" + v.SgptValue;
+      }
+    }
+    if (v.Globulin === true) {
+      if (otherResult === "") {
+        otherResult = "Globulin-" + v.GlobulinValue2 + "-" + v.GlobulinValue;
+      } else {
+        otherResult =
+          otherResult + ",Globulin-" + v.GlobulinValue2 + "-" + v.GlobulinValue;
+      }
+    }
+    if (v.Tsh === true) {
+      if (otherResult === "") {
+        otherResult = "Tsh-" + v.TshValue2 + "-" + v.TshValue;
+      } else {
+        otherResult = otherResult + ",Tsh-" + v.TshValue2 + "-" + v.TshValue;
+      }
+    }
+
+    if (v.Ft4 === true) {
+      if (otherResult === "") {
+        otherResult = "Ft4-" + v.Ft4Value2 + "-" + v.Ft4Value;
+      } else {
+        otherResult = otherResult + ",Ft4-" + v.Ft4Value2 + "-" + v.Ft4Value;
+      }
+    }
+
+    if (v.Sodium === true) {
+      if (otherResult === "") {
+        otherResult = "Sodium-" + v.SodiumValue2 + "-" + v.SodiumValue;
+      } else {
+        otherResult =
+          otherResult + ",Sodium-" + v.SodiumValue2 + "-" + v.SodiumValue;
+      }
+    }
+
+    if (v.Triglycerides === true) {
+      if (otherResult === "") {
+        otherResult =
+          "Triglycerides-" + v.TriglyceridesValue2 + "-" + v.TriglyceridesValue;
+      } else {
+        otherResult =
+          otherResult +
+          ",Triglycerides-" +
+          v.TriglyceridesValue2 +
+          "-" +
+          v.TriglyceridesValue;
+      }
+    }
+
+    if (v.Ldl === true) {
+      if (otherResult === "") {
+        otherResult = "Ldl-" + v.LdlValue2 + "-" + v.LdlValue;
+      } else {
+        otherResult = otherResult + ",Ldl-" + v.LdlValue2 + "-" + v.LdlValue;
+      }
+    }
+
+    if (v.Sgot === true) {
+      if (otherResult === "") {
+        otherResult = "Sgot-" + v.SgotValue2 + "-" + v.SgotValue;
+      } else {
+        otherResult = otherResult + ",Sgot-" + v.SgotValue2 + "-" + v.SgotValue;
+      }
+    }
+
+    if (v.HbA1c === true) {
+      if (otherResult === "") {
+        otherResult = "HbA1c-" + v.HbA1cValue2 + "-" + v.HbA1cValue;
+      } else {
+        otherResult =
+          otherResult + ",HbA1c-" + v.HbA1cValue2 + "-" + v.HbA1cValue;
+      }
+    }
+
+    if (v.Ft3 === true) {
+      if (otherResult === "") {
+        otherResult = "Ft3-" + v.Ft3Value2 + "-" + v.Ft3Value;
+      } else {
+        otherResult = otherResult + ",Ft3-" + v.Ft3Value2 + "-" + v.Ft3Value;
+      }
+    }
+
     formOtherServices.setFieldValue("OtherResult", otherResult);
     form.setFieldValue("OthersResult", otherResult);
   };
@@ -730,16 +875,44 @@ const Mer = () => {
         <div className="grid lg:grid-cols-3 gap-4 mb-2">
           <div className="font-bold">EENT</div>
           <Form.Item name="EentStatus" noStyle>
-            <Input />
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+              style={{ width: "100%" }}
+            >
+              {peStatus!.map((v: any) => (
+                <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
+                  {v.Value}
+                </AutoComplete.Option>
+              ))}
+            </AutoComplete>
           </Form.Item>
-          <Form.Item name="EentRemarls" noStyle>
+          <Form.Item name="EentRemarKs" noStyle>
             <Input />
           </Form.Item>
         </div>
         <div className="grid lg:grid-cols-3 gap-4 mb-2">
           <div className="font-bold">CHEST/LUNGS</div>
           <Form.Item name="ChestStatus" noStyle>
-            <Input />
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+              style={{ width: "100%" }}
+            >
+              {peStatus!.map((v: any) => (
+                <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
+                  {v.Value}
+                </AutoComplete.Option>
+              ))}
+            </AutoComplete>
           </Form.Item>
           <Form.Item name="ChestRemarks" noStyle>
             <Input />
@@ -748,7 +921,21 @@ const Mer = () => {
         <div className="grid lg:grid-cols-3 gap-4 mb-2">
           <div className="font-bold">HEART</div>
           <Form.Item name="HeartStatus" noStyle>
-            <Input />
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+              style={{ width: "100%" }}
+            >
+              {peStatus!.map((v: any) => (
+                <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
+                  {v.Value}
+                </AutoComplete.Option>
+              ))}
+            </AutoComplete>
           </Form.Item>
           <Form.Item name="HeartRemarks" noStyle>
             <Input />
@@ -757,7 +944,21 @@ const Mer = () => {
         <div className="grid lg:grid-cols-3 gap-4 mb-2">
           <div className="font-bold">ABDOMEN</div>
           <Form.Item name="AbdomenStatus" noStyle>
-            <Input />
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+              style={{ width: "100%" }}
+            >
+              {peStatus!.map((v: any) => (
+                <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
+                  {v.Value}
+                </AutoComplete.Option>
+              ))}
+            </AutoComplete>
           </Form.Item>
           <Form.Item name="AbdomenRemarks" noStyle>
             <Input />
@@ -766,7 +967,21 @@ const Mer = () => {
         <div className="grid lg:grid-cols-3 gap-4 mb-2">
           <div className="font-bold">EXTREMITIES</div>
           <Form.Item name="ExtremitiesStatus" noStyle>
-            <Input />
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+              style={{ width: "100%" }}
+            >
+              {peStatus!.map((v: any) => (
+                <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
+                  {v.Value}
+                </AutoComplete.Option>
+              ))}
+            </AutoComplete>
           </Form.Item>
           <Form.Item name="ExtremitiesRemarks" noStyle>
             <Input />
@@ -775,7 +990,21 @@ const Mer = () => {
         <div className="grid lg:grid-cols-3 gap-4 mb-2">
           <div className="font-bold">OTHERS</div>
           <Form.Item name="OthersStatus" noStyle>
-            <Input />
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+              style={{ width: "100%" }}
+            >
+              {peStatus!.map((v: any) => (
+                <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
+                  {v.Value}
+                </AutoComplete.Option>
+              ))}
+            </AutoComplete>
           </Form.Item>
           <Form.Item name="OthersRemarks" noStyle>
             <Input />
