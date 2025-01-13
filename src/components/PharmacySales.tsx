@@ -14,8 +14,10 @@ import { TItems } from "../types";
 import dayjs from "dayjs";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import useAppStore from "../store";
 
 export default function PharmacySales() {
+  const store = useAppStore();
   const [form] = Form.useForm();
   const [form2] = Form.useForm();
   const [modal, setModal] = useState(false);
@@ -67,6 +69,7 @@ export default function PharmacySales() {
         Price: price,
         Quantity: qty,
         Amount: price * qty,
+        fk_Items_Id: selectedItem.fk_Items_Id,
       },
     ]);
     form2.resetFields();
@@ -79,7 +82,49 @@ export default function PharmacySales() {
     });
     form.setFieldValue("Amount", amount);
   };
+  const handleSubmitSales = async (v: any) => {
+    if (addedItems.length <= 0) {
+      notification.error({
+        message: "Please add an item to saved!",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+    try {
+      const res = await PostData("SavePharmacySales", {
+        main: {
+          ...v,
+          Id: 0,
+          Date: dayjs(v.Date).format("YYYY-MM-DD"),
+          BranchCode: store.branchCode,
+        },
+        details: addedItems,
+      });
 
+      if (res) {
+        if (res.status === 1) {
+          notification.success({
+            message: "Sucessfully saved!",
+            placement: "topRight",
+            duration: 3,
+          });
+        } else {
+          notification.error({
+            message: res.message,
+            placement: "topRight",
+            duration: 3,
+          });
+        }
+      }
+    } catch (error: any) {
+      notification.error({
+        message: error.message,
+        placement: "topRight",
+        duration: 3,
+      });
+    }
+  };
   useEffect(() => {
     handleGetItems();
   }, []);
@@ -100,7 +145,12 @@ export default function PharmacySales() {
       >
         <div className="grid lg:grid-cols-6 gap-4">
           <div className="col-span-2">
-            <Form labelCol={{ span: 8 }} wrapperCol={{ span: 16 }} form={form}>
+            <Form
+              labelCol={{ span: 8 }}
+              wrapperCol={{ span: 16 }}
+              form={form}
+              onFinish={handleSubmitSales}
+            >
               <Form.Item name="TransactionNo" label="Transaction No.">
                 <Input readOnly />
               </Form.Item>
