@@ -6,6 +6,7 @@ import {
   InputNumber,
   notification,
   Select,
+  Space,
 } from "antd";
 import { useEffect, useState } from "react";
 import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
@@ -75,7 +76,20 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
     form.setFieldValue("Amount", amount);
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
+
+    if (!values) {
+      return;
+    }
+    if (addedItems.length === 0) {
+      notification.error({
+        message: "Please add item(s)!",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
     const res = await PostData("SaveRequestedItems", {
       AppointmentId: AppointmentId,
       Date: values.Date,
@@ -89,6 +103,7 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
           placement: "topRight",
           duration: 3,
         });
+        setAddedItems([]);
       }
     }
   };
@@ -111,7 +126,7 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
             labelCol={{ span: 8 }}
             wrapperCol={{ span: 16 }}
             form={form}
-            onFinish={handleSubmit}
+            // onFinish={handleSubmit}
           >
             <Form.Item name="TransactionNo" label="Transaction No.">
               <Input readOnly />
@@ -148,11 +163,11 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
             {/* <Form.Item name="Amount" label="Total Amount">
               <Input readOnly />
             </Form.Item> */}
-            <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
+            {/* <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
               <Button type="primary" htmlType="submit">
                 Submit
               </Button>
-            </Form.Item>
+            </Form.Item> */}
           </Form>
         </div>
         <div className="col-span-4">
@@ -199,9 +214,18 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
               <InputNumber />
             </Form.Item>
             <Form.Item wrapperCol={{ offset: 4, span: 20 }}>
-              <Button type="primary" htmlType="submit">
-                Add
-              </Button>
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  Add
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() => handleSubmit()}
+                  disabled={addedItems.length === 0}
+                >
+                  Submit Request
+                </Button>
+              </Space>
             </Form.Item>
           </Form>
           <DataTable

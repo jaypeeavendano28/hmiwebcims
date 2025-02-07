@@ -5,13 +5,19 @@ import { Column } from "primereact/column";
 import { Button, Form, InputNumber, notification, Space, Tooltip } from "antd";
 import { FaRegEdit } from "react-icons/fa";
 import dayjs from "dayjs";
+import { ColumnGroup } from "primereact/columngroup";
+import { Row } from "primereact/row";
 
 export default function PharmacyRequestDetails({
   Id,
   handleClose,
+  AppointmentId,
+  RenderedBy,
 }: {
   Id?: number;
+  AppointmentId?: number;
   handleClose: () => void;
+  RenderedBy: string;
 }) {
   const [selectedRecord, setSelectedRecord] = useState<any | undefined>();
   const [form] = Form.useForm();
@@ -31,20 +37,18 @@ export default function PharmacyRequestDetails({
   const actionBodyTemplate = (data: any) => {
     return (
       <Space>
-        <Tooltip title="Edit">
-          {isNullOrUndefinedOrBlank(selectedRecord) && (
-            <>
-              <FaRegEdit
-                size={24}
-                color="green"
-                className="cursor-pointer"
-                onClick={() => {
-                  form.setFieldValue("Qty", data.Qty);
+        <Tooltip title="Render Request">
+          {isNullOrUndefinedOrBlank(RenderedBy) && (
+            <FaRegEdit
+              size={24}
+              color="green"
+              className="cursor-pointer"
+              onClick={() => {
+                form.setFieldValue("Qty", data.Qty);
 
-                  setSelectedRecord(data);
-                }}
-              />
-            </>
+                setSelectedRecord(data);
+              }}
+            />
           )}
         </Tooltip>
       </Space>
@@ -62,13 +66,17 @@ export default function PharmacyRequestDetails({
     const index = list.findIndex((val: any) => val.Id === selectedRecord.Id);
     const list2: any = [...list];
     list2[index].Qty = v.Qty;
+    var amount = v.Qty * selectedRecord.Price;
+
+    list2[index].Amount = amount;
+
     setList(list2);
     setSelectedRecord(null);
   };
   const handleSubmit = async () => {
     try {
       const res = await PostData("SaveRenderRequest", {
-        AppointmentId: 0,
+        AppointmentId: AppointmentId,
         Date: dayjs(),
         Items: list,
       });
@@ -96,6 +104,46 @@ export default function PharmacyRequestDetails({
       });
     }
   };
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString("en-PH");
+  };
+
+  const net = () => {
+    let total = 0;
+
+    list.map((sale: any) => {
+      total += sale.Gross!;
+    });
+    console.log(total);
+    return formatCurrency(total);
+  };
+  const qty = () => {
+    let total = 0;
+
+    list.map((sale: any) => {
+      total += sale.Qty!;
+    });
+
+    return total;
+  };
+  const footerGroup = (
+    <ColumnGroup>
+      <Row>
+        <Column
+          footer="Totals:"
+          colSpan={2}
+          footerStyle={{
+            textAlign: "right",
+            fontWeight: "bold",
+          }}
+        />
+
+        <Column footer={qty} />
+        <Column footer="" />
+        <Column footer={net} />
+      </Row>
+    </ColumnGroup>
+  );
   useEffect(() => {
     hadleGetRequestDetails();
   }, []);
@@ -141,6 +189,7 @@ export default function PharmacyRequestDetails({
         emptyMessage="No Records!"
         stripedRows
         size="small"
+        footerColumnGroup={footerGroup}
       >
         <Column
           field="action"
@@ -157,7 +206,12 @@ export default function PharmacyRequestDetails({
       <div className="flex  justify-end">
         {isNullOrUndefinedOrBlank(selectedRecord) && (
           <>
-            <Button type="primary" onClick={handleSubmit}>
+            <Button
+              type="primary"
+              onClick={handleSubmit}
+              disabled={!isNullOrUndefinedOrBlank(RenderedBy)}
+              className="mt-2"
+            >
               Submit
             </Button>
           </>

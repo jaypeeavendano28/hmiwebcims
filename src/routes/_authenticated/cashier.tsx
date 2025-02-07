@@ -43,7 +43,7 @@ const Cashier = () => {
   const [AppointmentId, setAppointmentId] = useState<number | undefined>(
     undefined
   );
-  const [showListOfOr,setShowListOfOr]  = useState(false)
+  const [showListOfOr, setShowListOfOr] = useState(false);
   const [showAddCharges, setShowAddCharges] = useState(false);
   const [isSubmitting, setSetIsSubmitting] = useState(false);
   const [change, setChange] = useState(0);
@@ -85,6 +85,7 @@ const Cashier = () => {
   };
 
   const handleGetInQueue = async () => {
+    const cashierLocation = Cookies.get("CashierLoc");
     let res = await PostData("GetRecords", {
       sp: "udp_GetPatientPerCounterWithMode",
       parameters: {
@@ -93,7 +94,8 @@ const Cashier = () => {
           ? dayjs(form.getFieldValue("Date")).format("YYYYMMDD")
           : dayjs().format("YYYYMMDD"),
         Mode: "N",
-        CounterName: "CASHIER",
+        CounterName: cashierLocation,
+        Mode2: form.getFieldValue("TypeOfAppointment"),
       },
     });
     if (res) {
@@ -112,10 +114,22 @@ const Cashier = () => {
     }
   };
   const handleGetCharges = async (AppointmentId: number) => {
+    let mode = "";
+    const cashierLocation = form1.getFieldValue("CashierLocation");
+
+    if (cashierLocation === "CASHIERHEMO") {
+      mode = "H";
+    } else if (cashierLocation === "CASHIERPHA") {
+      mode = "P";
+    } else if (cashierLocation === "CASHIER") {
+      mode = "D";
+    }
+    console.log(mode);
     const res = await PostData("GetRecords", {
       sp: "udp_GetChargesByAppointmentIdForCashier",
       parameters: {
         AppointmentId: AppointmentId,
+        Mode: mode,
       },
     });
     if (res) {
@@ -209,12 +223,22 @@ const Cashier = () => {
     //   window.speechSynthesis.speak(speech);
     //   window.speechSynthesis.speak(speech);
     // }
+    let cashierLocation = "";
+
+    if (form.getFieldValue("TypeOfAppointment") === "D") {
+      cashierLocation = "CASHIER";
+    } else if (form.getFieldValue("TypeOfAppointment") === "H") {
+      cashierLocation = "CASHIERHEMO";
+    } else if (form.getFieldValue("TypeOfAppointment") === "P") {
+      cashierLocation = "CASHIERPHA";
+    }
+
     const valuesToSave = {
       ...data,
       Username: store.username,
-      Counter: "CASHIER",
+      Counter: cashierLocation,
       QNo: data.QueueNo,
-      Code: "CASHIER",
+      Code: cashierLocation,
     };
 
     const res = await PostData("CallCounter", valuesToSave);
@@ -249,15 +273,13 @@ const Cashier = () => {
     );
   };
   const handleGetLastOrNo = async () => {
-    if (!isNullOrUndefinedOrBlank(form1.getFieldValue("CashierLocation"))) {
-      Cookies.set("CashierLocation", form1.getFieldValue("CashierLocation"));
-    }
-
+    const value = form1.getFieldValue("CashierLocation");
+    Cookies.set("CashierLocation", value);
     const res = await PostData("GetRecords", {
       sp: "udp_GetLastOrNo",
       parameters: {
         BranchCode: store.branchCode,
-        CashierLocation: form1.getFieldValue("CashierLocation"),
+        CashierLocation: value,
       },
     });
     if (res) {
@@ -288,6 +310,16 @@ const Cashier = () => {
         return;
       }
 
+      let qCounter = "";
+
+      if (form.getFieldValue("TypeOfAppointment") === "D") {
+        qCounter = "CASHIER";
+      } else if (form.getFieldValue("TypeOfAppointment") === "H") {
+        qCounter = "CASHIERHEMO";
+      } else if (form.getFieldValue("TypeOfAppointment") === "P") {
+        qCounter = "CASHIERPHA";
+      }
+
       const v = await form1.validateFields();
 
       const cashAmount: number = isNullOrUndefinedOrBlank(
@@ -308,7 +340,14 @@ const Cashier = () => {
       }
       setSetIsSubmitting(true);
       const res = await PostData("SavePayment", {
-        Main: { ...v, Amount: amount, fk_Branches_Code: store.branchCode },
+        Main: {
+          ...v,
+          Amount: amount,
+          fk_Branches_Code: store.branchCode,
+          CashierLocation: form1.getFieldValue("CashierLocation"),
+          QId: selectedRecord.Id,
+          QCounter: qCounter,
+        },
         Details: charges,
       });
       if (res) {
@@ -414,12 +453,29 @@ const Cashier = () => {
     setCharges(addedCharges);
     handleComputeAmount();
   };
+  const handleTypeChange = (value: string) => {
+    if (value === "H") {
+      Cookies.set("CashierLoc", "CASHIERHEMO");
+    } else if (value === "D") {
+      Cookies.set("CashierLoc", "CASHIER");
+    } else if (value === "P") {
+      Cookies.set("CashierLoc", "CASHIERPHA");
+    }
+
+    Cookies.set("TypeOfAppointment", value);
+
+    handleGetInQueue();
+  };
+
   useEffect(() => {
     handleComputeAmount();
     handleComputeChange();
   }, [charges]);
 
   useEffect(() => {
+    if (!isNullOrUndefinedOrBlank(Cookies.get("TypeOfAppointment"))) {
+      form.setFieldValue("TypeOfAppointment", Cookies.get("TypeOfAppointment"));
+    }
     handleWithAccess();
     handleGetInQueue();
     form.setFieldValue("Date", dayjs());
@@ -432,7 +488,9 @@ const Cashier = () => {
   return (
     <div className="cardBackGround">
       <Divider>Cashier</Divider>
-      <Button type="primary" onClick={()=>setShowListOfOr(true)}>List of Official Receipts</Button>
+      <Button type="primary" onClick={() => setShowListOfOr(true)}>
+        List of Official Receipts
+      </Button>
       <div className="grid lg:grid-cols-12 gap-4">
         <div className="col-span-4">
           <Card title="In Queue">
@@ -440,6 +498,22 @@ const Cashier = () => {
               form={form}
               onFinish={() => q.invalidateQueries({ queryKey: ["inQueue"] })}
             >
+              <Form.Item
+                name="TypeOfAppointment"
+                label="Type of Appointment"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please select type of appointment!",
+                  },
+                ]}
+              >
+                <Select onChange={handleTypeChange}>
+                  <Select.Option value="D">Diagnostic</Select.Option>
+                  <Select.Option value="H">Hemodialysis/ASC</Select.Option>
+                  <Select.Option value="P">PHARMACY</Select.Option>
+                </Select>
+              </Form.Item>
               <Form.Item name="Date" label="Date">
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
@@ -507,7 +581,12 @@ const Cashier = () => {
 
                   <div className="grid lg:grid-cols-3 gap-2">
                     <Form.Item name="Date" label="Date">
-                      <DatePicker format="MM/DD/YYYY" />
+                      <DatePicker
+                        format="MM/DD/YYYY"
+                        onChange={() => {
+                          handleGetInQueue();
+                        }}
+                      />
                     </Form.Item>
                     <Form.Item name="fk_Appointments_Id" label="Appointment Id">
                       <Input readOnly />
@@ -677,7 +756,10 @@ const Cashier = () => {
         footer={false}
         destroyOnClose
       >
-        <ListOfAppointments handleSelect={handleSelect} />
+        <ListOfAppointments
+          handleSelect={handleSelect}
+          TypeOfAppointment={form.getFieldValue("TypeOfAppointment")}
+        />
       </Modal>
       <Modal
         open={showAddCharges}
@@ -722,10 +804,14 @@ const Cashier = () => {
           </div>
         </Form>
       </Modal>
-      <Modal open={showListOfOr} onCancel={()=>setShowListOfOr(false)} footer={false}
-        width={screen.width - 200} destroyOnClose
-        >
-          <ListOfOr/>
+      <Modal
+        open={showListOfOr}
+        onCancel={() => setShowListOfOr(false)}
+        footer={false}
+        width={screen.width - 200}
+        destroyOnClose
+      >
+        <ListOfOr />
       </Modal>
     </div>
   );

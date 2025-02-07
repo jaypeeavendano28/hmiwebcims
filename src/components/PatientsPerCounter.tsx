@@ -19,6 +19,8 @@ import { BiNotepad } from "react-icons/bi";
 import { useRouter } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { FaUpload } from "react-icons/fa6";
+import { GiMedicines } from "react-icons/gi";
+import RequestForMedicines from "./RequestForMedicines";
 
 type Props = {
   CounterCode: string;
@@ -33,6 +35,7 @@ const PatientsPerCounter: FC<Props> = ({
   DateTo,
   Station,
 }) => {
+  const [showRequest, setShowRequest] = useState(false);
   const router = useRouter();
   const [selectedRecord, setSelectedRecord] = useState<any | undefined>();
   const [showModal, setShowModal] = useState(false);
@@ -56,7 +59,6 @@ const PatientsPerCounter: FC<Props> = ({
   };
 
   const handleCall = async (data: any) => {
- 
     setIsSubmitting(true);
     // if (data.Status === "C") {
     //   const speech = new SpeechSynthesisUtterance();
@@ -86,10 +88,7 @@ const PatientsPerCounter: FC<Props> = ({
       setIsSubmitting(false);
       if (res.status === 1) {
         if (data.Status === "C") {
-         
-            setShowModal(true);
-         
-
+          setShowModal(true);
         } else if (data.Status === "O") {
           setSelectedRecord({});
           setShowModal(false);
@@ -317,6 +316,17 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
+        {(CounterCode === "DIA" || CounterCode === "AMB") && (
+          <>
+            <Tooltip title="Request for Medicines">
+              <Button
+                type="primary"
+                icon={<GiMedicines />}
+                onClick={() => handleRequest(data)}
+              />
+            </Tooltip>
+          </>
+        )}
         <Tooltip title="Upload Document">
           <Button
             type="primary"
@@ -334,6 +344,10 @@ const PatientsPerCounter: FC<Props> = ({
         )}
       </Space>
     );
+  };
+  const handleRequest = (data: any) => {
+    setSelectedRecord(data);
+    setShowRequest(true);
   };
   useEffect(() => {
     handleGetListOfPatients();
@@ -402,16 +416,28 @@ const PatientsPerCounter: FC<Props> = ({
           <Button
             type="primary"
             onClick={() => {
-              if (Station==="1") {
+              if (Station === "1") {
                 handleCall({ ...selectedRecord, Status: "A" });
               }
-            
+
               setShowModal(false);
             }}
           >
             Accept
           </Button>
         </div>
+      </Modal>
+      <Modal
+        open={showRequest}
+        destroyOnClose
+        onCancel={() => setShowRequest(false)}
+        footer={false}
+        width={window.innerWidth - 100}
+      >
+        <RequestForMedicines
+          Name={selectedRecord?.Name}
+          AppointmentId={selectedRecord?.fk_Appointments_Id}
+        />
       </Modal>
     </div>
   );

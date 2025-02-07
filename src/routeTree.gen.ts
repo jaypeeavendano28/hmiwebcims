@@ -20,7 +20,6 @@ import { Route as AuthenticatedUsersImport } from './routes/_authenticated/users
 import { Route as AuthenticatedUpdateuserprofileImport } from './routes/_authenticated/updateuserprofile'
 import { Route as AuthenticatedSampleprint2Import } from './routes/_authenticated/sampleprint2'
 import { Route as AuthenticatedSampleprintImport } from './routes/_authenticated/sampleprint'
-import { Route as AuthenticatedQueuingImport } from './routes/_authenticated/queuing'
 import { Route as AuthenticatedQcountersImport } from './routes/_authenticated/qcounters'
 import { Route as AuthenticatedPurchaseordersImport } from './routes/_authenticated/purchaseorders'
 import { Route as AuthenticatedPharmacyImport } from './routes/_authenticated/pharmacy'
@@ -43,6 +42,7 @@ import { Route as AuthenticatedUtilitiesHmocompanyImport } from './routes/_authe
 import { Route as AuthenticatedUserprofileIdImport } from './routes/_authenticated/userprofile/$Id'
 import { Route as AuthenticatedUserbranchesIdImport } from './routes/_authenticated/userbranches/$Id'
 import { Route as AuthenticatedUseraccessIdImport } from './routes/_authenticated/useraccess/$Id'
+import { Route as AuthenticatedQueuingCodeImport } from './routes/_authenticated/queuing.$Code'
 import { Route as AuthenticatedPharmacysalesIdImport } from './routes/_authenticated/pharmacysales.$Id'
 import { Route as AuthenticatedMerschoolAppointmentIdImport } from './routes/_authenticated/merschool.$AppointmentId'
 import { Route as AuthenticatedMerAppointmentIdImport } from './routes/_authenticated/mer.$AppointmentId'
@@ -181,11 +181,6 @@ const AuthenticatedSampleprint2Route = AuthenticatedSampleprint2Import.update({
 
 const AuthenticatedSampleprintRoute = AuthenticatedSampleprintImport.update({
   path: '/sampleprint',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-
-const AuthenticatedQueuingRoute = AuthenticatedQueuingImport.update({
-  path: '/queuing',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 
@@ -431,6 +426,11 @@ const AuthenticatedUseraccessIdRoute = AuthenticatedUseraccessIdImport.update({
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 
+const AuthenticatedQueuingCodeRoute = AuthenticatedQueuingCodeImport.update({
+  path: '/queuing/$Code',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+
 const AuthenticatedPharmacysalesIdRoute =
   AuthenticatedPharmacysalesIdImport.update({
     path: '/pharmacysales/$Id',
@@ -553,10 +553,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQcountersImport
       parentRoute: typeof AuthenticatedImport
     }
-    '/_authenticated/queuing': {
-      preLoaderRoute: typeof AuthenticatedQueuingImport
-      parentRoute: typeof AuthenticatedImport
-    }
     '/_authenticated/sampleprint': {
       preLoaderRoute: typeof AuthenticatedSampleprintImport
       parentRoute: typeof AuthenticatedImport
@@ -619,6 +615,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/pharmacysales/$Id': {
       preLoaderRoute: typeof AuthenticatedPharmacysalesIdImport
+      parentRoute: typeof AuthenticatedImport
+    }
+    '/_authenticated/queuing/$Code': {
+      preLoaderRoute: typeof AuthenticatedQueuingCodeImport
       parentRoute: typeof AuthenticatedImport
     }
     '/_authenticated/useraccess/$Id': {
@@ -721,7 +721,6 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedPharmacyRoute,
     AuthenticatedPurchaseordersRoute,
     AuthenticatedQcountersRoute,
-    AuthenticatedQueuingRoute,
     AuthenticatedSampleprintRoute,
     AuthenticatedSampleprint2Route,
     AuthenticatedUpdateuserprofileRoute,
@@ -738,6 +737,7 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedMerAppointmentIdRoute,
     AuthenticatedMerschoolAppointmentIdRoute,
     AuthenticatedPharmacysalesIdRoute,
+    AuthenticatedQueuingCodeRoute,
     AuthenticatedUseraccessIdRoute,
     AuthenticatedUserbranchesIdRoute,
     AuthenticatedUserprofileIdRoute,

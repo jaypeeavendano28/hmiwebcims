@@ -101,6 +101,7 @@ export type TItems = {
   fk_Items_Id?: number;
   Description2?: string;
   ForGender?: string;
+  Strength?: string;
 };
 
 export type TDepartments = {

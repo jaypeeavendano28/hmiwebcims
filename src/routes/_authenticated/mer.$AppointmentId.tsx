@@ -115,6 +115,8 @@ const Mer = () => {
         AppointmentId: AppointmentId,
         Address: x.Address,
         Sex: x.Sex,
+        NatureOfExamination: x.AppointmentTypeDesc,
+        Occupation: x.Occupation,
       });
     }
 
@@ -264,6 +266,18 @@ const Mer = () => {
       });
       if (res) {
         setChestXrayStatus(res.parameters.lst[0]);
+        var studyno = await PostData("GetRecords", {
+          sp: "udp_GetRadiologyResult",
+          parameters: {
+            Id: res.parameters.lst[0].ResultId,
+          },
+        });
+        if (studyno) {
+          form.setFieldsValue({
+            ChestXrayStudyNo: studyno.parameters.lst[0].StudyNo,
+            ChestXrayDate: dayjs(studyno.parameters.lst[0].ResultDate),
+          });
+        }
       }
       res = await PostData("GetRecords", {
         sp: "udp_GetMerProcedureStatus",
@@ -761,7 +775,7 @@ const Mer = () => {
             <Input readOnly />
           </Form.Item>
           <Form.Item name="Occupation" label="Occupation">
-            <Input readOnly />
+            <Input />
           </Form.Item>
           <Form.Item name="ContactNos" label="Contact Nos.">
             <Input readOnly />

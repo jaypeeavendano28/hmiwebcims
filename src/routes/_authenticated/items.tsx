@@ -25,6 +25,7 @@ const Items = () => {
     Description: { value: null, matchMode: FilterMatchMode.CONTAINS },
     Department: { value: null, matchMode: FilterMatchMode.CONTAINS },
     ChargeType: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    GenericName: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
   const router = useRouter();
   const store = useAppStore();
@@ -194,7 +195,12 @@ const Items = () => {
               header="Action"
               body={(data: TItems) => actionBodyTemplate(data)}
             ></Column>
-            <Column field="Description" header="Description" filter></Column>
+            <Column
+              field="Description"
+              header="Description/Brand"
+              filter
+            ></Column>
+            <Column field="GenericName" header="Generic Name" filter></Column>
             <Column field="Department" header="Department" filter></Column>
             <Column field="ChargeType" header="Charge Type" filter></Column>
             <Column field="QCounter" header="Queue Counter" filter></Column>

@@ -32,20 +32,21 @@ const QPatients: FC<Props> = ({ CurrentDepartment }) => {
   }, [CurrentDepartment]);
   return (
     <div className="bg-green-500">
-      <div className="font-bold text-6xl text-yellow-100 text-center">
+      <div className="font-bold text-6xl text-yellow-200 text-center">
         {CurrentDepartment.CounterName2}
       </div>
 
       {listOfPatients.map((v: any) => (
-        <div className="grid  lg:grid-cols-2" key={v.Id}>
-          <div className="grid  lg:grid-cols-2 gap-4">
-            <div className="font-bold text-6xl text-yellow-100 text-center">
-              {v.QueueNo}
-            </div>
-            <div className="font-bold text-6xl text-yellow-100 text-center">
-              {v.StatusDesc}
-            </div>
+        <div className="grid  grid-cols-12 gap-4" key={v.Id}>
+          <div className="font-bold text-6xl text-yellow-100 text-center col-span-4 mb-4">
+            {v.QueueNo}
           </div>
+          <div className="font-bold text-6xl text-yellow-100  col-span-8">
+            {v.StatusDesc}
+          </div>
+          {/* <div className="font-bold text-4xl text-yellow-100 text-center col-span-8">
+              {v.StatusDesc}
+            </div> */}
         </div>
       ))}
     </div>

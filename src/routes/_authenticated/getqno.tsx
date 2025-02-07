@@ -110,6 +110,31 @@ const GetQNo = () => {
       });
     }
   };
+  const handlePrint = () => {
+    if (contentRef.current) {
+      const content = contentRef.current.innerHTML; // Get the inner HTML of the div
+      const printWindow = window.open("", "", "width=600,height=600"); // Open a new window
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Print</title>
+              <style>
+                /* Add any custom styles for printing here */
+                body { font-family: Arial, sans-serif;text-align: center;font-size: 24px }
+              </style>
+            </head>
+            <body>
+              ${content} <!-- Insert the div content -->
+            </body>
+          </html>
+        `);
+        printWindow.document.close(); // Close the document to ensure it's fully loaded
+        printWindow.print(); // Trigger the print dialog
+        // Close the document to en
+      }
+    }
+  };
   useEffect(() => {
     handleWithAccess();
 
@@ -117,7 +142,8 @@ const GetQNo = () => {
   }, []);
   useEffect(() => {
     if (QNo !== "") {
-      reactToPrintFn();
+      //  reactToPrintFn();
+      handlePrint();
     }
   }, [QNo]);
   return (

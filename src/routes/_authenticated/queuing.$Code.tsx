@@ -16,11 +16,12 @@ import Calling2 from "../../components/calling2";
 import Attending from "../../components/attending";
 import QPatients from "../../components/QPatients";
 
-export const Route = createFileRoute("/_authenticated/queuing")({
+export const Route = createFileRoute("/_authenticated/queuing/$Code")({
   component: () => <Queuing />,
 });
 
 const Queuing = () => {
+  const { Code } = Route.useParams();
   const auth = useAuth();
   const store = useAppStore();
   const router = useRouter();
@@ -43,7 +44,7 @@ const Queuing = () => {
   const handleGetCounterValues = async () => {
     const res = await PostData("GetRecords", {
       sp: "udp_GetReceptionCounters",
-      parameters: { Grp: "1" },
+      parameters: { Grp: Code },
     });
     if (res) {
       setCounters(res.parameters.lst);
@@ -70,6 +71,7 @@ const Queuing = () => {
         BranchCode: store.branchCode,
         DateFrom: dayjs().format("YYYYMMDD"),
         DateTo: dayjs().format("YYYYMMDD"),
+        Station: Code,
       },
     });
     if (res) {
@@ -138,7 +140,7 @@ const Queuing = () => {
         const speech = new SpeechSynthesisUtterance();
         const voices = window.speechSynthesis.getVoices();
         speech.voice = voices[0]; // change voice
-        speech.rate=.7;
+        speech.rate = 0.7;
         if (counter.Station !== "2") {
           speech.text =
             "Patient " + counter.QNo + " please proceed to " + counter.Counter;
@@ -281,6 +283,7 @@ const Queuing = () => {
           )}
         </div>
       </div>
+      {JSON.stringify(Counters)}
     </div>
   );
 };

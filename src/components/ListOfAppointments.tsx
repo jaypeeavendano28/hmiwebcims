@@ -11,8 +11,9 @@ import Loading from "./loading";
 import { FaCheck } from "react-icons/fa6";
 type Props = {
   handleSelect: (patientId: number) => void;
+  TypeOfAppointment?: string;
 };
-const ListOfAppointments: FC<Props> = ({ handleSelect }) => {
+const ListOfAppointments: FC<Props> = ({ handleSelect, TypeOfAppointment }) => {
   const [expandedRows, setExpandedRows] = useState(null);
   const q = useQueryClient();
   const [form] = Form.useForm();
@@ -36,6 +37,7 @@ const ListOfAppointments: FC<Props> = ({ handleSelect }) => {
           )
             ? ""
             : form.getFieldValue("PatientName"),
+          TypeOfAppointment,
         },
       });
       if (res) {

@@ -9,6 +9,7 @@ import {
   Input,
   Modal,
   Popconfirm,
+  Select,
   Space,
   Tooltip,
   notification,
@@ -26,7 +27,7 @@ import { BiNote, BiTrash } from "react-icons/bi";
 import { GiMedicines } from "react-icons/gi";
 import RequestForMedicines from "../../components/RequestForMedicines";
 import { FaFileWaveform } from "react-icons/fa6";
-
+import Cookies from "js-cookie";
 export const Route = createFileRoute("/_authenticated/appointments")({
   component: () => <Appointments />,
 });
@@ -42,6 +43,8 @@ const Appointments = () => {
   const store = useAppStore();
   const auth = useAuth();
   const router = useRouter();
+  const TypeOfAppointment = form.getFieldValue("TypeOfAppointment");
+
   const handleWithAccess = async () => {
     const res = await auth.isWithAccess(15);
     if (res === false) {
@@ -58,6 +61,8 @@ const Appointments = () => {
   const appointments = useQuery({
     queryKey: ["appointments"],
     queryFn: async () => {
+      const TypeOfAppointment = form.getFieldValue("TypeOfAppointment");
+
       const res = await PostData("GetRecords", {
         sp: "udp_GetAppointments",
         parameters: {
@@ -73,6 +78,7 @@ const Appointments = () => {
           )
             ? ""
             : form.getFieldValue("PatientName"),
+          TypeOfAppointment,
         },
       });
       if (res) {
@@ -210,13 +216,30 @@ const Appointments = () => {
       </div>
     );
   };
+  const handleTypeChange = (value: string) => {
+    Cookies.set("TypeOfAppointment", value);
+    q.invalidateQueries({
+      queryKey: ["appointments"],
+    });
+  };
+
   useEffect(() => {
     handleWithAccess();
     form.setFieldsValue({
       DateFrom: dayjs(),
       DateTo: dayjs(),
+      TypeOfAppointment: Cookies.get("TypeOfAppointment"),
+    });
+    q.invalidateQueries({
+      queryKey: ["appointments"],
     });
   }, []);
+
+  useEffect(() => {
+    q.invalidateQueries({
+      queryKey: ["appointments"],
+    });
+  }, [TypeOfAppointment]);
   return (
     <div className="cardBackGround">
       <Divider>Appointments</Divider>
@@ -230,19 +253,52 @@ const Appointments = () => {
           })
         }
       >
-        <div className="grid md:grid-cols-6 gap-4">
+        <div className="grid md:grid-cols-8 gap-4">
+          <Form.Item
+            name="TypeOfAppointment"
+            label="Type of Appointment"
+            className="col-span-2"
+            rules={[
+              { required: true, message: "Please select type of appointment!" },
+            ]}
+          >
+            <Select onChange={handleTypeChange}>
+              <Select.Option value="D">Diagnostic</Select.Option>
+              <Select.Option value="H">Hemodialysis/ASC</Select.Option>
+            </Select>
+          </Form.Item>
           <Form.Item name="DateFrom" label="Date From">
-            <DatePicker format="MM/DD/YYYY" />
+            <DatePicker
+              format="MM/DD/YYYY"
+              onChange={() => {
+                q.invalidateQueries({
+                  queryKey: ["appointments"],
+                });
+              }}
+            />
           </Form.Item>
           <Form.Item name="DateTo" label="Date To">
-            <DatePicker format="MM/DD/YYYY" />
+            <DatePicker
+              format="MM/DD/YYYY"
+              onChange={() => {
+                q.invalidateQueries({
+                  queryKey: ["appointments"],
+                });
+              }}
+            />
           </Form.Item>
           <Form.Item
             name="PatientName"
             label="Patient Name"
             className="col-span-2"
           >
-            <Input />
+            <Input
+              onChange={() => {
+                q.invalidateQueries({
+                  queryKey: ["appointments"],
+                });
+              }}
+            />
           </Form.Item>
           <div className="flex flex-col justify-center">
             <div className="flex flex-row">

@@ -41,17 +41,20 @@ import Webcam from "react-webcam";
 import axios from "axios";
 import AddCharge from "../../components/AddCharge";
 import { FaRegEdit } from "react-icons/fa";
+import { ColumnGroup } from "primereact/columngroup";
+import { Row } from "primereact/row";
 export const Route = createFileRoute("/_authenticated/appointmentdetails/$Id")({
   component: () => <AppointmentDetails />,
 });
-  const isDev = import.meta.env.DEV;
-  const prodApi = import.meta.env.VITE_PROD_API;
-  const devApi = import.meta.env.VITE_DEV_API;
+const isDev = import.meta.env.DEV;
+const prodApi = import.meta.env.VITE_PROD_API;
+const devApi = import.meta.env.VITE_DEV_API;
 
-  const ApiUrl = isDev ? devApi : prodApi;
+const ApiUrl = isDev ? devApi : prodApi;
 
 const AppointmentDetails = () => {
   const q = useQueryClient();
+  const [Net, setNet] = useState<number>(0);
   const [qCounters, setQCounters] = useState<MenuProps["items"]>([]);
   const [showAddCharge, setShowAddCharge] = useState(false);
   const router = useRouter();
@@ -76,7 +79,7 @@ const AppointmentDetails = () => {
   const [showDelete, setShowDelete] = useState(false);
   const [charges, setCharges] = useState<TCharges[] | undefined>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [gender,setGender]= useState("")
+  const [gender, setGender] = useState("");
 
   useQuery({
     queryKey: ["patientDetails"],
@@ -93,9 +96,8 @@ const AppointmentDetails = () => {
           PatientNo: x.PatientNo,
           Name: x.Name,
           fk_PatientInformation_Id: PatientId,
-       
         });
-           setGender(x.Sex!)
+        setGender(x.Sex!);
       }
     },
     refetchOnWindowFocus: false,
@@ -204,18 +206,54 @@ const AppointmentDetails = () => {
 
   //udp_CheckListQCounters
   const handlePrintCheckList = async (qCounter: string) => {
- 
-    if (qCounter==="*ALL*") {
-      qCounters!.forEach(async(e:any)=> {
+    if (qCounter === "*ALL*") {
+      qCounters!.forEach(async (e: any) => {
         axios.defaults.headers.common["Authorization"] =
+          "Bearer " + store.tokenIdWebCims;
+        const url =
+          ApiUrl +
+          "/api/GenerateReport?ReportName=checklist.rdl&AppointmentId=" +
+          Id +
+          "&QCounter=" +
+          e.label;
+
+        try {
+          await axios({
+            url: url, //your url
+            method: "GET",
+            responseType: "blob",
+            params: {},
+          }).then((response) => {
+            let newBlob;
+            newBlob = new Blob([response.data], {
+              type: "application/pdf",
+            });
+
+            const data = window.URL.createObjectURL(newBlob);
+
+            const a = document.createElement("a");
+
+            a.setAttribute("href", data);
+            a.setAttribute("target", "_blank");
+
+            a.click();
+          });
+        } catch (error: any) {
+          let errorString = error.response.data;
+          errorString = JSON.parse(await error.response.data.text());
+          return { Status: 0, Message: errorString.Message };
+        }
+      });
+    } else {
+      axios.defaults.headers.common["Authorization"] =
         "Bearer " + store.tokenIdWebCims;
       const url =
         ApiUrl +
         "/api/GenerateReport?ReportName=checklist.rdl&AppointmentId=" +
         Id +
         "&QCounter=" +
-        e.label;
-  
+        qCounter;
+
       try {
         await axios({
           url: url, //your url
@@ -227,14 +265,14 @@ const AppointmentDetails = () => {
           newBlob = new Blob([response.data], {
             type: "application/pdf",
           });
-  
+
           const data = window.URL.createObjectURL(newBlob);
-  
+
           const a = document.createElement("a");
-  
+
           a.setAttribute("href", data);
           a.setAttribute("target", "_blank");
-  
+
           a.click();
         });
       } catch (error: any) {
@@ -242,46 +280,7 @@ const AppointmentDetails = () => {
         errorString = JSON.parse(await error.response.data.text());
         return { Status: 0, Message: errorString.Message };
       }
-      });
-    } else {
-      axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
-    const url =
-      ApiUrl +
-      "/api/GenerateReport?ReportName=checklist.rdl&AppointmentId=" +
-      Id +
-      "&QCounter=" +
-      qCounter;
-
-    try {
-      await axios({
-        url: url, //your url
-        method: "GET",
-        responseType: "blob",
-        params: {},
-      }).then((response) => {
-        let newBlob;
-        newBlob = new Blob([response.data], {
-          type: "application/pdf",
-        });
-
-        const data = window.URL.createObjectURL(newBlob);
-
-        const a = document.createElement("a");
-
-        a.setAttribute("href", data);
-        a.setAttribute("target", "_blank");
-
-        a.click();
-      });
-    } catch (error: any) {
-      let errorString = error.response.data;
-      errorString = JSON.parse(await error.response.data.text());
-      return { Status: 0, Message: errorString.Message };
     }
-    }
-
-  
   };
   const handlePrintCs = async () => {
     axios.defaults.headers.common["Authorization"] =
@@ -409,7 +408,6 @@ const AppointmentDetails = () => {
           AppointmentType: x.AppointmentType,
           IsSeniorOrPwd: x.IsSeniorOrPwd,
           Occupation: x.Occupation,
-      
         });
       }
 
@@ -704,6 +702,37 @@ const AppointmentDetails = () => {
 
     handlePrintCheckList(f.label);
   };
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString("en-PH");
+  };
+
+  const net = () => {
+    let total = 0;
+
+    for (let sale of charges!) {
+      total += sale.Net!;
+    }
+    setNet(total);
+    return formatCurrency(total);
+  };
+  const footerGroup = (
+    <ColumnGroup>
+      <Row>
+        <Column
+          footer="Totals:"
+          colSpan={3}
+          footerStyle={{
+            textAlign: "right",
+            fontWeight: "bold",
+          }}
+        />
+        <Column footer="" />
+        <Column footer="" />
+        <Column footer="" />
+        <Column footer={net} />
+      </Row>
+    </ColumnGroup>
+  );
   useEffect(() => {
     handleGetAppointmentDetails();
     handleGetCharges();
@@ -974,6 +1003,7 @@ const AppointmentDetails = () => {
                 rowExpansionTemplate={rowExpansionTemplate}
                 expandedRows={expandedRows as any}
                 onRowToggle={(e) => setExpandedRows(e.data as any)}
+                footerColumnGroup={footerGroup}
               >
                 <Column
                   expander={charges!.length > 0}
@@ -1010,13 +1040,16 @@ const AppointmentDetails = () => {
                 </Button> */}
 
                 <Button
-                  disabled={charges!.length <= 0}
+                  disabled={charges!.length <= 0 || Number(Net) > 0}
                   type="primary"
                   onClick={handlePrintSoa}
                 >
                   Print Charge SOA
                 </Button>
-                <Dropdown menu={{ items: qCounters, onClick: onMenuClick }}>
+                <Dropdown
+                  menu={{ items: qCounters, onClick: onMenuClick }}
+                  disabled={charges!.length <= 0 || Number(Net) > 0}
+                >
                   <Button type="primary">Print Checklist</Button>
                 </Dropdown>
               </Space>
@@ -1073,14 +1106,14 @@ const AppointmentDetails = () => {
           setShowAddCharge(false);
           handleGetCharges();
           q.invalidateQueries({ queryKey: ["qcounters"] });
-          window.location.reload()
+          window.location.reload();
         }}
         title="Add Charges"
         footer={false}
         width={screen.width - 80}
         destroyOnClose
       >
-        <AddCharge Id={Id} ChargeDetails={selectedRecord} Gender={gender}/>
+        <AddCharge Id={Id} ChargeDetails={selectedRecord} Gender={gender} />
       </Modal>
     </div>
   );

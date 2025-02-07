@@ -102,6 +102,20 @@ const Sider = () => {
         <Link
           to="/registeredpatients/$station"
           params={{
+            station: "0",
+          }}
+        >
+          Hemodialyis/Ambulatory Patients
+        </Link>
+      ),
+      key: "mnuHemoPatients",
+      icon: <FaRegCalendarPlus />,
+    },
+    {
+      label: (
+        <Link
+          to="/registeredpatients/$station"
+          params={{
             station: "2",
           }}
         >
@@ -155,8 +169,43 @@ const Sider = () => {
           key: "mnuGetQHemo",
         },
         {
-          label: <Link to="/queuing">Queuing</Link>,
+          label: (
+            <Link
+              to="/queuing/$Code"
+              params={{
+                Code: "1",
+              }}
+            >
+              Queuing Diagnostics
+            </Link>
+          ),
           key: "mnuQueuing2",
+        },
+        {
+          label: (
+            <Link
+              to="/queuing/$Code"
+              params={{
+                Code: "2",
+              }}
+            >
+              Queuing Consultation
+            </Link>
+          ),
+          key: "mnuQueuing2",
+        },
+        {
+          label: (
+            <Link
+              to="/queuing/$Code"
+              params={{
+                Code: "0",
+              }}
+            >
+              Queuing Hemodialysis/Ambulatory
+            </Link>
+          ),
+          key: "mnuQueuing0",
         },
 
         // {

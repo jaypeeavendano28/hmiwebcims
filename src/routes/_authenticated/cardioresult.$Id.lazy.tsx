@@ -20,6 +20,7 @@ import {
   Inject,
 } from "@syncfusion/ej2-react-pdfviewer";
 import {
+  AutoComplete,
   Button,
   DatePicker,
   DatePickerProps,
@@ -69,6 +70,7 @@ const formItemLayout = {
 };
 function CardioResult() {
   let viewer: PdfViewerComponent | null;
+  const [Interpretation, setInterprestation] = useState<string>("");
   const [result, setResult] = useState<any>(null);
   const [showFinalize, setShowFinalize] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
@@ -82,6 +84,7 @@ function CardioResult() {
   const [IsSaving, setIsSaving] = useState(false);
   const [ResultId, setResultId] = useState(0);
   const [pdfFIle, setPdfFile] = useState("");
+  const [CardioKeywords, setCardioKeywords] = useState<any | undefined>();
   const [form] = Form.useForm();
   const store = useAppStore();
 
@@ -113,6 +116,16 @@ function CardioResult() {
     });
     if (res) {
       setAppointmentDetails(res.parameters.lst[0]);
+    }
+  };
+
+  const handleGetCardioKeywords = async () => {
+    let res = await PostData("GetRecords", {
+      sp: "udp_GetCardioKeywords",
+      parameters: {},
+    });
+    if (res) {
+      setCardioKeywords(res.parameters.lst);
     }
   };
 
@@ -301,6 +314,7 @@ function CardioResult() {
         DateXrayed: dayjs(),
         DateRead: dayjs(),
         ReportDate: dayjs(),
+        DateOfExamination: dayjs(),
       });
       setResultId(0);
       setIsFinalized(false);
@@ -375,6 +389,9 @@ function CardioResult() {
           ) {
             viewer!.updateFormFieldsValue(formFields[index]);
           }
+        } else if (element.name === "Interpretation") {
+          formFields[index].value = Interpretation;
+          viewer!.updateFormFieldsValue(formFields[index]);
         }
       });
     }
@@ -384,10 +401,14 @@ function CardioResult() {
     handleGetAppointmentDetails();
     handleInitialize();
     setKey(Math.random().toString());
+    handleGetCardioKeywords();
   }, []);
   useEffect(() => {
     handleFillFields();
   }, [pdfFIle]);
+  useEffect(() => {
+    handleFillFields();
+  }, [Interpretation]);
 
   // useEffect(() => {
   //   if (result !== null) {
@@ -573,6 +594,38 @@ function CardioResult() {
                 ))}
               </Select>
             </Form.Item>
+
+            {pdfFIle === "ecgreport.pdf" && (
+              <Form.Item label="Keywords" name="Keywords">
+                <AutoComplete
+                  showSearch
+                  allowClear
+                  filterOption={(inputValue, option: any) =>
+                    option.title
+                      .toUpperCase()
+                      .indexOf(inputValue.toUpperCase()) !== -1
+                  }
+                  onKeyDown={(e: any) => {
+                    if (e.key === "Tab") {
+                      setInterprestation(
+                        Interpretation + e.target.value + "\n"
+                      );
+                      form.setFieldValue("Keywords", "");
+                    }
+                  }}
+                >
+                  {CardioKeywords.map((d: any) => (
+                    <Select.Option
+                      key={d.Id}
+                      title={d.Description}
+                      value={d.Description}
+                    >
+                      {d.Legend}
+                    </Select.Option>
+                  ))}
+                </AutoComplete>
+              </Form.Item>
+            )}
             {isFinalized && (
               <>
                 <Form.Item label="Finalized By" name="FinalizedBy">

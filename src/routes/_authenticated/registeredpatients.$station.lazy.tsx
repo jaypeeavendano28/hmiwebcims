@@ -63,8 +63,10 @@ const RegisteredPatients = () => {
   useEffect(() => {
     if (station === "1") {
       setHeader("Registered Patients");
-    } else {
+    } else if (station === "2") {
       setHeader("Consultations");
+    } else if (station === "0") {
+      setHeader("Henodialysis/Ambulatory Patients");
     }
   }, [station]);
   return (

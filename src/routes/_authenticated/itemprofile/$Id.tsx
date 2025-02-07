@@ -159,7 +159,8 @@ const ItemProfile = () => {
         NeedAPhysician: x.NeedAPhysician,
         IsPackage: x.IsPackage,
         BeginningBalance: x.BeginningBalance,
-        ForGender:x.ForGender
+        ForGender: x.ForGender,
+        Strength: x.Strength,
       });
     }
   };
@@ -509,10 +510,16 @@ const ItemProfile = () => {
               </div>
             </div>
             <div className="grid md:grid-cols-3 gap-4">
-              <Form.Item name="ForGender" label="For Gender" rules={[{
-                required:true,
-                message:"This field is required!"
-              }]}>
+              <Form.Item
+                name="ForGender"
+                label="For Gender"
+                rules={[
+                  {
+                    required: true,
+                    message: "This field is required!",
+                  },
+                ]}
+              >
                 <Select>
                   <Select.Option key="A" value="A">
                     All Gender
@@ -679,6 +686,9 @@ const ItemProfile = () => {
                     </AutoComplete.Option>
                   ))}
               </AutoComplete>
+            </Form.Item>
+            <Form.Item name="Strength" label="Strength">
+              <Input />
             </Form.Item>
             <Form.Item name="BeginningBalance" label="Beginning Balance">
               <InputNumber />
