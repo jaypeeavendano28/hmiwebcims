@@ -6,7 +6,7 @@ import { useAuth } from "../../hooks/userAuth";
 import { notification } from "antd";
 import dayjs from "dayjs";
 import { PostData } from "../../helpers";
-import { useReactToPrint } from "react-to-print";
+//import { useReactToPrint } from "react-to-print";
 
 export const Route = createFileRoute("/_authenticated/getqno")({
   component: () => <GetQNo />,
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/getqno")({
 
 const GetQNo = () => {
   const contentRef = useRef<HTMLDivElement>(null);
-  const reactToPrintFn = useReactToPrint({ contentRef });
+  //  const reactToPrintFn = useReactToPrint({ contentRef });
   const [description, setDescription] = useState("");
   const [time, setTime] = useState(dayjs().format("MM/DD/YYYY hh:mm A"));
   const [QNo, setQNo] = useState("");
