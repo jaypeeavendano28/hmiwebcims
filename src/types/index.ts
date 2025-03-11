@@ -250,6 +250,8 @@ export type TAppointments = {
   fk_DiscountTypes_Id?:number
   LoaApprovedBy?:string
   HmoCompanyName?:string
+  FinalizedBy?:string
+  FinalizedDate?:Date
 };
 
 export type TAppointmentType = {
@@ -963,7 +965,7 @@ export type TProfessionalFee = {
   fk_Appointments_Id?:number
   fk_Doctors_Id?:number
   fk_Discounttypes_Id?:number
-  fk_HmoDeduction_Id?:number
+  fk_HmoCompany_Id?:number
   Amount?:number
   Vat?:number
   Discount?:number

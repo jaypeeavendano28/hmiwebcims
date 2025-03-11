@@ -19,6 +19,7 @@ import {
   TLabTypes,
   TQCounters,
   TSettings,
+  TSoaDescriptions,
 } from "../../../types";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -48,6 +49,22 @@ const ItemProfile = () => {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
+
+  const soaDescription = useQuery<TSoaDescriptions[]>({
+    queryKey: ["soaDescription"],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetSoaDescriptions",
+        parameters: {},
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
   const labTypes = useQuery({
     queryKey: ["labTypes"],
     queryFn: async () => {
@@ -165,6 +182,17 @@ const ItemProfile = () => {
     }
   };
   const handleSubmit = async (v: TItems) => {
+    if (v.fk_Departments_Id === 1040 || v.fk_Departments_Id === 1041) {
+      if (isNullOrUndefinedOrBlank(v.fk_SoaDescriptions_Id)) {
+        notification.error({
+          message: "SOA Description is required!",
+          placement: "topRight",
+          duration: 3,
+        });
+        return;
+      }
+    }
+
     const res = await PostData("SaveItemProfile", { ...v, Id: Id });
     if (res) {
       if (res.status === 1) {
@@ -286,6 +314,25 @@ const ItemProfile = () => {
               >
                 {departments.data &&
                   departments.data.map((d: TDepartments) => (
+                    <Select.Option key={d.Id} value={d.Id}>
+                      {d.Description}
+                    </Select.Option>
+                  ))}
+              </Select>
+            </Form.Item>
+            <Form.Item label="SOA Description" name="fk_SoaDescriptions_Id">
+              <Select
+                showSearch
+                filterOption={(input, option) =>
+                  (
+                    option!.children
+                      ?.toString()
+                      .toLocaleLowerCase() as unknown as string
+                  ).includes(input.toLocaleLowerCase())
+                }
+              >
+                {soaDescription.data &&
+                  soaDescription.data.map((d: TSoaDescriptions) => (
                     <Select.Option key={d.Id} value={d.Id}>
                       {d.Description}
                     </Select.Option>

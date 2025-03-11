@@ -16,31 +16,36 @@ import { Row } from "primereact/row";
 import {
   Button,
   Divider,
+  Form,
+  Input,
   Modal,
   notification,
   Popconfirm,
   Space,
   Tooltip,
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Discount from "./Discount";
 import PHICDeduction from "./PHICDeduction";
 import HmoDeduction from "./HmoDeduction";
 import AddCharge from "./AddCharge";
 import Pf from "./Pf";
 import { FaUserEdit } from "react-icons/fa";
-import { FaDeleteLeft, FaTrash } from "react-icons/fa6";
+import { FaTrash } from "react-icons/fa6";
+import { useAuth } from "../hooks/userAuth";
 
 type ChargesProps = {
   AppointmentId: number;
 };
 
 export default function Charges({ AppointmentId }: ChargesProps) {
+  const auth = useAuth();
+  const [form] = Form.useForm();
+  const [showFinalizedBilling, setShowFinalizedBilling] = useState(false);
   const [selectedPf, setSeletectedPf] = useState<
     TProfessionalFee | undefined
   >();
-  const [pfId, setPfId] = useState(0);
-  console.log(pfId);
+
   const [showPf, setShowPf] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<TCharges | undefined>();
   const [showAddCharge, setShowAddCharge] = useState(false);
@@ -316,6 +321,37 @@ export default function Charges({ AppointmentId }: ChargesProps) {
       </Row>
     </ColumnGroup>
   );
+  const handleFinalizeBilling = async (v: any) => {
+    const FinalizedMode = isNullOrUndefinedOrBlank(appDetails.data?.FinalizedBy)
+      ? "F"
+      : "U";
+    try {
+      const res = await PostData("FinalizedBilling", {
+        Username: v.Username,
+        Password: v.Password,
+        AppointmentId: AppointmentId,
+        FinalizedMode,
+      });
+      if (res) {
+        if (res.status === 1) {
+          notification.success({
+            message: "Billing successfully finalized!",
+            placement: "topRight",
+            duration: 3,
+          });
+          location.reload();
+        } else {
+          notification.error({
+            message: res.message,
+            placement: "topRight",
+            duration: 3,
+          });
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
   const handleSaveDiscount = async (v: TDiscountTypes) => {
     try {
       const res = await PostData("ProcessDiscount", {
@@ -460,6 +496,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
       </Space>
     );
   };
+
   return (
     <div className="mt-2">
       <div className="grid lg:grid-cols-12 sm:grid-cols-1 ">
@@ -471,26 +508,44 @@ export default function Charges({ AppointmentId }: ChargesProps) {
                 setSelectedRecord(undefined);
                 setShowAddCharge(true);
               }}
+              disabled={!isNullOrUndefinedOrBlank(appDetails.data?.FinalizedBy)}
             >
               Add Charges
             </Button>
-            <Button type="primary" onClick={() => setOpenDiscount(true)}>
+            <Button
+              type="primary"
+              onClick={() => setOpenDiscount(true)}
+              disabled={!isNullOrUndefinedOrBlank(appDetails.data?.FinalizedBy)}
+            >
               Discount
             </Button>
-            <Button type="primary" onClick={() => setShowPhicDeduction(true)}>
+            <Button
+              type="primary"
+              onClick={() => setShowPhicDeduction(true)}
+              disabled={!isNullOrUndefinedOrBlank(appDetails.data?.FinalizedBy)}
+            >
               PHIC Deduction
             </Button>
             <Button
               type="primary"
               onClick={() => setShowHmo(true)}
-              disabled={isNullOrUndefinedOrBlank(
-                appDetails.data?.fk_HmoCompany_Id
-              )}
+              disabled={
+                isNullOrUndefinedOrBlank(appDetails.data?.fk_HmoCompany_Id) ||
+                !isNullOrUndefinedOrBlank(appDetails.data?.FinalizedBy)
+              }
             >
               HMO/Company Deduction
             </Button>
             <Button type="primary" onClick={() => setOpenDiscount(true)}>
               Print SOA
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => setShowFinalizedBilling(true)}
+            >
+              {isNullOrUndefinedOrBlank(appDetails.data?.FinalizedBy)
+                ? `Finalized Billing`
+                : `Un-Finalized Bililng`}
             </Button>
           </Space>
         </div>
@@ -502,7 +557,13 @@ export default function Charges({ AppointmentId }: ChargesProps) {
               cancelText="No"
               onConfirm={handleResetAllDeductions}
             >
-              <Button type="primary" danger>
+              <Button
+                type="primary"
+                danger
+                disabled={
+                  !isNullOrUndefinedOrBlank(appDetails.data?.FinalizedBy)
+                }
+              >
                 Reset All Deductions
               </Button>
             </Popconfirm>
@@ -632,7 +693,6 @@ export default function Charges({ AppointmentId }: ChargesProps) {
         <Button
           type="primary"
           onClick={() => {
-            setPfId(0);
             setShowPf(true);
           }}
         >
@@ -680,8 +740,8 @@ export default function Charges({ AppointmentId }: ChargesProps) {
               header="Vat"
               body={(data: TProfessionalFee) =>
                 data.Vat?.toLocaleString(undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
                 })
               }
             ></Column>
@@ -821,6 +881,31 @@ export default function Charges({ AppointmentId }: ChargesProps) {
         width={screen.width - 300}
       >
         <Pf AppointmentId={AppointmentId} selectedRecord={selectedPf} />
+      </Modal>
+      <Modal
+        open={showFinalizedBilling}
+        footer={null}
+        onCancel={() => setShowFinalizedBilling(false)}
+        destroyOnClose
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleFinalizeBilling}
+          className="max-w-md"
+        >
+          <Form.Item name="Username" label="Username">
+            <Input autoFocus />
+          </Form.Item>{" "}
+          <Form.Item name="Password" label="Password">
+            <Input.Password />
+          </Form.Item>
+          <div className="flex justify-end">
+            <Button type="primary" htmlType="submit">
+              Submit
+            </Button>
+          </div>
+        </Form>
       </Modal>
     </div>
   );

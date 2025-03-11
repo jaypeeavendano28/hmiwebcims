@@ -60,8 +60,8 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
 
   const handleSubmit = async (values: TProfessionalFee) => {
     if (
-      !isNullOrUndefinedOrBlank(values.fk_HmoDeduction_Id) &&
-      !isNullOrUndefinedOrBlank(values.Amount)
+      !isNullOrUndefinedOrBlank(values.fk_HmoCompany_Id) &&
+      values.Amount! <= 0
     ) {
       notification.error({
         message: "HMO Amount is required!",
@@ -70,7 +70,6 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
       });
       return;
     }
-
     try {
       const res = await PostData("SavePf", {
         ...values,
@@ -108,10 +107,10 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
     let Vat = 0;
     if (x.LessVat === "Y") {
       Vat = round(Amount - Amount / 1.12, 2);
-      Amount = round(Amount - Vat, 2);
     }
+
     form.setFieldValue("Vat", Vat);
-    let Discount = round(Amount * x.PharmacyDiscount!, 2);
+    let Discount = round((Amount - Vat) * x.PharmacyDiscount!, 2);
     form.setFieldValue("Discount", Discount);
     const Hmo = isNullOrUndefinedOrBlank(form.getFieldValue("Hmo"))
       ? 0
@@ -119,11 +118,12 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
     const Phic = isNullOrUndefinedOrBlank(form.getFieldValue("Phic"))
       ? 0
       : form.getFieldValue("Phic");
-    const Net = round(Amount - Discount - Vat - Hmo - Phic, 2);
+    const Net = round(Amount - Discount - Hmo - Phic, 2);
     form.setFieldValue("Net", Net);
   };
   useEffect(() => {
     if (!isNullOrUndefinedOrBlank(selectedRecord)) {
+      console.log(selectedRecord);
       form.setFieldsValue(selectedRecord);
     }
   }, []);
@@ -212,8 +212,8 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
         </div>
         <div className="grid grid-cols-4 gap-4">
           <Form.Item
-            name="fk_HmoDeduction_Id"
-            label="HMO"
+            name="fk_HmoCompany_Id"
+            label="HMO/Company"
             className="col-span-2"
           >
             <Select
