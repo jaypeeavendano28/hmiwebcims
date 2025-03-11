@@ -13,6 +13,7 @@ import { BsJournalMedical } from "react-icons/bs";
 import logo from "../assets/webcimslogo.png";
 import { FaMoneyBill } from "react-icons/fa6";
 import { GiMedicines } from "react-icons/gi";
+import { TbReportMoney } from "react-icons/tb";
 const Sider = () => {
   const store = useAppStore();
   const auth = useAuth();
@@ -135,6 +136,11 @@ const Sider = () => {
       key: "mnuPharmacy",
       icon: <GiMedicines />,
     },
+    {
+      label: <Link to="/ar">Accounts Receivable</Link>,
+      key: "mnuAr",
+      icon: <TbReportMoney />,
+    },
     // {
     //   label: <Link to="/pharmacy">Pharmacy</Link>,
     //   key: "mnuPharmacy",
@@ -179,7 +185,7 @@ const Sider = () => {
               Queuing Diagnostics
             </Link>
           ),
-          key: "mnuQueuing2",
+          key: "mnuQueuingDiag",
         },
         {
           label: (

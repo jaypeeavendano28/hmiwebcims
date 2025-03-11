@@ -1,4 +1,12 @@
-import { Button, Form, Input, List, notification, Select } from "antd";
+import {
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  List,
+  notification,
+  Select,
+} from "antd";
 import { FC, useEffect, useState } from "react";
 import {
   TCharges,
@@ -90,6 +98,7 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
   const handleSelect = (x: TPrice) => {
     setSelectedItem(x);
     form.setFieldValue("Price", x.Price);
+    form.setFieldValue("Qty", 1);
   };
   const handleAdd = async (v: TCharges) => {
     if (
@@ -115,7 +124,6 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
       }
     }
 
-    v.Qty = 1;
     v.HmoAmount = 0;
 
     if (v.PaymentType === "CTC" || v.PaymentType === "HMO") {
@@ -165,7 +173,7 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
         Price: ChargeDetails.Price,
         PaymentType: ChargeDetails.PaymentType,
         fk_Doctors_Id: ChargeDetails.fk_Doctors_Id,
-        Diagnosis : ChargeDetails.Diagnosis
+        Diagnosis: ChargeDetails.Diagnosis,
       });
     }
   }, []);
@@ -222,7 +230,7 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
               </div>
             )}
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <Form.Item name="Price" label="Price" className="col-span-1">
                 <Input readOnly className="font-bold" />
               </Form.Item>
@@ -267,10 +275,17 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
                     ))}
                 </Select>
               </Form.Item>
+              <Form.Item
+                name="Qty"
+                label="Quantity"
+                rules={[{ required: true, message: "Quantity is required!" }]}
+              >
+                <InputNumber />
+              </Form.Item>
             </div>
             <div>
-            <Form.Item name="Diagnosis" label="Diagnosis">
-                    <Input.TextArea rows={2}/>
+              <Form.Item name="Diagnosis" label="Diagnosis">
+                <Input.TextArea rows={2} />
               </Form.Item>
             </div>
 

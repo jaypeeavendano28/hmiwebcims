@@ -68,6 +68,7 @@ const AuthenticatedMedtechsLazyImport = createFileRoute(
 const AuthenticatedDoctorsLazyImport = createFileRoute(
   '/_authenticated/doctors',
 )()
+const AuthenticatedArLazyImport = createFileRoute('/_authenticated/ar')()
 const AuthenticatedXrayresultIdLazyImport = createFileRoute(
   '/_authenticated/xrayresult/$Id',
 )()
@@ -104,8 +105,17 @@ const AuthenticatedFormsAppointmentIdLazyImport = createFileRoute(
 const AuthenticatedDoctorsprofileIdLazyImport = createFileRoute(
   '/_authenticated/doctorsprofile/$Id',
 )()
+const AuthenticatedChartAppointmentIdLazyImport = createFileRoute(
+  '/_authenticated/chart/$AppointmentId',
+)()
 const AuthenticatedCardioresultIdLazyImport = createFileRoute(
   '/_authenticated/cardioresult/$Id',
+)()
+const AuthenticatedBillingAppointmentIdLazyImport = createFileRoute(
+  '/_authenticated/billing/$AppointmentId',
+)()
+const AuthenticatedArdetailsIdLazyImport = createFileRoute(
+  '/_authenticated/ardetails/$Id',
 )()
 
 // Create/Update Routes
@@ -161,6 +171,13 @@ const AuthenticatedDoctorsLazyRoute = AuthenticatedDoctorsLazyImport.update({
   getParentRoute: () => AuthenticatedRoute,
 } as any).lazy(() =>
   import('./routes/_authenticated/doctors.lazy').then((d) => d.Route),
+)
+
+const AuthenticatedArLazyRoute = AuthenticatedArLazyImport.update({
+  path: '/ar',
+  getParentRoute: () => AuthenticatedRoute,
+} as any).lazy(() =>
+  import('./routes/_authenticated/ar.lazy').then((d) => d.Route),
 )
 
 const AuthenticatedUsersRoute = AuthenticatedUsersImport.update({
@@ -380,6 +397,16 @@ const AuthenticatedDoctorsprofileIdLazyRoute =
     ),
   )
 
+const AuthenticatedChartAppointmentIdLazyRoute =
+  AuthenticatedChartAppointmentIdLazyImport.update({
+    path: '/chart/$AppointmentId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/chart.$AppointmentId.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
 const AuthenticatedCardioresultIdLazyRoute =
   AuthenticatedCardioresultIdLazyImport.update({
     path: '/cardioresult/$Id',
@@ -388,6 +415,24 @@ const AuthenticatedCardioresultIdLazyRoute =
     import('./routes/_authenticated/cardioresult.$Id.lazy').then(
       (d) => d.Route,
     ),
+  )
+
+const AuthenticatedBillingAppointmentIdLazyRoute =
+  AuthenticatedBillingAppointmentIdLazyImport.update({
+    path: '/billing/$AppointmentId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/billing.$AppointmentId.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
+const AuthenticatedArdetailsIdLazyRoute =
+  AuthenticatedArdetailsIdLazyImport.update({
+    path: '/ardetails/$Id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/ardetails.$Id.lazy').then((d) => d.Route),
   )
 
 const AuthenticatedUtilitiesPricecategoryRoute =
@@ -569,6 +614,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/_authenticated/ar': {
+      preLoaderRoute: typeof AuthenticatedArLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
     '/_authenticated/doctors': {
       preLoaderRoute: typeof AuthenticatedDoctorsLazyImport
       parentRoute: typeof AuthenticatedImport
@@ -645,8 +694,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUtilitiesPricecategoryImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/_authenticated/ardetails/$Id': {
+      preLoaderRoute: typeof AuthenticatedArdetailsIdLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
+    '/_authenticated/billing/$AppointmentId': {
+      preLoaderRoute: typeof AuthenticatedBillingAppointmentIdLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
     '/_authenticated/cardioresult/$Id': {
       preLoaderRoute: typeof AuthenticatedCardioresultIdLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
+    '/_authenticated/chart/$AppointmentId': {
+      preLoaderRoute: typeof AuthenticatedChartAppointmentIdLazyImport
       parentRoute: typeof AuthenticatedImport
     }
     '/_authenticated/doctorsprofile/$Id': {
@@ -725,6 +786,7 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedSampleprint2Route,
     AuthenticatedUpdateuserprofileRoute,
     AuthenticatedUsersRoute,
+    AuthenticatedArLazyRoute,
     AuthenticatedDoctorsLazyRoute,
     AuthenticatedMedtechsLazyRoute,
     AuthenticatedRadtechsLazyRoute,
@@ -744,7 +806,10 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedUtilitiesHmocompanyRoute,
     AuthenticatedUtilitiesPaymenttypeRoute,
     AuthenticatedUtilitiesPricecategoryRoute,
+    AuthenticatedArdetailsIdLazyRoute,
+    AuthenticatedBillingAppointmentIdLazyRoute,
     AuthenticatedCardioresultIdLazyRoute,
+    AuthenticatedChartAppointmentIdLazyRoute,
     AuthenticatedDoctorsprofileIdLazyRoute,
     AuthenticatedFormsAppointmentIdLazyRoute,
     AuthenticatedLaboratoryresultsIdLazyRoute,

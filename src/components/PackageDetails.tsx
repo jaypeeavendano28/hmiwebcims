@@ -1,21 +1,33 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PostData } from "../helpers";
+import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
 import {
   Button,
   Form,
+  InputNumber,
   notification,
   Popconfirm,
   Select,
   Space,
   Tooltip,
 } from "antd";
-import { TItems, TPackageDetails } from "../types";
+import { TItems, TPackageDetails, TPrice } from "../types";
 import Loading from "./loading";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { BsTrash } from "react-icons/bs";
+import useAppStore from "../store";
+import { BiEditAlt } from "react-icons/bi";
+import { useState } from "react";
 
 export default function PackageDetails({ Id2 }: { Id2: string }) {
+  const [expandedRows, setExpandedRows] = useState<
+    TPackageDetails | undefined
+  >();
+  const [selectedItem, setSelectedItem] = useState<
+    TPackageDetails | undefined
+  >();
+
+  const store = useAppStore();
   const q = useQueryClient();
   const [form] = Form.useForm();
   const items = useQuery({
@@ -53,6 +65,7 @@ export default function PackageDetails({ Id2 }: { Id2: string }) {
       const res = await PostData("AddToPackageDetails", {
         ...data,
         PackageMainId: Id2,
+        Id: selectedItem ? selectedItem.Id : 0,
       });
       if (res) {
         if (res.status === 1) {
@@ -63,6 +76,7 @@ export default function PackageDetails({ Id2 }: { Id2: string }) {
           });
           form.resetFields();
           q.invalidateQueries({ queryKey: ["details"] });
+          setSelectedItem(undefined);
         } else {
           notification.error({
             message: res.message,
@@ -79,7 +93,7 @@ export default function PackageDetails({ Id2 }: { Id2: string }) {
       });
     }
   };
-  const handleDelete = async (data: TItems) => {
+  const handleDelete = async (data: TPackageDetails) => {
     try {
       const res = await PostData("DeletePackageDetails", data);
       if (res) {
@@ -106,21 +120,36 @@ export default function PackageDetails({ Id2 }: { Id2: string }) {
       });
     }
   };
-  const actionBodyTemplate = (data: TItems) => {
-    //  store.setItemDetails(data);
+  const handleEdit = (data: TPackageDetails) => {
+    setSelectedItem(data);
+    form.setFieldsValue(data);
+  };
+  const actionBodyTemplate = (data: TPackageDetails) => {
     return (
-      <Space>
-        <Tooltip title="Delete">
-          <Popconfirm
-            title="Delete record!"
-            okText="Yes"
-            cancelText="No"
-            onConfirm={() => handleDelete(data)}
-          >
-            <BsTrash color="red" size="16" className="cursor-pointer" />
-          </Popconfirm>
-        </Tooltip>
-      </Space>
+      isNullOrUndefinedOrBlank(selectedItem) === true && (
+        <>
+          <Space>
+            <Tooltip title="Edit">
+              <BiEditAlt
+                size="16"
+                className="cursor-pointer"
+                onClick={() => handleEdit(data)}
+              />
+            </Tooltip>
+            <Tooltip title="Delete">
+              <Popconfirm
+                title="Delete record!"
+                okText="Yes"
+                cancelText="No"
+                onConfirm={() => handleDelete(data)}
+              >
+                <BsTrash color="red" size="16" className="cursor-pointer" />
+              </Popconfirm>
+            </Tooltip>
+          </Space>
+        </>
+      )
+
       // <Space>
       //   <Tooltip title="Edit">
       //     <Link
@@ -160,11 +189,54 @@ export default function PackageDetails({ Id2 }: { Id2: string }) {
       // </Space>
     );
   };
+  const handleChangeItem = async (value: string) => {
+    const res = await PostData("GetRecords", {
+      sp: "udp_GetPricePerItem",
+      parameters: {
+        BranchCode: store.branchCode,
+        ItemId: value,
+      },
+    });
+    if (res) {
+      const x: TPrice[] = res.parameters.lst;
+      const price: TPrice = x.filter(
+        (d: TPrice) => d.PriceCategoryCode === "OPD"
+      )[0];
+      console.log(price);
+      form.setFieldValue("Price", price.Price);
+    }
+
+    form.setFieldsValue({
+      Qty: 1,
+    });
+  };
+  const rowExpansionTemplate = (data: TPackageDetails) => {
+    return (
+      <div className="p-3">
+        <div>Added By</div>
+        <div>
+          <strong>{data.AddedBy}</strong>
+        </div>
+        <div>Date Added</div>
+        <div>
+          <strong>{data.DateAdded}</strong>
+        </div>
+        <div>Updated By</div>
+        <div>
+          <strong>{data.UpdatedBy}</strong>
+        </div>
+        <div>Date Updated</div>
+        <div>
+          <strong>{data.DateUpdated}</strong>
+        </div>
+      </div>
+    );
+  };
   return (
     <>
       <div className="text-center font-bold font-md">Package Details</div>
       <Form form={form} layout="vertical" onFinish={handleAdd}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1">
           <Form.Item name="fk_Items_Id" label="Item/Procedure">
             <Select
               style={{ width: "100%" }}
@@ -177,19 +249,52 @@ export default function PackageDetails({ Id2 }: { Id2: string }) {
                     .toLocaleLowerCase() as unknown as string
                 ).includes(input.toLocaleLowerCase())
               }
+              onChange={handleChangeItem}
             >
               {items.data &&
                 items.data.map((d: TItems) => (
                   <Select.Option key={d.Id} value={d.Id} title={d.Description}>
-                    {d.Description}
+                    {d.ItemDescription}
                   </Select.Option>
                 ))}
             </Select>
           </Form.Item>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item
+              name="Price"
+              label="Price"
+              rules={[{ required: true, message: "Price is required!" }]}
+            >
+              <InputNumber min={1} style={{ width: "100%" }} precision={2} />
+            </Form.Item>
+            <Form.Item
+              name="Qty"
+              label="Quantity"
+              rules={[{ required: true, message: "Quantity is required!" }]}
+            >
+              <InputNumber min={1} style={{ width: "100%" }} precision={2} />
+            </Form.Item>
+          </div>
           <div className="flex flex-col justify-center items-start">
-            <Button type="primary" htmlType="submit">
-              Add
-            </Button>
+            <Space>
+              <Button type="primary" htmlType="submit">
+                {selectedItem ? "Update" : "Add"}
+              </Button>
+              {selectedItem && (
+                <>
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      form.resetFields();
+                      setSelectedItem(undefined);
+                    }}
+                  >
+                    Cancel Edit
+                  </Button>
+                </>
+              )}
+            </Space>
           </div>
         </div>
       </Form>
@@ -203,16 +308,22 @@ export default function PackageDetails({ Id2 }: { Id2: string }) {
             emptyMessage="No Records!"
             stripedRows
             size="small"
+            rowExpansionTemplate={rowExpansionTemplate}
+            expandedRows={expandedRows as any}
+            onRowToggle={(e) => setExpandedRows(e.data as any)}
           >
-            <Column
-              field="action"
-              header="Action"
-              body={(data: TItems) => actionBodyTemplate(data)}
-            ></Column>
+            <Column expander={details.data} style={{ width: "5rem" }} />
             <Column field="Description" header="Description"></Column>
-            <Column field="AddedBy" header="Added By"></Column>
-            <Column field="DateAdded" header="Date Added"></Column>
-            <Column field="fk_Items_Id" header="Item Id"></Column>
+            <Column field="Qty" header="Qty"></Column>
+            <Column field="Price" header="Price"></Column>
+
+            {isNullOrUndefinedOrBlank(selectedItem) && (
+              <Column
+                field="action"
+                header="Action"
+                body={(data: TPackageDetails) => actionBodyTemplate(data)}
+              ></Column>
+            )}
           </DataTable>
         )}
       </div>

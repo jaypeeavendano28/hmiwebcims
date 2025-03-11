@@ -537,16 +537,16 @@ const ItemProfile = () => {
               <Form.Item
                 name="UnitCostPerBox"
                 label="UnitCost Per Box"
-                rules={[
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value && getFieldValue("Inventoriable") === "Y") {
-                        return Promise.reject("Unit cost per box is required!");
-                      }
-                      return Promise.resolve();
-                    },
-                  }),
-                ]}
+                // rules={[
+                //   ({ getFieldValue }) => ({
+                //     validator(_, value) {
+                //       if (!value && getFieldValue("Inventoriable") === "Y") {
+                //         return Promise.reject("Unit cost per box is required!");
+                //       }
+                //       return Promise.resolve();
+                //     },
+                //   }),
+                // ]}
               >
                 <InputNumber
                   style={{ width: "100%" }}
@@ -556,16 +556,16 @@ const ItemProfile = () => {
               <Form.Item
                 name="Conversion"
                 label="Conversion"
-                rules={[
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value && getFieldValue("Inventoriable") === "Y") {
-                        return Promise.reject("Conversion is required!");
-                      }
-                      return Promise.resolve();
-                    },
-                  }),
-                ]}
+                // rules={[
+                //   ({ getFieldValue }) => ({
+                //     validator(_, value) {
+                //       if (!value && getFieldValue("Inventoriable") === "Y") {
+                //         return Promise.reject("Conversion is required!");
+                //       }
+                //       return Promise.resolve();
+                //     },
+                //   }),
+                // ]}
               >
                 <InputNumber
                   style={{ width: "100%" }}
@@ -575,16 +575,16 @@ const ItemProfile = () => {
               <Form.Item
                 name="UnitCostPerPc"
                 label="Unit Cost Per Pc."
-                rules={[
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value && getFieldValue("Inventoriable") === "Y") {
-                        return Promise.reject("Unit cost per pc. is required!");
-                      }
-                      return Promise.resolve();
-                    },
-                  }),
-                ]}
+                // rules={[
+                //   ({ getFieldValue }) => ({
+                //     validator(_, value) {
+                //       if (!value && getFieldValue("Inventoriable") === "Y") {
+                //         return Promise.reject("Unit cost per pc. is required!");
+                //       }
+                //       return Promise.resolve();
+                //     },
+                //   }),
+                // ]}
               >
                 <InputNumber style={{ width: "100%" }} />
               </Form.Item>
@@ -594,18 +594,18 @@ const ItemProfile = () => {
               name="UnitOfMeasureSmall"
               label="Unit Of Measure Small"
               normalize={(v) => v.toUpperCase()}
-              rules={[
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value && getFieldValue("Inventoriable") === "Y") {
-                      return Promise.reject(
-                        "Unit of Measure Small is required!"
-                      );
-                    }
-                    return Promise.resolve();
-                  },
-                }),
-              ]}
+              // rules={[
+              //   ({ getFieldValue }) => ({
+              //     validator(_, value) {
+              //       if (!value && getFieldValue("Inventoriable") === "Y") {
+              //         return Promise.reject(
+              //           "Unit of Measure Small is required!"
+              //         );
+              //       }
+              //       return Promise.resolve();
+              //     },
+              //   }),
+              // ]}
             >
               <AutoComplete
                 filterOption={(inputValue, option) =>
@@ -631,16 +631,16 @@ const ItemProfile = () => {
               name="UnitOfMeasureBig"
               label="Unit Of Measure Big"
               normalize={(v) => v.toUpperCase()}
-              rules={[
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value && getFieldValue("Inventoriable") === "Y") {
-                      return Promise.reject("Unit of Measure Big is required!");
-                    }
-                    return Promise.resolve();
-                  },
-                }),
-              ]}
+              // rules={[
+              //   ({ getFieldValue }) => ({
+              //     validator(_, value) {
+              //       if (!value && getFieldValue("Inventoriable") === "Y") {
+              //         return Promise.reject("Unit of Measure Big is required!");
+              //       }
+              //       return Promise.resolve();
+              //     },
+              //   }),
+              // ]}
             >
               <AutoComplete
                 filterOption={(inputValue, option) =>

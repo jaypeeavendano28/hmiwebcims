@@ -14,12 +14,11 @@ import {
   Tooltip,
   notification,
 } from "antd";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
 import useAppStore from "../../store";
 import dayjs from "dayjs";
 import { DataTable } from "primereact/datatable";
-import Loading from "../../components/loading";
 import { TAppointments } from "../../types";
 import { Column } from "primereact/column";
 import { SlBookOpen } from "react-icons/sl";
@@ -28,11 +27,15 @@ import { GiMedicines } from "react-icons/gi";
 import RequestForMedicines from "../../components/RequestForMedicines";
 import { FaFileWaveform } from "react-icons/fa6";
 import Cookies from "js-cookie";
+import { TbCurrencyPeso } from "react-icons/tb";
 export const Route = createFileRoute("/_authenticated/appointments")({
   component: () => <Appointments />,
 });
 
 const Appointments = () => {
+  const [appointments, setAppointments] = useState<
+    TAppointments[] | undefined
+  >();
   const [selectedRecord, setSelectedRecord] = useState<
     TAppointments | undefined
   >();
@@ -58,36 +61,7 @@ const Appointments = () => {
       });
     }
   };
-  const appointments = useQuery({
-    queryKey: ["appointments"],
-    queryFn: async () => {
-      const TypeOfAppointment = form.getFieldValue("TypeOfAppointment");
 
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetAppointments",
-        parameters: {
-          BranchCode: store.branchCode,
-          DateFrom: isNullOrUndefinedOrBlank(form.getFieldValue("DateFrom"))
-            ? dayjs().format("YYYYMMDD")
-            : dayjs(form.getFieldValue("DateFrom")).format("YYYYMMDD"),
-          DateTo: isNullOrUndefinedOrBlank(form.getFieldValue("DateTo"))
-            ? dayjs().format("YYYYMMDD")
-            : dayjs(form.getFieldValue("DateTo")).format("YYYYMMDD"),
-          PatientName: isNullOrUndefinedOrBlank(
-            form.getFieldValue("PatientName")
-          )
-            ? ""
-            : form.getFieldValue("PatientName"),
-          TypeOfAppointment,
-        },
-      });
-      if (res) {
-        return res.parameters.lst;
-      }
-    },
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-  });
   const handleDelete = async (data: TAppointments) => {
     try {
       const res = await PostData("DeleteAppointment", {
@@ -148,9 +122,9 @@ const Appointments = () => {
             <BiNote size={24} />
           </Link>
         </Tooltip>
-        <Tooltip title="Forms">
+        <Tooltip title="Chart">
           <Link
-            to="/forms/$AppointmentId"
+            to="/chart/$AppointmentId"
             params={{
               AppointmentId: data.Id!.toString(),
             }}
@@ -159,21 +133,6 @@ const Appointments = () => {
           </Link>
         </Tooltip>
         <Tooltip title="Request for medicines">
-          {/* <Button
-            type="primary"
-            icon={<GiMedicines />}
-            onClick={() => {
-              handleRequest(data);
-            }}
-          /> */}
-          {/* <FaPrescription
-            color="blue"
-            className="cursor-pointer"
-            size={24}
-            // onClick={() => {
-            //   handleRequest(data);
-            // }}
-          /> */}
           <Link>
             <GiMedicines
               size={24}
@@ -181,6 +140,16 @@ const Appointments = () => {
                 handleRequest(data);
               }}
             />
+          </Link>
+        </Tooltip>
+        <Tooltip title="Billing">
+          <Link
+            to="/billing/$AppointmentId"
+            params={{
+              AppointmentId: data.Id!.toString(),
+            }}
+          >
+            <TbCurrencyPeso size={24} />
           </Link>
         </Tooltip>
         <Tooltip title="Delete Appointment">
@@ -218,9 +187,7 @@ const Appointments = () => {
   };
   const handleTypeChange = (value: string) => {
     Cookies.set("TypeOfAppointment", value);
-    q.invalidateQueries({
-      queryKey: ["appointments"],
-    });
+    handleSearch();
   };
 
   useEffect(() => {
@@ -234,25 +201,47 @@ const Appointments = () => {
       queryKey: ["appointments"],
     });
   }, []);
+  const handleSearch = async () => {
+    try {
+      const TypeOfAppointment = form.getFieldValue("TypeOfAppointment");
+
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetAppointments",
+        parameters: {
+          BranchCode: store.branchCode,
+          DateFrom: isNullOrUndefinedOrBlank(form.getFieldValue("DateFrom"))
+            ? dayjs().format("YYYYMMDD")
+            : dayjs(form.getFieldValue("DateFrom")).format("YYYYMMDD"),
+          DateTo: isNullOrUndefinedOrBlank(form.getFieldValue("DateTo"))
+            ? dayjs().format("YYYYMMDD")
+            : dayjs(form.getFieldValue("DateTo")).format("YYYYMMDD"),
+          PatientName: isNullOrUndefinedOrBlank(
+            form.getFieldValue("PatientName")
+          )
+            ? ""
+            : form.getFieldValue("PatientName"),
+          TypeOfAppointment,
+        },
+      });
+      if (res) {
+        setAppointments(res.parameters.lst);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  useEffect(() => {
+    handleSearch();
+  }, [TypeOfAppointment]);
 
   useEffect(() => {
-    q.invalidateQueries({
-      queryKey: ["appointments"],
-    });
-  }, [TypeOfAppointment]);
+    handleSearch();
+  }, []);
   return (
     <div className="cardBackGround">
       <Divider>Appointments</Divider>
 
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={() =>
-          q.invalidateQueries({
-            queryKey: ["appointments"],
-          })
-        }
-      >
+      <Form form={form} layout="vertical" onFinish={() => handleSearch()}>
         <div className="grid md:grid-cols-8 gap-4">
           <Form.Item
             name="TypeOfAppointment"
@@ -271,9 +260,7 @@ const Appointments = () => {
             <DatePicker
               format="MM/DD/YYYY"
               onChange={() => {
-                q.invalidateQueries({
-                  queryKey: ["appointments"],
-                });
+                handleSearch();
               }}
             />
           </Form.Item>
@@ -281,9 +268,7 @@ const Appointments = () => {
             <DatePicker
               format="MM/DD/YYYY"
               onChange={() => {
-                q.invalidateQueries({
-                  queryKey: ["appointments"],
-                });
+                handleSearch();
               }}
             />
           </Form.Item>
@@ -320,64 +305,60 @@ const Appointments = () => {
         </div>
       </Form>
       <div className="mt-2">
-        {appointments.isLoading ? (
-          <Loading size={64} />
-        ) : (
-          <DataTable
-            value={appointments.data}
-            // tableStyle={{ minWidth: "50rem" }}
-            paginator
-            rows={10}
-            rowsPerPageOptions={[10, 25, 50]}
-            emptyMessage="No Records!"
-            stripedRows
-            size="small"
-            filterDisplay="row"
-            rowExpansionTemplate={rowExpansionTemplate}
-            expandedRows={expandedRows as any}
-            onRowToggle={(e) => setExpandedRows(e.data as any)}
-          >
-            <Column
-              expander={appointments.data!.length > 0}
-              style={{ width: "2rem" }}
-            />
-            <Column
-              field="action"
-              header="Action"
-              body={(data: any) => actionBodyTemplate(data)}
-            ></Column>
-            <Column
-              field="AppointmentNo"
-              header="Appointment No."
-              filter
-              // style={{ minWidth: "12rem" }}
-            ></Column>
-            <Column
-              field="AppointmentType"
-              header="Appointment Type"
-              filter
-              // style={{ minWidth: "12rem" }}
-            ></Column>
-            <Column
-              field="Name"
-              header="Name"
-              filter
-              // style={{ minWidth: "12rem" }}
-            ></Column>
-            <Column
-              field="DateAdded"
-              header="Date Added"
-              // style={{ minWidth: "12rem" }}
-              filter
-            ></Column>
-            <Column
-              field="QueueNo"
-              header="Queue No."
-              // style={{ minWidth: "12rem" }}
-              filter
-            ></Column>
-          </DataTable>
-        )}
+        <DataTable
+          value={appointments}
+          // tableStyle={{ minWidth: "50rem" }}
+          paginator
+          rows={10}
+          rowsPerPageOptions={[10, 25, 50]}
+          emptyMessage="No Records!"
+          stripedRows
+          size="small"
+          filterDisplay="row"
+          rowExpansionTemplate={rowExpansionTemplate}
+          expandedRows={expandedRows as any}
+          onRowToggle={(e) => setExpandedRows(e.data as any)}
+        >
+          <Column
+            expander={appointments && appointments!.length > 0}
+            style={{ width: "2rem" }}
+          />
+          <Column
+            field="action"
+            header="Action"
+            body={(data: any) => actionBodyTemplate(data)}
+          ></Column>
+          <Column
+            field="AppointmentNo"
+            header="Appointment No."
+            filter
+            // style={{ minWidth: "12rem" }}
+          ></Column>
+          <Column
+            field="AppointmentType"
+            header="Appointment Type"
+            filter
+            // style={{ minWidth: "12rem" }}
+          ></Column>
+          <Column
+            field="Name"
+            header="Name"
+            filter
+            // style={{ minWidth: "12rem" }}
+          ></Column>
+          <Column
+            field="DateAdded"
+            header="Date Added"
+            // style={{ minWidth: "12rem" }}
+            filter
+          ></Column>
+          <Column
+            field="QueueNo"
+            header="Queue No."
+            // style={{ minWidth: "12rem" }}
+            filter
+          ></Column>
+        </DataTable>
       </div>
       <Modal
         open={showRequest}

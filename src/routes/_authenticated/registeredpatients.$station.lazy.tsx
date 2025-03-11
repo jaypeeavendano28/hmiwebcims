@@ -66,7 +66,7 @@ const RegisteredPatients = () => {
     } else if (station === "2") {
       setHeader("Consultations");
     } else if (station === "0") {
-      setHeader("Henodialysis/Ambulatory Patients");
+      setHeader("Hemodialysis/Ambulatory Patients");
     }
   }, [station]);
   return (

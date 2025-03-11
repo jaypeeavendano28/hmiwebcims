@@ -52,19 +52,5 @@ export const formatNumberWithCommas = (x: number) => {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
-// export const WithAccess = async (endPoint: string, parameters: any) => {
-//   const res = await axios.post(apiUrl + endPoint, parameters, {
-//     headers: {
-//       Authorization: ("Bearer " + Cookies.get("WebCimsTokenId")) as string,
-//     },
-//   });
 
-//   if (res) {
-//     return res.data;
-//   } else {
-//     return {
-//       status: 0,
-//       message: "Error while posting the data!",
-//     };
-//   }
-// };
+

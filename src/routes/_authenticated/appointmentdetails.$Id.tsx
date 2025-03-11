@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { Helmet } from "react-helmet";
 import {
   AutoComplete,
   Avatar,
@@ -53,11 +54,14 @@ const devApi = import.meta.env.VITE_DEV_API;
 const ApiUrl = isDev ? devApi : prodApi;
 
 const AppointmentDetails = () => {
+  const [title, setTitle] = useState("");
+  const [appType, setAppType] = useState("");
+  const router = useRouter();
+
   const q = useQueryClient();
   const [Net, setNet] = useState<number>(0);
   const [qCounters, setQCounters] = useState<MenuProps["items"]>([]);
   const [showAddCharge, setShowAddCharge] = useState(false);
-  const router = useRouter();
   const fileInput = useRef<HTMLInputElement | null>(null);
   const [showWebCam, setShowWebCam] = useState(false);
   const webcamRef = useRef<Webcam>(null);
@@ -97,6 +101,7 @@ const AppointmentDetails = () => {
           Name: x.Name,
           fk_PatientInformation_Id: PatientId,
         });
+
         setGender(x.Sex!);
       }
     },
@@ -127,7 +132,6 @@ const AppointmentDetails = () => {
         parameters: {},
       });
       if (res) {
-        console.log(res);
         return res.parameters.lst;
       }
     },
@@ -135,20 +139,20 @@ const AppointmentDetails = () => {
     staleTime: 0,
   });
 
-  // const hmoCompany = useQuery({
-  //   queryKey: ["hmoCompany"],
-  //   queryFn: async () => {
-  //     const res = await PostData("GetRecords", {
-  //       sp: "udp_GetHmoCompany",
-  //       parameters: {},
-  //     });
-  //     if (res) {
-  //       return res.parameters.lst;
-  //     }
-  //   },
-  //   refetchOnWindowFocus: false,
-  //   staleTime: 0,
-  // });
+  const hmo = useQuery({
+    queryKey: ["hmo"],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetHmo",
+        parameters: {},
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
 
   const referredBy = useQuery({
     queryKey: ["referredBy"],
@@ -165,30 +169,6 @@ const AppointmentDetails = () => {
     staleTime: 0,
   });
 
-  // const paymentTypes = useQuery({
-  //   queryKey: ["paymentTypes"],
-  //   queryFn: async () => {
-  //     let res = await PostData("GetRecords", {
-  //       sp: "udp_GetPaymentType",
-  //       parameters: {},
-  //     });
-  //     if (res) {
-  //       return res.parameters.lst;
-  //     }
-  //   },
-  //   refetchOnWindowFocus: false,
-  // });
-
-  // const handleGetDoctors = async () => {
-  //   const res = await PostData("GetRecords", {
-  //     sp: "udp_GetDoctors",
-  //     parameters: {},
-  //   });
-  //   if (res) {
-  //     setDoctors(res.parameters.lst);
-  //   }
-  // };
-
   const occupation = useQuery({
     queryKey: ["occupation"],
     queryFn: async () => {
@@ -204,7 +184,6 @@ const AppointmentDetails = () => {
     staleTime: 0,
   });
 
-  //udp_CheckListQCounters
   const handlePrintCheckList = async (qCounter: string) => {
     if (qCounter === "*ALL*") {
       qCounters!.forEach(async (e: any) => {
@@ -218,12 +197,14 @@ const AppointmentDetails = () => {
           e.label;
 
         try {
+          setIsLoading(true);
           await axios({
             url: url, //your url
             method: "GET",
             responseType: "blob",
             params: {},
           }).then((response) => {
+            setIsLoading(false);
             let newBlob;
             newBlob = new Blob([response.data], {
               type: "application/pdf",
@@ -239,6 +220,7 @@ const AppointmentDetails = () => {
             a.click();
           });
         } catch (error: any) {
+          setIsLoading(false);
           let errorString = error.response.data;
           errorString = JSON.parse(await error.response.data.text());
           return { Status: 0, Message: errorString.Message };
@@ -283,6 +265,7 @@ const AppointmentDetails = () => {
     }
   };
   const handlePrintCs = async () => {
+    setIsLoading(true);
     axios.defaults.headers.common["Authorization"] =
       "Bearer " + store.tokenIdWebCims;
     const url =
@@ -295,6 +278,7 @@ const AppointmentDetails = () => {
         responseType: "blob",
         params: {},
       }).then((response) => {
+        setIsLoading(false);
         let newBlob;
         newBlob = new Blob([response.data], {
           type: "application/pdf",
@@ -310,6 +294,7 @@ const AppointmentDetails = () => {
         a.click();
       });
     } catch (error: any) {
+      setIsLoading(false);
       let errorString = error.response.data;
       errorString = JSON.parse(await error.response.data.text());
       return { Status: 0, Message: errorString.Message };
@@ -317,6 +302,7 @@ const AppointmentDetails = () => {
   };
 
   const handlePrintSoa = async () => {
+    setIsLoading(true);
     axios.defaults.headers.common["Authorization"] =
       "Bearer " + store.tokenIdWebCims;
     const url =
@@ -333,6 +319,7 @@ const AppointmentDetails = () => {
         responseType: "blob",
         params: {},
       }).then((response) => {
+        setIsLoading(false);
         let newBlob;
         newBlob = new Blob([response.data], {
           type: "application/pdf",
@@ -348,6 +335,7 @@ const AppointmentDetails = () => {
         a.click();
       });
     } catch (error: any) {
+      setIsLoading(false);
       let errorString = error.response.data;
       errorString = JSON.parse(await error.response.data.text());
       return { Status: 0, Message: errorString.Message };
@@ -389,6 +377,8 @@ const AppointmentDetails = () => {
       if (res) {
         const x: TAppointments = res.parameters.lst[0];
         setPatientId(x.fk_PatientInformation_Id!);
+        setTitle("Appointment for-" + x.Name?.toString());
+        setAppType(x.AppointmentType!);
         form.setFieldsValue({
           PatientNo: x.PatientNo,
           Name: x.Name,
@@ -408,6 +398,8 @@ const AppointmentDetails = () => {
           AppointmentType: x.AppointmentType,
           IsSeniorOrPwd: x.IsSeniorOrPwd,
           Occupation: x.Occupation,
+          LoaApprovedBy: x.LoaApprovedBy,
+          fk_HmoCompany_Id: x.fk_HmoCompany_Id,
         });
       }
 
@@ -430,20 +422,12 @@ const AppointmentDetails = () => {
     });
   }
   const handleSubmitForm = async (v: TAppointments) => {
-    // if (isNullOrUndefinedOrBlank(picture)) {
-    //   notification.error({
-    //     message: "Please upload a picture!",
-    //     placement: "topRight",
-    //     duration: 3,
-    //   });
-    //   return;
-    // }
     const QNo: TQNo = !isNullOrUndefinedOrBlank(
       sessionStorage.getItem("selectedInReception")
     )
       ? JSON.parse(sessionStorage.getItem("selectedInReception")!)
       : undefined;
-
+    console.log(v);
     const res = await PostData("SaveAppointment", {
       ...v,
       Id: Id,
@@ -702,9 +686,9 @@ const AppointmentDetails = () => {
 
     handlePrintCheckList(f.label);
   };
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString("en-PH");
-  };
+  // const formatCurrency = (value: number) => {
+  //   return value.toLocaleString("en-PH");
+  // };
 
   const net = () => {
     let total = 0;
@@ -713,7 +697,15 @@ const AppointmentDetails = () => {
       total += sale.Net!;
     }
     setNet(total);
-    return formatCurrency(total);
+    //// return formatCurrency(total);
+    return (
+      <p className="font-bold text-lg">
+        {total.toLocaleString(undefined, {
+          maximumFractionDigits: 2,
+          minimumFractionDigits: 2,
+        })}
+      </p>
+    );
   };
   const footerGroup = (
     <ColumnGroup>
@@ -733,15 +725,21 @@ const AppointmentDetails = () => {
       </Row>
     </ColumnGroup>
   );
+
   useEffect(() => {
     handleGetAppointmentDetails();
     handleGetCharges();
     handleGetQCounters();
+
     // handleGetDoctors();
   }, []);
 
   return (
     <div className="cardBackGround">
+      <Helmet>
+        <meta charSet="utf-8" />
+        <title>{title}</title>
+      </Helmet>
       <Divider>Appointment Details</Divider>
       <div className="grid md:grid-cols-2 gap-4">
         <div>
@@ -905,6 +903,27 @@ const AppointmentDetails = () => {
                     ))}
                 </AutoComplete>
               </Form.Item>
+              <Form.Item name="fk_HmoCompany_Id" label="HMO">
+                <Select
+                  style={{ width: "100%" }}
+                  showSearch
+                  allowClear
+                  filterOption={(input, option) =>
+                    (
+                      option!.children
+                        ?.toString()
+                        .toLocaleLowerCase() as unknown as string
+                    ).includes(input.toLocaleLowerCase())
+                  }
+                >
+                  {hmo.data &&
+                    hmo.data.map((d: THmoCompany) => (
+                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                        {d.Name}
+                      </Select.Option>
+                    ))}
+                </Select>
+              </Form.Item>
             </div>
             {/* <div>
               <Form.Item name="Diagnosis" label="Diagnosis">
@@ -964,11 +983,15 @@ const AppointmentDetails = () => {
                 </AutoComplete>
               </Form.Item>
             </div>
+
             <div className="grid md:grid-cols-3 gap-4">
               <Form.Item name="QueueNo" label="Queue No.">
                 <Input readOnly className="font-bold" />
               </Form.Item>
-              <div className="flex justify-end items-center col-span-2">
+              <Form.Item name="LoaApprovedBy" label="LOA Approved By">
+                <Input />
+              </Form.Item>
+              <div className="flex justify-start items-center">
                 <Button type="primary" htmlType="submit">
                   Submit
                 </Button>
@@ -977,16 +1000,38 @@ const AppointmentDetails = () => {
           </Form>
         </div>
         <div>
-          <Button
-            type="primary"
-            onClick={() => {
-              setSelectedRecord(undefined);
-              setShowAddCharge(true);
-            }}
-            disabled={Id === "0"}
-          >
-            Add Charges
-          </Button>
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => {
+                setSelectedRecord(undefined);
+                setShowAddCharge(true);
+              }}
+              disabled={Id === "0"}
+            >
+              Add Charges
+            </Button>
+
+            {(appType === "HEM" || appType === "AMB") && (
+              <>
+                <Button
+                  type="primary"
+                  disabled={Id === "0"}
+                  onClick={() => {
+                    router.navigate({
+                      to: "/billing/$AppointmentId",
+                      params: {
+                        AppointmentId: Id,
+                      },
+                    });
+                  }}
+                >
+                  Billing
+                </Button>
+              </>
+            )}
+          </Space>
+
           <div className="mt-2">
             {isLoading ? (
               <Loading size={64} />
@@ -1022,12 +1067,14 @@ const AppointmentDetails = () => {
                 <Column field="PaymentType" header="Payment Type"></Column>
               </DataTable>
             )}
+
             <div className="flex justify-end">
               <Space>
                 <Button
                   disabled={charges!.length <= 0}
                   type="primary"
                   onClick={handlePrintCs}
+                  loading={isLoading}
                 >
                   Print Charge Slip
                 </Button>
@@ -1043,14 +1090,17 @@ const AppointmentDetails = () => {
                   disabled={charges!.length <= 0 || Number(Net) > 0}
                   type="primary"
                   onClick={handlePrintSoa}
+                  loading={isLoading}
                 >
-                  Print Charge SOA
+                  Print SOA
                 </Button>
                 <Dropdown
                   menu={{ items: qCounters, onClick: onMenuClick }}
                   disabled={charges!.length <= 0 || Number(Net) > 0}
                 >
-                  <Button type="primary">Print Checklist</Button>
+                  <Button loading={isLoading} type="primary">
+                    Print Checklist
+                  </Button>
                 </Dropdown>
               </Space>
             </div>

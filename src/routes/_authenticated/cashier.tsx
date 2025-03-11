@@ -339,13 +339,14 @@ const Cashier = () => {
         return;
       }
       setSetIsSubmitting(true);
+
       const res = await PostData("SavePayment", {
         Main: {
           ...v,
           Amount: amount,
           fk_Branches_Code: store.branchCode,
           CashierLocation: form1.getFieldValue("CashierLocation"),
-          QId: selectedRecord.Id,
+          QId: isNullOrUndefinedOrBlank(selectedRecord) ? 0 : selectedRecord.Id,
           QCounter: qCounter,
         },
         Details: charges,

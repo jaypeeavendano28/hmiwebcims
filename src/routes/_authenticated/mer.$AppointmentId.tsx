@@ -138,6 +138,7 @@ const Mer = () => {
     if (res) {
       if (res.parameters.lst.length > 0) {
         const x: TMer = res.parameters.lst[0];
+        console.log(x);
         form.setFieldsValue({
           MerNo: x.MerNo,
           MerDate: dayjs(x.MerDate),
@@ -228,6 +229,9 @@ const Mer = () => {
           ClassDLabel: x.ClassDLabel,
           ClassOLabel: x.ClassOLabel,
           OthersResult: x.OthersResult,
+          Appointment: x.Appointment,
+          AppointmentRemarks: x.AppointmentRemarks,
+          DisplaySignatureIfAny: x.DisplaySignatureIfAny,
         });
       } else {
         form.setFieldsValue({
@@ -1505,7 +1509,27 @@ const Mer = () => {
             <Input />
           </Form.Item>
         </div>
-        <div className="grid lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-6 gap-2">
+          <Form.Item name="Appointment" label="Appointment">
+            <Select allowClear>
+              <Select.Option key="F" value="Follow-Up">
+                Follow-Up
+              </Select.Option>
+              <Select.Option key="O" value="Others">
+                Others
+              </Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="AppointmentRemarks"
+            label="Remarks"
+            className="col-span-3"
+          >
+            <Input />
+          </Form.Item>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-4">
           <Form.Item
             label="Evaluated By"
             name="EvaluatedBy"
@@ -1535,6 +1559,22 @@ const Mer = () => {
                 ))}
             </Select>
           </Form.Item>
+          <div>
+            <Form.Item
+              name="DisplaySignatureIfAny"
+              label="Display signature if any."
+            >
+              <Select>
+                <Select.Option key="Y" value="Y">
+                  Yes
+                </Select.Option>
+                <Select.Option key="N" value="N">
+                  No
+                </Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
+
           <div className="flex justify-start items-center">
             <Space>
               <Button type="primary" htmlType="submit" loading={isSubmitting}>

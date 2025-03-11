@@ -5,6 +5,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Popconfirm,
   Select,
   Space,
   Tooltip,
@@ -17,7 +18,7 @@ import { useEffect, useState } from "react";
 import Loading from "../../components/loading";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { BiEdit } from "react-icons/bi";
+import { BiEdit, BiTrash } from "react-icons/bi";
 
 export const Route = createFileRoute("/_authenticated/itemprice/$Id")({
   component: () => <ItemPrice />,
@@ -101,21 +102,57 @@ const ItemPrice = () => {
       setIsProcessing(false);
     }
   };
+  const handleDelete = async (data: TPricePerItem) => {
+    try {
+      const res = await PostData("DeletePrice", data);
+      if (res) {
+        if (res.status === 1) {
+          notification.success({
+            message: "Successfully deleted!",
+            placement: "topRight",
+            duration: 3,
+          });
+          handleInitialize();
+        } else {
+          notification.error({
+            message: res.message,
+            placement: "topRight",
+            duration: 3,
+          });
+        }
+      }
+    } catch (error: any) {
+      console.log(error);
+    }
+  };
   const actionBodyTemplate = (data: TPricePerItem) => {
     return (
       <Space>
         <Tooltip title="Edit">
-          <Button
-            type="primary"
-            icon={<BiEdit />}
-            onClick={() => {
-              setRowId(data.Id);
-              form.setFieldsValue({
-                fk_PriceCategory_Id: data.fk_PriceCategory_Id,
-                Price: data.Price,
-              });
-            }}
-          />
+          <Space>
+            <Button
+              type="primary"
+              icon={<BiEdit />}
+              onClick={() => {
+                setRowId(data.Id);
+                form.setFieldsValue({
+                  fk_PriceCategory_Id: data.fk_PriceCategory_Id,
+                  Price: data.Price,
+                });
+              }}
+            />
+
+            <Popconfirm
+              title="Delete this record?"
+              okText="Yes"
+              cancelText="No"
+              onConfirm={() => {
+                handleDelete(data);
+              }}
+            >
+              <Button danger type="primary" icon={<BiTrash />} />
+            </Popconfirm>
+          </Space>
         </Tooltip>
       </Space>
     );

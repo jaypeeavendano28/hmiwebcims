@@ -53,6 +53,12 @@ const PatientsPerCounter: FC<Props> = ({
         DateTo: DateTo,
       },
     });
+    console.log({
+      BranchCode: store.branchCode,
+      CounterCode: CounterCode,
+      DateFrom: DateFrom,
+      DateTo: DateTo,
+    });
     if (res) {
       setListOfPatients(res.parameters.lst);
     }

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {  createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { PostData, WithAccess } from "../../helpers";
 import { DataTable } from "primereact/datatable";
 import Loading from "../../components/loading";
@@ -7,7 +7,7 @@ import { Column } from "primereact/column";
 import { useEffect, useState } from "react";
 import { FilterMatchMode } from "primereact/api";
 import { TBranches } from "../../types";
-import {  Divider,  notification } from "antd";
+import { Divider, notification } from "antd";
 import useAppStore from "../../store";
 
 export const Route = createFileRoute("/_authenticated/branches")({
