@@ -1,5 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Button, Card, Form, Modal } from "antd";
+import { Card } from "antd";
 import { TAppointments } from "../../types";
 import { useEffect, useState } from "react";
 import { PostData } from "../../helpers";
@@ -12,9 +12,6 @@ export const Route = createLazyFileRoute(
   component: () => <Billing />,
 });
 const Billing = () => {
-  const [form] = Form.useForm();
-  const [showFinalizedBilling, setShowFinalizedBilling] =
-    useState<boolean>(false);
   const [title, setTitle] = useState<string>("");
   const { AppointmentId } = Route.useParams();
   const [appointmentDetails, setAppointmentDetails] = useState<

@@ -289,7 +289,7 @@ const ItemProfile = () => {
             >
               <Input />
             </Form.Item>
-            <Form.Item name="Generic Name" label="Generic Name">
+            <Form.Item name="GenericName" label="Generic Name">
               <Input />
             </Form.Item>
             <Form.Item

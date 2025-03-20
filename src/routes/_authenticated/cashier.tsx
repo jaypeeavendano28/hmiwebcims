@@ -86,6 +86,7 @@ const Cashier = () => {
 
   const handleGetInQueue = async () => {
     const cashierLocation = Cookies.get("CashierLoc");
+
     let res = await PostData("GetRecords", {
       sp: "udp_GetPatientPerCounterWithMode",
       parameters: {
@@ -437,7 +438,6 @@ const Cashier = () => {
   // };
   const handleAddCharges = async (v: any) => {
     formOthers.resetFields();
-    console.log(v);
     setShowAddCharges(false);
     let addedCharges: TCharges[] = charges as TCharges[];
     const x: TCharges = {

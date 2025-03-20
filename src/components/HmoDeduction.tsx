@@ -76,7 +76,7 @@ export default function HmoDeduction({
           </Select>
         </Form.Item>
         <Form.Item name="Amount" label="Amount" className="font-bold text-lg">
-          <Input readOnly />
+          <Input />
         </Form.Item>
 
         <div className="flex justify-end">

@@ -1,5 +1,6 @@
 import { Button, Card, Form, InputNumber, notification, Select } from "antd";
 import {
+  TCharges,
   TDiscountTypes,
   TDoctors,
   THmoCompany,
@@ -12,7 +13,7 @@ import { round } from "lodash";
 
 type Props = {
   AppointmentId: number;
-  selectedRecord?: TProfessionalFee;
+  selectedRecord?: TCharges;
 };
 export default function Pf({ AppointmentId, selectedRecord }: Props) {
   const [form] = Form.useForm();
@@ -101,9 +102,9 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
     const x: TDiscountTypes = discountTypes.data?.find(
       (f) => f.Id === v
     ) as TDiscountTypes;
-    let Amount = isNullOrUndefinedOrBlank(form.getFieldValue("Amount"))
+    let Amount = isNullOrUndefinedOrBlank(form.getFieldValue("Price"))
       ? 0
-      : form.getFieldValue("Amount");
+      : form.getFieldValue("Price");
     let Vat = 0;
     if (x.LessVat === "Y") {
       Vat = round(Amount - Amount / 1.12, 2);
@@ -115,15 +116,14 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
     const Hmo = isNullOrUndefinedOrBlank(form.getFieldValue("Hmo"))
       ? 0
       : form.getFieldValue("Hmo");
-    const Phic = isNullOrUndefinedOrBlank(form.getFieldValue("Phic"))
+    const Phic = isNullOrUndefinedOrBlank(form.getFieldValue("PhicAmount"))
       ? 0
-      : form.getFieldValue("Phic");
+      : form.getFieldValue("PhicAmount");
     const Net = round(Amount - Discount - Hmo - Phic, 2);
     form.setFieldValue("Net", Net);
   };
   useEffect(() => {
     if (!isNullOrUndefinedOrBlank(selectedRecord)) {
-      console.log(selectedRecord);
       form.setFieldsValue(selectedRecord);
     }
   }, []);
@@ -160,7 +160,7 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
             </Select>
           </Form.Item>
           <Form.Item
-            name="Amount"
+            name="Price"
             label="Amount"
             rules={[
               {
@@ -202,7 +202,7 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
           <Form.Item name="Discount" label="Discount">
             <InputNumber precision={2} style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item name="Phic" label="PHIC Deduction">
+          <Form.Item name="PhicAmount" label="PHIC Deduction">
             <InputNumber
               precision={2}
               style={{ width: "100%" }}
@@ -234,7 +234,7 @@ export default function Pf({ AppointmentId, selectedRecord }: Props) {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item name="Hmo" label="HMO Deduction">
+          <Form.Item name="HmoAmount" label="HMO Deduction">
             <InputNumber
               precision={2}
               style={{ width: "100%" }}

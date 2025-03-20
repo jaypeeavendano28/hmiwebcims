@@ -24,7 +24,7 @@ import {
   Space,
   Tooltip,
 } from "antd";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Discount from "./Discount";
 import PHICDeduction from "./PHICDeduction";
 import HmoDeduction from "./HmoDeduction";
@@ -32,19 +32,22 @@ import AddCharge from "./AddCharge";
 import Pf from "./Pf";
 import { FaUserEdit } from "react-icons/fa";
 import { FaTrash } from "react-icons/fa6";
-import { useAuth } from "../hooks/userAuth";
+import axios from "axios";
+import useAppStore from "../store";
 
 type ChargesProps = {
   AppointmentId: number;
 };
-
+const isDev = import.meta.env.DEV;
+const prodApi = import.meta.env.VITE_PROD_API + "/api/";
+const devApi = import.meta.env.VITE_DEV_API + "/api/";
+const apiUrl = isDev ? devApi : prodApi;
 export default function Charges({ AppointmentId }: ChargesProps) {
-  const auth = useAuth();
+  const store = useAppStore();
+  const [isProcessing, setIsProcessing] = useState(false);
   const [form] = Form.useForm();
   const [showFinalizedBilling, setShowFinalizedBilling] = useState(false);
-  const [selectedPf, setSeletectedPf] = useState<
-    TProfessionalFee | undefined
-  >();
+  const [selectedPf, setSeletectedPf] = useState<TCharges | undefined>();
 
   const [showPf, setShowPf] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<TCharges | undefined>();
@@ -89,9 +92,9 @@ export default function Charges({ AppointmentId }: ChargesProps) {
     queryKey: ["pf"],
     queryFn: async () => {
       const res = await PostData("GetRecords", {
-        sp: "udp_GetPf",
+        sp: "udp_GetPfChargesByAppointmentId",
         parameters: {
-          Id: AppointmentId,
+          AppointmentId,
         },
       });
       if (res) {
@@ -228,7 +231,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           footer={() =>
             pf.isSuccess &&
             pf.data
-              .reduce((sum: number, b: TProfessionalFee) => b.Amount! + sum, 0)
+              .reduce((sum: number, b: TCharges) => b.Gross! + sum, 0)
               .toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -244,7 +247,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           footer={() =>
             pf.isSuccess &&
             pf.data
-              .reduce((sum: number, b: TProfessionalFee) => b.Vat! + sum, 0)
+              .reduce((sum: number, b: TCharges) => b.Vat! + sum, 0)
               .toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -260,10 +263,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           footer={() =>
             pf.isSuccess &&
             pf.data
-              .reduce(
-                (sum: number, b: TProfessionalFee) => b.Discount! + sum,
-                0
-              )
+              .reduce((sum: number, b: TCharges) => b.Discount! + sum, 0)
               .toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -279,7 +279,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           footer={() =>
             pf.isSuccess &&
             pf.data
-              .reduce((sum: number, b: TProfessionalFee) => b.Phic! + sum, 0)
+              .reduce((sum: number, b: TCharges) => b.PhicAmount! + sum, 0)
               .toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -295,7 +295,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           footer={() =>
             pf.isSuccess &&
             pf.data
-              .reduce((sum: number, b: TProfessionalFee) => b.Hmo! + sum, 0)
+              .reduce((sum: number, b: TCharges) => b.HmoAmount! + sum, 0)
               .toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -311,7 +311,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           footer={() =>
             pf.isSuccess &&
             pf.data
-              .reduce((sum: number, b: TProfessionalFee) => b.Net! + sum, 0)
+              .reduce((sum: number, b: TCharges) => b.Net! + sum, 0)
               .toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -447,7 +447,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
       console.log(error);
     }
   };
-  const handleDeletePf = async (v: TProfessionalFee) => {
+  const handleDeletePf = async (v: TCharges) => {
     try {
       const res = await PostData("DeletePf", {
         ...v,
@@ -472,7 +472,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
       console.log(error);
     }
   };
-  const actionBodyTemplatePf = (data: TProfessionalFee) => {
+  const actionBodyTemplatePf = (data: TCharges) => {
     return (
       <Space>
         <Tooltip title="Edit">
@@ -495,6 +495,57 @@ export default function Charges({ AppointmentId }: ChargesProps) {
         </Tooltip>
       </Space>
     );
+  };
+  const handlePrintSoa = async () => {
+    setIsProcessing(true);
+    const isDownload = false;
+    const url = apiUrl + "soa/" + AppointmentId;
+    axios.defaults.headers.common["Authorization"] =
+      "Bearer " + store.tokenIdWebCims;
+    try {
+      await axios({
+        url: url, //your url
+        method: "GET",
+        responseType: "blob",
+      }).then((response: any) => {
+        let newBlob;
+        if (isDownload === false) {
+          newBlob = new Blob([response.data], {
+            type: "application/pdf",
+          });
+
+          const data = window.URL.createObjectURL(newBlob);
+
+          const a = document.createElement("a");
+
+          a.setAttribute("href", data);
+          a.setAttribute("target", "_blank");
+
+          a.click();
+          setIsProcessing(false);
+        } else {
+          newBlob = new Blob([response.data], {
+            type: "application/excel",
+          });
+          const a = document.createElement("a");
+          document.body.appendChild(a);
+          const url = window.URL.createObjectURL(newBlob);
+          a.href = url;
+          a.download = "download.xls";
+          a.click();
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+          }, 0);
+          setIsProcessing(false);
+        }
+      });
+    } catch (error: any) {
+      setIsProcessing(false);
+      let errorString = error.response.data;
+      errorString = JSON.parse(await error.response.data.text());
+      return { Status: 0, Message: errorString.Message };
+    }
   };
 
   return (
@@ -536,7 +587,11 @@ export default function Charges({ AppointmentId }: ChargesProps) {
             >
               HMO/Company Deduction
             </Button>
-            <Button type="primary" onClick={() => setOpenDiscount(true)}>
+            <Button
+              type="primary"
+              onClick={() => handlePrintSoa()}
+              loading={isProcessing}
+            >
               Print SOA
             </Button>
             <Button
@@ -720,15 +775,15 @@ export default function Charges({ AppointmentId }: ChargesProps) {
             <Column
               field="action"
               header="Action"
-              body={(data: TProfessionalFee) => actionBodyTemplatePf(data)}
+              body={(data: TCharges) => actionBodyTemplatePf(data)}
             ></Column>
-            <Column field="Doctor" header="Name"></Column>
+            <Column field="DoctorName" header="Name"></Column>
             <Column
               align={"right"}
-              field="Amount"
+              field="Gross"
               header="Amount"
-              body={(data: TProfessionalFee) =>
-                data.Amount?.toLocaleString(undefined, {
+              body={(data: TCharges) =>
+                data.Gross?.toLocaleString(undefined, {
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 0,
                 })
@@ -738,7 +793,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
               align={"right"}
               field="Vat"
               header="Vat"
-              body={(data: TProfessionalFee) =>
+              body={(data: TCharges) =>
                 data.Vat?.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -749,7 +804,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
               align={"right"}
               field="Discount"
               header="Discount"
-              body={(data: TProfessionalFee) =>
+              body={(data: TCharges) =>
                 data.Discount?.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -761,8 +816,8 @@ export default function Charges({ AppointmentId }: ChargesProps) {
               align={"right"}
               field="Phic"
               header="PHIC"
-              body={(data: TProfessionalFee) =>
-                data.Phic?.toLocaleString(undefined, {
+              body={(data: TCharges) =>
+                data.PhicAmount?.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })
@@ -772,8 +827,8 @@ export default function Charges({ AppointmentId }: ChargesProps) {
               align={"right"}
               field="Hmo"
               header="HMO/Company"
-              body={(data: TProfessionalFee) =>
-                data.Hmo?.toLocaleString(undefined, {
+              body={(data: TCharges) =>
+                data.HmoAmount?.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })
