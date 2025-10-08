@@ -3,6 +3,30 @@ import { devtools, persist } from "zustand/middleware";
 import { TItems, TPatientInformation } from "../types";
 
 type AppState = {
+  withUtilities: boolean;
+  setWithUtilities: (withUtilities: boolean) => void;
+  withQueuing: boolean;
+  setWithQueuing: (withQueuing: boolean) => void;
+  withAR: boolean;
+  setWithAR: (withAR: boolean) => void;
+  withPharmacy: boolean;
+  setWithPharmacy: (withPharmacy: boolean) => void;
+  withPatientMasterList: boolean;
+  setWithPatientMasterList: (withPatientMasterList: boolean) => void;
+  withConsultations: boolean;
+  setWithConsultations: (withConsultations: boolean) => void;
+  withHemoAmb: boolean;
+  setWithHemoAmb: (withHemoAmb: boolean) => void;
+  withRegisteredPatients: boolean;
+  setWithRegisteredPatients: (withRegisteredPatients: boolean) => void;
+  withApppointments: boolean;
+  setWithApppointments: (withApppointments: boolean) => void;
+  withCashier: boolean;
+  setWithCashier: (withCashier: boolean) => void;
+  withReceptionHemo: boolean;
+  setWithReceptionHemo: (withReceptionHemo: boolean) => void;
+  withReceptionDiagnostics: boolean;
+  setWithReceptionDiagnostics: (withReceptionDiagnostics: boolean) => void;
   itemDetails: TItems;
   setItemDetails: (itemDetails: TItems) => void;
   patientDetails: TPatientInformation;
@@ -28,6 +52,41 @@ const useAppStore = create<AppState>()(
   devtools(
     persist(
       (set) => ({
+        withUtilities: false,
+        setWithUtilities: (withUtilities) =>
+          set((state) => ({ ...state, withUtilities })),
+        withQueuing: false,
+        setWithQueuing: (withQueuing) =>
+          set((state) => ({ ...state, withQueuing })),
+        withAR: false,
+        setWithAR: (withAR) => set((state) => ({ ...state, withAR })),
+        withPharmacy: false,
+        setWithPharmacy: (withPharmacy) =>
+          set((state) => ({ ...state, withPharmacy })),
+        withPatientMasterList: false,
+        setWithPatientMasterList: (withPatientMasterList) =>
+          set((state) => ({ ...state, withPatientMasterList })),
+        withConsultations: false,
+        setWithConsultations: (withConsultations) =>
+          set((state) => ({ ...state, withConsultations })),
+        withHemoAmb: false,
+        setWithHemoAmb: (withHemoAmb) =>
+          set((state) => ({ ...state, withHemoAmb })),
+        withRegisteredPatients: false,
+        setWithRegisteredPatients: (withRegisteredPatients) =>
+          set((state) => ({ ...state, withRegisteredPatients })),
+        withApppointments: false,
+        setWithApppointments: (withApppointments) =>
+          set((state) => ({ ...state, withApppointments })),
+        withCashier: false,
+        setWithCashier: (withCashier) =>
+          set((state) => ({ ...state, withCashier })),
+        withReceptionHemo: false,
+        setWithReceptionHemo: (withReceptionHemo) =>
+          set((state) => ({ ...state, withReceptionHemo })),
+        withReceptionDiagnostics: false,
+        setWithReceptionDiagnostics: (withReceptionDiagnostics) =>
+          set((state) => ({ ...state, withReceptionDiagnostics })),
         itemDetails: { Id: "" },
         setItemDetails: (itemDetails) =>
           set((state) => ({ ...state, itemDetails })),

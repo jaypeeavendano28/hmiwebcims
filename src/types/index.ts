@@ -1023,3 +1023,15 @@ export type Tamount = {
   psecondaryHCIFee?: string;
   psecondaryProfFee?: string;
 };
+
+export type TChagesPerLabTemplate = {
+  Id: number;
+  fk_LaboratoryResultTemplates_Id?: number;
+  fk_LabTypes_Id?: number;
+  AddedBy?: string;
+  DateAdded?: Date;
+  UpdatedBy?: string;
+  DateUpdated?: Date;
+  DeletedBy?: string;
+  DateDeleted?: Date;
+};

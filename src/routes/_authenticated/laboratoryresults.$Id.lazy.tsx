@@ -164,16 +164,17 @@ const LaboratoryResults = () => {
     }
 
     res = await PostData("GetRecords", {
-      sp: "udp_GetLaboratoryResultTemplates",
+      sp: "udp_GetLaboratoryResultTemplates2",
       parameters: {
         BranchCode: store.branchCode,
+        AppointmentId: Id,
       },
     });
     if (res) {
       setTemplates(res.parameters.lst);
     }
   };
-  const handleNew = () => {
+  const handleNew =  () => {
     if (isNullOrUndefinedOrBlank(form1.getFieldValue("Template"))) {
       notification.error({
         message: "Please select a template!",
@@ -251,7 +252,7 @@ const LaboratoryResults = () => {
         Main: {
           ...values,
           BranchCode: store.branchCode,
-          ReportDate: dayjs(values.ReportDate).format("YYYY-MM-DD"),
+          ReportDate: dayjs(new Date()).format("YYYY-MM-DD"),
           DateReceived: dayjs(values.DateReceived).format("YYYY-MM-DD"),
           fk_tblPatientInformation_PatientId:
             appointmentDetails?.fk_PatientInformation_Id,
@@ -261,6 +262,7 @@ const LaboratoryResults = () => {
           Username: store.username,
           ResultNo: ResultNo,
           AdmissionId: appointmentDetails?.Id,
+      
         },
         Details: rowsCol1,
       };
@@ -619,18 +621,7 @@ const LaboratoryResults = () => {
             <Form.Item label="Result No." name="ResultNo">
               <strong>{ResultNo}</strong>
             </Form.Item>
-            <Form.Item
-              label="Report Date"
-              name="ReportDate"
-              rules={[
-                {
-                  required: true,
-                  message: "Report date is required!",
-                },
-              ]}
-            >
-              <DatePicker showTime showToday format="MM/DD/YYYY hh:mm A" />
-            </Form.Item>
+   
             <Form.Item
               label="Date Received"
               name="DateReceived"

@@ -45,7 +45,7 @@ const Sider = () => {
       label: <Link to="/dashboard">Home</Link>,
       key: "mnuHome",
       icon: <BiHome />,
-    },
+    },store.withReceptionDiagnostics ?
     {
       label: (
         <Link
@@ -59,7 +59,8 @@ const Sider = () => {
       ),
       key: "mnuReception1",
       icon: <MdOutlineNoteAlt />,
-    },
+    }:null,
+    store.withReceptionHemo ?
     {
       label: (
         <Link
@@ -73,17 +74,20 @@ const Sider = () => {
       ),
       key: "mnuReception2",
       icon: <MdOutlineNoteAlt />,
-    },
+    }:null,
+    store.withCashier?
     {
       label: <Link to="/cashier">Cashier</Link>,
       key: "mnuCashier",
       icon: <FaMoneyBill />,
-    },
+    }:null,
+    store.withApppointments?
     {
       label: <Link to="/appointments">Appointments</Link>,
       key: "mnuAppointments",
       icon: <FaRegCalendarPlus />,
-    },
+    }:null,
+    store.withRegisteredPatients?
     {
       label: (
         <Link
@@ -97,7 +101,8 @@ const Sider = () => {
       ),
       key: "mnuRegisteredPatients",
       icon: <FaRegCalendarPlus />,
-    },
+    }:null,
+    store.withHemoAmb?
     {
       label: (
         <Link
@@ -111,7 +116,8 @@ const Sider = () => {
       ),
       key: "mnuHemoPatients",
       icon: <FaRegCalendarPlus />,
-    },
+    }:null,
+    store.withConsultations?
     {
       label: (
         <Link
@@ -125,42 +131,26 @@ const Sider = () => {
       ),
       key: "mnuConsultations",
       icon: <FaRegCalendarPlus />,
-    },
+    }:null,
+    store.withPatientMasterList?
     {
       label: <Link to="/listofpatients">Patient Master List</Link>,
       key: "mnuListOfPatients",
       icon: <BsJournalMedical />,
-    },
+    }:null,
+    store.withPharmacy?
     {
       label: <Link to="/pharmacy">Pharmacy</Link>,
       key: "mnuPharmacy",
       icon: <GiMedicines />,
-    },
+    }:null,
+    store.withAR?
     {
       label: <Link to="/ar">Accounts Receivable</Link>,
       key: "mnuAr",
       icon: <TbReportMoney />,
-    },
-    // {
-    //   label: <Link to="/pharmacy">Pharmacy</Link>,
-    //   key: "mnuPharmacy",
-    //   icon: <RiMedicineBottleLine />,
-    // },
-    // {
-    //   label: "Materials Management",
-    //   key: "mnuMaterialsManagement",
-    //   icon: <MdAddToQueue />,
-    //   children: [
-    //     {
-    //       label: <Link to="/purchaseorders">Purchase Orders</Link>,
-    //       key: "mnuPurchaseOrders",
-    //     },
-    //     {
-    //       label: <Link to="/receiving">Receiving</Link>,
-    //       key: "mnuReceiving",
-    //     },
-    //   ],
-    // },
+    }:null,
+   store.withQueuing?
     {
       label: "Queuing",
       key: "mnuQueuing",
@@ -219,7 +209,8 @@ const Sider = () => {
         //   key: "mnuQueuingHemo",
         // },
       ],
-    },
+    }:null,
+    store.withUtilities?
     {
       label: "Utilities",
       key: "mnuUtilities",
@@ -279,7 +270,7 @@ const Sider = () => {
           key: "mnuXrayTemplates",
         },
       ],
-    },
+    }:null,
   ];
   function handleLogOut() {
     setShowLogOut(false);
