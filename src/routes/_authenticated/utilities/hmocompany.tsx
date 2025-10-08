@@ -8,6 +8,7 @@ import {
   Form,
   Input,
   Modal,
+  Select,
   Space,
   Tooltip,
   notification,
@@ -74,6 +75,7 @@ const HmoCompany = () => {
                 Designation: data.Designation,
                 EmailAddress: data.EmailAddress,
                 Type: data.Type,
+                Deleted: false,
               });
               setShowModal(true);
             }}
@@ -126,7 +128,7 @@ const HmoCompany = () => {
       }
     }
   };
-  const handleSubmit = async (v: TPriceCategory) => {
+  const handleSubmit = async (v: THmoCompany) => {
     try {
       setIsProcessing(true);
       const res = await PostData("SaveHmoCompany", {
@@ -259,6 +261,25 @@ const HmoCompany = () => {
             ]}
           >
             <Input />
+          </Form.Item>
+          <Form.Item
+            name="Type"
+            label="Type"
+            rules={[
+              {
+                required: true,
+                message: "Please select a type",
+              },
+            ]}
+          >
+            <Select>
+              <Select.Option value="C" key="C">
+                Company
+              </Select.Option>
+              <Select.Option value="H" key="H">
+                HMO
+              </Select.Option>
+            </Select>
           </Form.Item>
           {!isNullOrUndefinedOrBlank(selectedRecord) && (
             <Form.Item

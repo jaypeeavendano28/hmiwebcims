@@ -1,16 +1,21 @@
-import { createLazyFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
+import {
+  createLazyFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/userAuth";
 import {
+  App,
   Button,
   DatePicker,
   Divider,
   Form,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Tooltip,
-  notification,
 } from "antd";
 import useAppStore from "../../store";
 import { DataTable } from "primereact/datatable";
@@ -24,13 +29,16 @@ import Calling from "../../components/calling";
 import { TQNo } from "../../types";
 import Loading from "../../components/loading";
 import { BiNotepad } from "react-icons/bi";
+import { GiCancel } from "react-icons/gi";
+import { AxiosError } from "axios";
 
-export const Route = createLazyFileRoute('/_authenticated/reception/$Code')({
-  component: () => <Reception/>
-})
+export const Route = createLazyFileRoute("/_authenticated/reception/$Code")({
+  component: () => <Reception />,
+});
 
 const Reception = () => {
-  const {Code} = Route.useParams()
+  const { notification } = App.useApp();
+  const { Code } = Route.useParams();
   const navigate = useNavigate();
   const [selectedRecord, setSelectedRecord] = useState<TQNo | undefined>();
   const [showModal, setShowModal] = useState(false);
@@ -76,17 +84,16 @@ const Reception = () => {
   });
 
   const patientsOnQueue = useQuery({
-    queryKey: ["patientsOnQueue",Code],
+    queryKey: ["patientsOnQueue", Code],
     queryFn: async () => {
       let res = await PostData("GetRecords", {
         sp: "udp_GetQueueList",
         parameters: {
           date: date,
-          code:Code
+          code: Code,
         },
       });
       if (res) {
-       
         return res.parameters.lst;
       }
     },
@@ -95,14 +102,14 @@ const Reception = () => {
   });
 
   const donePatients = useQuery({
-    queryKey: ["donePatients",Code],
+    queryKey: ["donePatients", Code],
     queryFn: async () => {
       let res = await PostData("GetRecords", {
         sp: "udp_GetQList",
         parameters: {
           date: date,
           option: "D",
-          code:Code
+          code: Code,
         },
       });
       if (res) {
@@ -118,7 +125,6 @@ const Reception = () => {
   };
 
   const handleCall = async (data: TQNo) => {
-  
     if (isNullOrUndefinedOrBlank(form.getFieldValue("Counter"))) {
       notification.error({
         message: "Please select a counter!",
@@ -127,20 +133,6 @@ const Reception = () => {
       });
       return;
     }
-    // if (data.Status === "C") {
-    //   const speech = new SpeechSynthesisUtterance();
-    //   const voices = window.speechSynthesis.getVoices();
-    //   speech.voice = voices[0]; // change voice
-
-    //   speech.text =
-    //     "Patient " +
-    //     data.QNo +
-    //     " please proceed to " +
-    //     form.getFieldValue("Counter");
-    //   window.speechSynthesis.speak(speech);
-    //   window.speechSynthesis.speak(speech);
-    //   window.speechSynthesis.speak(speech);
-    // }
 
     const valuesToSave = {
       ...data,
@@ -162,6 +154,8 @@ const Reception = () => {
         } else if (data.Status === "A") {
           setIsSubmitting(false);
           setShowModal(false);
+
+          localStorage.setItem("code", data?.Code!);
           navigate({
             to: "/appointmentdetails/$Id",
             params: {
@@ -178,6 +172,38 @@ const Reception = () => {
       }
     }
   };
+  const handleCancel = async (data: TQNo) => {
+    try {
+      setIsSubmitting(true);
+      const res = await PostData("CancelQReception", data);
+      if (res) {
+        setIsSubmitting(false);
+
+        if (res.status === 1) {
+          q.invalidateQueries({ queryKey: ["patientsOnQueue"] });
+          notification.success({
+            message: "Successfully cancelled!",
+            placement: "topRight",
+            duration: 5,
+          });
+        } else {
+          notification.error({
+            message: res.message,
+            placement: "topRight",
+            duration: 5,
+          });
+        }
+      }
+    } catch (error: AxiosError | any) {
+      setIsSubmitting(false);
+      notification.error({
+        message: error.response?.data.message || error.message,
+        placement: "topRight",
+        duration: 5,
+      });
+    }
+  };
+
   const actionBodyTemplate = (data: TQNo) => {
     return (
       <Space>
@@ -196,6 +222,25 @@ const Reception = () => {
             className="text-center"
             loading={IsSubmitting}
           />
+        </Tooltip>
+        <Tooltip title="Cancel">
+          <Popconfirm
+            title="Are you sure to cancel this queue?"
+            onConfirm={() => handleCancel(data)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button
+              type="primary"
+              icon={<GiCancel />}
+              // onClick={() => {
+              //   handleCancel(data);
+              // }}
+              danger
+              className="text-center"
+              loading={IsSubmitting}
+            />
+          </Popconfirm>
         </Tooltip>
       </Space>
     );
@@ -242,7 +287,12 @@ const Reception = () => {
   }, []);
   return (
     <div className="cardBackground">
-      <Divider>Reception-{Code==='1'?"Diagnostic/APE/Consultation":"Hemodialysis/Ambulatory"}</Divider>
+      <Divider>
+        Reception-
+        {Code === "1"
+          ? "Diagnostic/APE/Consultation"
+          : "Hemodialysis/Ambulatory"}
+      </Divider>
       <div>
         <Form
           form={form}

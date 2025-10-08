@@ -13,6 +13,7 @@ import {
   MenuProps,
   Modal,
   Popconfirm,
+  Popover,
   Radio,
   Select,
   Space,
@@ -37,9 +38,9 @@ import { BiSearch } from "react-icons/bi";
 import Loading from "../../components/loading";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { MdOutlineDelete } from "react-icons/md";
+import { MdOutlineDelete, MdOutlineNotes } from "react-icons/md";
 import Webcam from "react-webcam";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import AddCharge from "../../components/AddCharge";
 import { FaRegEdit } from "react-icons/fa";
 import { ColumnGroup } from "primereact/columngroup";
@@ -54,10 +55,14 @@ const devApi = import.meta.env.VITE_DEV_API;
 const ApiUrl = isDev ? devApi : prodApi;
 
 const AppointmentDetails = () => {
+  const [showPackageDetails, setShowPackageDetails] = useState(false);
+  const [isMobileTph, setIsMobileTph] = useState(false);
   const [title, setTitle] = useState("");
   const [appType, setAppType] = useState("");
   const router = useRouter();
-
+  const [appointmentDetails, setAppointmentDetails] = useState<
+    TAppointments | undefined
+  >();
   const q = useQueryClient();
   const [Net, setNet] = useState<number>(0);
   const [qCounters, setQCounters] = useState<MenuProps["items"]>([]);
@@ -70,7 +75,6 @@ const AppointmentDetails = () => {
     height: 400,
     facingMode: "user",
   };
-
   const [picture, setPicture] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState(null);
   const store = useAppStore();
@@ -82,9 +86,9 @@ const AppointmentDetails = () => {
   const [selectedRecord, setSelectedRecord] = useState<TCharges | undefined>();
   const [showDelete, setShowDelete] = useState(false);
   const [charges, setCharges] = useState<TCharges[] | undefined>([]);
+  const [chargesAll, setChargesAll] = useState<TCharges[] | undefined>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [gender, setGender] = useState("");
-
   useQuery({
     queryKey: ["patientDetails"],
     queryFn: async () => {
@@ -185,47 +189,62 @@ const AppointmentDetails = () => {
   });
 
   const handlePrintCheckList = async (qCounter: string) => {
-    if (qCounter === "*ALL*") {
-      qCounters!.forEach(async (e: any) => {
-        axios.defaults.headers.common["Authorization"] =
-          "Bearer " + store.tokenIdWebCims;
-        const url =
-          ApiUrl +
-          "/api/GenerateReport?ReportName=checklist.rdl&AppointmentId=" +
-          Id +
-          "&QCounter=" +
-          e.label;
-
-        try {
-          setIsLoading(true);
-          await axios({
-            url: url, //your url
-            method: "GET",
-            responseType: "blob",
-            params: {},
-          }).then((response) => {
-            setIsLoading(false);
-            let newBlob;
-            newBlob = new Blob([response.data], {
-              type: "application/pdf",
-            });
-
-            const data = window.URL.createObjectURL(newBlob);
-
-            const a = document.createElement("a");
-
-            a.setAttribute("href", data);
-            a.setAttribute("target", "_blank");
-
-            a.click();
-          });
-        } catch (error: any) {
-          setIsLoading(false);
-          let errorString = error.response.data;
-          errorString = JSON.parse(await error.response.data.text());
-          return { Status: 0, Message: errorString.Message };
-        }
+    if (isMobileTph === false && charges!.length <= 0) {
+      notification.error({
+        message: "Please add charges first!",
+        placement: "topRight",
+        duration: 3,
       });
+      return;
+    } else if (isMobileTph === false && Number(Net) > 0) {
+      notification.error({
+        message: "Please pay first the balance at the cashier!",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+    if (qCounter === "*ALL*") {
+      // qCounters!.forEach(async (e: any) => {
+      axios.defaults.headers.common["Authorization"] =
+        "Bearer " + store.tokenIdWebCims;
+      const url =
+        ApiUrl +
+        "/api/GenerateReport?ReportName=checklist.rdl&AppointmentId=" +
+        Id +
+        "&QCounter=" +
+        "xxxx";
+
+      try {
+        setIsLoading(true);
+        await axios({
+          url: url, //your url
+          method: "GET",
+          responseType: "blob",
+          params: {},
+        }).then((response) => {
+          setIsLoading(false);
+          let newBlob;
+          newBlob = new Blob([response.data], {
+            type: "application/pdf",
+          });
+
+          const data = window.URL.createObjectURL(newBlob);
+
+          const a = document.createElement("a");
+
+          a.setAttribute("href", data);
+          a.setAttribute("target", "_blank");
+
+          a.click();
+        });
+      } catch (error: any) {
+        setIsLoading(false);
+        let errorString = error.response.data;
+        errorString = JSON.parse(await error.response.data.text());
+        return { Status: 0, Message: errorString.Message };
+      }
+      // });
     } else {
       axios.defaults.headers.common["Authorization"] =
         "Bearer " + store.tokenIdWebCims;
@@ -235,7 +254,6 @@ const AppointmentDetails = () => {
         Id +
         "&QCounter=" +
         qCounter;
-
       try {
         await axios({
           url: url, //your url
@@ -302,6 +320,21 @@ const AppointmentDetails = () => {
   };
 
   const handlePrintSoa = async () => {
+    if (isMobileTph === false && charges!.length <= 0) {
+      notification.error({
+        message: "Please add charges first!",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    } else if (isMobileTph === false && Number(Net) > 0) {
+      notification.error({
+        message: "Please pay first the balance at the cashier!",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
     setIsLoading(true);
     axios.defaults.headers.common["Authorization"] =
       "Bearer " + store.tokenIdWebCims;
@@ -352,7 +385,41 @@ const AppointmentDetails = () => {
         },
       });
       if (res) {
+        const isMobile = res.parameters.lst.filter(
+          (d: TCharges) => d.PaymentType === "MOB" || d.PaymentType === "TMP"
+        );
+
+        setIsMobileTph(false);
+        if (isMobile.length > 0) {
+          setIsMobileTph(true);
+        }
         setCharges(res.parameters.lst);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleGetChargesAll = async () => {
+    try {
+      setIsLoading(true);
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetChargesByAppointmentIdAll",
+        parameters: {
+          AppointmentId: Id,
+        },
+      });
+      if (res) {
+        const isMobile = res.parameters.lst.filter(
+          (d: TCharges) => d.PaymentType === "MOB" || d.PaymentType === "TMP"
+        );
+
+        setIsMobileTph(false);
+        if (isMobile.length > 0) {
+          setIsMobileTph(true);
+        }
+        setChargesAll(res.parameters.lst);
         setIsLoading(false);
       }
     } catch (error) {
@@ -362,9 +429,28 @@ const AppointmentDetails = () => {
 
   const handleGetAppointmentDetails = async () => {
     if (Id === "0") {
+      let appointmentType = localStorage.getItem("code");
+
+      if (appointmentType === "ape") {
+        appointmentType = "APE";
+      } else if (appointmentType === "amb") {
+        appointmentType = "AMB";
+      } else if (appointmentType === "hemo") {
+        appointmentType = "HEM";
+      } else if (appointmentType === "consultation") {
+        appointmentType = "CON";
+      } else if (appointmentType === "diag") {
+        appointmentType = "DIA";
+      } else if (appointmentType === "ofw") {
+        appointmentType = "OFW";
+      } else if (appointmentType === "ofw") {
+        appointmentType = "OFW";
+      }
+
       form.setFieldsValue({
         Date: dayjs(),
         IsSeniorOrPwd: "N",
+        AppointmentType: appointmentType,
       });
     } else {
       sessionStorage.setItem("Id", Id);
@@ -376,6 +462,7 @@ const AppointmentDetails = () => {
       });
       if (res) {
         const x: TAppointments = res.parameters.lst[0];
+        setAppointmentDetails(x);
         setPatientId(x.fk_PatientInformation_Id!);
         setTitle("Appointment for-" + x.Name?.toString());
         setAppType(x.AppointmentType!);
@@ -412,6 +499,22 @@ const AppointmentDetails = () => {
       if (res) {
         setPicture(res.parameters.lst[0].Image);
       }
+    }
+  };
+  const handleGetLastImage = async (patientId: number) => {
+    try {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetLastPatientImage",
+        parameters: {
+          PatientId: patientId,
+        },
+      });
+      if (res) {
+        console.log(res);
+        setPicture(res.parameters.lst[0].Image);
+      }
+    } catch (error) {
+      console.log(error);
     }
   };
   function blobToBase64(blob: any) {
@@ -548,7 +651,7 @@ const AppointmentDetails = () => {
   const handleSelect = async (patientId: number) => {
     setShowPatient(false);
     setPatientId(patientId);
-    const res = await PostData("GetRecords", {
+    let res = await PostData("GetRecords", {
       sp: "udp_GetPatientInformationById",
       parameters: {
         Id: patientId,
@@ -556,9 +659,30 @@ const AppointmentDetails = () => {
     });
     if (res) {
       const patientDetails: TPatientInformation = res.parameters.lst[0];
+
       form.setFieldsValue({
         PatientNo: patientDetails.PatientNo,
         Name: patientDetails.Name,
+        HmoCompany:
+          patientDetails.Company == 0 ? undefined : patientDetails.Company,
+      });
+      handleGetLastImage(patientDetails.Id);
+    }
+
+    res = await PostData("GetRecords", {
+      sp: "udp_GetLastAppointmentDetails",
+      parameters: {
+        PatientId: patientId,
+      },
+    });
+    if (res) {
+      const app: TAppointments = res.parameters.lst[0];
+      form.setFieldsValue({
+        fk_HmoCompany_Id: app.fk_HmoCompany_Id,
+        CivilStatus: app.CivilStatus,
+        // AppointmentType: app.AppointmentType,
+        HmoCompany: app.HmoCompany,
+        IsSeniorOrPwd: app.IsSeniorOrPwd,
       });
     }
   };
@@ -607,6 +731,17 @@ const AppointmentDetails = () => {
               className="cursor-pointer"
             />
           </Popconfirm>
+        </Tooltip>
+
+        <Tooltip title="Details">
+          <MdOutlineNotes
+            onClick={() => {
+              handleGetChargesAll();
+              setShowPackageDetails(true);
+            }}
+            size="20"
+            className="cursor-pointer"
+          />
         </Tooltip>
       </Space>
     );
@@ -686,9 +821,6 @@ const AppointmentDetails = () => {
 
     handlePrintCheckList(f.label);
   };
-  // const formatCurrency = (value: number) => {
-  //   return value.toLocaleString("en-PH");
-  // };
 
   const net = () => {
     let total = 0;
@@ -725,6 +857,92 @@ const AppointmentDetails = () => {
       </Row>
     </ColumnGroup>
   );
+
+  const content = () => {
+    const [formCompany] = Form.useForm();
+    const handleSubmitForm = async () => {
+      try {
+        setIsLoading(true);
+        const res = await PostData("SaveHmoCompany", {
+          Name: formCompany.getFieldValue("Name"),
+          Type: formCompany.getFieldValue("Type"),
+          Balance: 0,
+        });
+        if (res) {
+          if (res.status === 1) {
+            notification.success({
+              message: "Successfully saved!",
+              placement: "topRight",
+              duration: 3,
+            });
+            formCompany.resetFields();
+            q.invalidateQueries({ queryKey: ["company"] });
+            q.invalidateQueries({ queryKey: ["hmo"] });
+            setIsLoading(false);
+          } else {
+            notification.error({
+              message: res.message,
+              placement: "topRight",
+              duration: 3,
+            });
+            setIsLoading(false);
+          }
+        }
+      } catch (error: AxiosError | any) {
+        notification.error({
+          message: error.response?.data,
+          placement: "topRight",
+          duration: 3,
+        });
+      }
+    };
+    return (
+      <div>
+        <Form
+          form={formCompany}
+          layout="vertical"
+          onFinish={() => handleSubmitForm()}
+        >
+          <Form.Item
+            name="Name"
+            label="Company/HMO Name"
+            rules={[
+              {
+                required: true,
+                message: "Company/HMO Name is required!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="Type"
+            label="Type"
+            rules={[
+              {
+                required: true,
+                message: "Type is required!",
+              },
+            ]}
+          >
+            <Select>
+              <Select.Option key="C" value="C" title="Company ">
+                Company
+              </Select.Option>
+              <Select.Option key="H" value="H" title="HMO">
+                HMO
+              </Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form>
+      </div>
+    );
+  };
 
   useEffect(() => {
     handleGetAppointmentDetails();
@@ -863,6 +1081,9 @@ const AppointmentDetails = () => {
                     ).includes(input.toLocaleLowerCase())
                   }
                 >
+                  <Select.Option key="D" value="D" title="Divorced">
+                    Divorced
+                  </Select.Option>
                   <Select.Option key="L" value="L" title="Legally Separated">
                     Legally Separated
                   </Select.Option>
@@ -903,60 +1124,7 @@ const AppointmentDetails = () => {
                     ))}
                 </AutoComplete>
               </Form.Item>
-              <Form.Item name="fk_HmoCompany_Id" label="HMO">
-                <Select
-                  style={{ width: "100%" }}
-                  showSearch
-                  allowClear
-                  filterOption={(input, option) =>
-                    (
-                      option!.children
-                        ?.toString()
-                        .toLocaleLowerCase() as unknown as string
-                    ).includes(input.toLocaleLowerCase())
-                  }
-                >
-                  {hmo.data &&
-                    hmo.data.map((d: THmoCompany) => (
-                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
-                        {d.Name}
-                      </Select.Option>
-                    ))}
-                </Select>
-              </Form.Item>
-            </div>
-            {/* <div>
-              <Form.Item name="Diagnosis" label="Diagnosis">
-                    <Input.TextArea rows={4}/>
-              </Form.Item>
-            </div> */}
 
-            <div className="grid md:grid-cols-3 gap-4">
-              <Form.Item
-                name="HmoCompany"
-                label="Company"
-                className="col-span-2"
-              >
-                <Select
-                  style={{ width: "100%" }}
-                  showSearch
-                  allowClear
-                  filterOption={(input, option) =>
-                    (
-                      option!.children
-                        ?.toString()
-                        .toLocaleLowerCase() as unknown as string
-                    ).includes(input.toLocaleLowerCase())
-                  }
-                >
-                  {company.data &&
-                    company.data.map((d: THmoCompany) => (
-                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
-                        {d.Name}
-                      </Select.Option>
-                    ))}
-                </Select>
-              </Form.Item>
               <Form.Item
                 name="Occupation"
                 label="Occupation"
@@ -982,6 +1150,78 @@ const AppointmentDetails = () => {
                     ))}
                 </AutoComplete>
               </Form.Item>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <Form.Item
+                name="fk_HmoCompany_Id"
+                label="HMO"
+                className="col-span-2"
+              >
+                <Select
+                  style={{ width: "100%" }}
+                  showSearch
+                  allowClear
+                  filterOption={(input, option) =>
+                    (
+                      option!.children
+                        ?.toString()
+                        .toLocaleLowerCase() as unknown as string
+                    ).includes(input.toLocaleLowerCase())
+                  }
+                >
+                  {hmo.data &&
+                    hmo.data.map((d: THmoCompany) => (
+                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                        {d.Name}
+                      </Select.Option>
+                    ))}
+                </Select>
+              </Form.Item>
+              <div className="flex justify-start items-center">
+                <Popover
+                  content={content}
+                  title="New Company/HMO"
+                  trigger="click"
+                >
+                  <Button type="primary">New</Button>
+                </Popover>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <Form.Item
+                name="HmoCompany"
+                label="Company"
+                className="col-span-2"
+              >
+                <Select
+                  style={{ width: "100%" }}
+                  showSearch
+                  allowClear
+                  filterOption={(input, option) =>
+                    (
+                      option!.children
+                        ?.toString()
+                        .toLocaleLowerCase() as unknown as string
+                    ).includes(input.toLocaleLowerCase())
+                  }
+                >
+                  {company.data &&
+                    company.data.map((d: THmoCompany) => (
+                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                        {d.Name}
+                      </Select.Option>
+                    ))}
+                </Select>
+              </Form.Item>
+              <div className="flex justify-start items-center">
+                <Popover
+                  content={content}
+                  title="New Company/HMO"
+                  trigger="click"
+                >
+                  <Button type="primary">New</Button>
+                </Popover>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">
@@ -1087,17 +1327,13 @@ const AppointmentDetails = () => {
                 </Button> */}
 
                 <Button
-                  disabled={charges!.length <= 0 || Number(Net) > 0}
                   type="primary"
                   onClick={handlePrintSoa}
                   loading={isLoading}
                 >
                   Print SOA
                 </Button>
-                <Dropdown
-                  menu={{ items: qCounters, onClick: onMenuClick }}
-                  disabled={charges!.length <= 0 || Number(Net) > 0}
-                >
+                <Dropdown menu={{ items: qCounters, onClick: onMenuClick }}>
                   <Button loading={isLoading} type="primary">
                     Print Checklist
                   </Button>
@@ -1163,7 +1399,37 @@ const AppointmentDetails = () => {
         width={screen.width - 80}
         destroyOnClose
       >
-        <AddCharge Id={Id} ChargeDetails={selectedRecord} Gender={gender} />
+        <AddCharge
+          Id={Id}
+          ChargeDetails={selectedRecord}
+          Gender={gender}
+          AppointmentDetails={appointmentDetails}
+        />
+      </Modal>
+
+      <Modal
+        open={showPackageDetails}
+        onCancel={() => {
+          setShowPackageDetails(false);
+        }}
+        title="Package Details"
+        footer={false}
+        width={screen.width - 500}
+        destroyOnClose
+      >
+        <DataTable
+          value={chargesAll}
+          emptyMessage="No Records!"
+          stripedRows
+          size="small"
+        >
+          <Column field="Description" header="Description"></Column>
+          <Column field="Gross" header="Gross"></Column>
+          <Column field="HmoAmount" header="Hmo"></Column>
+          <Column field="CashPayment" header="Cash Payment"></Column>
+          <Column field="Net" header="Net"></Column>
+          <Column field="PaymentType" header="Payment Type"></Column>
+        </DataTable>
       </Modal>
     </div>
   );

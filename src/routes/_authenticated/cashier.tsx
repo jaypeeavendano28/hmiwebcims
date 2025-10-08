@@ -125,7 +125,7 @@ const Cashier = () => {
     } else if (cashierLocation === "CASHIER") {
       mode = "D";
     }
-    console.log(mode);
+
     const res = await PostData("GetRecords", {
       sp: "udp_GetChargesByAppointmentIdForCashier",
       parameters: {

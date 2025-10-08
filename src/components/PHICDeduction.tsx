@@ -5,14 +5,15 @@ import {
   Input,
   InputNumber,
   Modal,
+  notification,
   Popconfirm,
   Space,
 } from "antd";
 import { useForm } from "antd/es/form/Form";
-import { TICd10, TPhicDeductions } from "../types";
+import { TPhicDeductions } from "../types";
 import { PostData } from "../helpers";
 import { useEffect, useState } from "react";
-import SearchICD from "./SearchICD";
+import SearchCaseRates from "./SearchCaseRates";
 
 type PHICDeductionProps = {
   AppointmentId: number;
@@ -23,24 +24,10 @@ export default function PHICDeduction({
   AppointmentId,
   handleSavePhicDeductions,
 }: PHICDeductionProps) {
-  const [mode, setMode] = useState("I");
-  const [Id, setId] = useState(0);
-  const handleClose = (data: TICd10) => {
-    setId(data.Id);
-    setShowModalPhicDed(false);
-    if (mode === "I") {
-      form.setFieldsValue({
-        CaseRate1: data.ITEM_CODE,
-        CaseRate1Desc: data.ITEM_DESC,
-        CaseRate1Amount: data.LEVE1HOSP_CR1_AMT,
-      });
-    } else {
-    }
-  };
   const [showModalPhicDed, setShowModalPhicDed] = useState(false);
   const [form] = useForm();
   const handleSubmit = async (values: TPhicDeductions) => {
-    handleSavePhicDeductions({ ...values, Id });
+    handleSavePhicDeductions({ ...values, Id: 1 });
   };
 
   const handleGetDeductions = async () => {
@@ -61,7 +48,24 @@ export default function PHICDeduction({
       console.log(error);
     }
   };
+  const handleSelect = async (e: any) => {
+    console.log(e.pcheckFacilityASC);
+    if (e.pcheckFacilityASC === "F") {
+      notification.error({
+        message: "Not available for AMBULATORY SERVICES!",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
 
+    setShowModalPhicDed(false);
+    form.setFieldsValue({
+      CaseRate1: e.pitemCode,
+      CaseRate1Desc: e.pitemDescription,
+      CaseRate1Amount: e.pprimaryHCIFee,
+    });
+  };
   useEffect(() => {
     handleGetDeductions();
   }, []);
@@ -87,7 +91,6 @@ export default function PHICDeduction({
               <Button
                 type="primary"
                 onClick={() => {
-                  setMode("I");
                   setShowModalPhicDed(true);
                 }}
               >
@@ -138,7 +141,7 @@ export default function PHICDeduction({
         onCancel={() => setShowModalPhicDed(false)}
         footer={null}
       >
-        <SearchICD handleClose={handleClose} />
+        <SearchCaseRates handleSelect={(e: any) => handleSelect(e)} />
       </Modal>
     </div>
   );

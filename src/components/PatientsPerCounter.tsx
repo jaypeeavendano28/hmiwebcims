@@ -53,12 +53,7 @@ const PatientsPerCounter: FC<Props> = ({
         DateTo: DateTo,
       },
     });
-    console.log({
-      BranchCode: store.branchCode,
-      CounterCode: CounterCode,
-      DateFrom: DateFrom,
-      DateTo: DateTo,
-    });
+
     if (res) {
       setListOfPatients(res.parameters.lst);
     }
@@ -66,17 +61,6 @@ const PatientsPerCounter: FC<Props> = ({
 
   const handleCall = async (data: any) => {
     setIsSubmitting(true);
-    // if (data.Status === "C") {
-    //   const speech = new SpeechSynthesisUtterance();
-    //   const voices = window.speechSynthesis.getVoices();
-    //   speech.voice = voices[0]; // change voice
-
-    //   speech.text =
-    //     "Patient " + data.QueueNo + " please proceed to " + data.CounterName;
-    //   window.speechSynthesis.speak(speech);
-    //   window.speechSynthesis.speak(speech);
-    //   window.speechSynthesis.speak(speech);
-    // }
 
     const valuesToSave = {
       ...data,
@@ -263,7 +247,7 @@ const PatientsPerCounter: FC<Props> = ({
             }}
             className="text-center"
             loading={IsSubmitting}
-            disabled={data.CurrentQStatus === "A"}
+            // disabled={data.CurrentQStatus === "A"}
           />
         </Tooltip>
         <Tooltip title="Change Status">
@@ -387,6 +371,9 @@ const PatientsPerCounter: FC<Props> = ({
         ></Column>
 
         <Column field="QueueNo" header="Queue No." filter></Column>
+        <Column field="MemberNo" header="Member No." filter></Column>
+        <Column field="Company" header="Company" filter></Column>
+        <Column field="Status" header="Status" filter></Column>
 
         <Column
           field="ElapseTime"

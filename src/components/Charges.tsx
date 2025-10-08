@@ -8,6 +8,7 @@ import {
   TCharges,
   TDiscountTypes,
   THmoDeduction,
+  TPaymentsMain,
   TPhicDeductions,
   TProfessionalFee,
 } from "../types";
@@ -34,6 +35,7 @@ import { FaUserEdit } from "react-icons/fa";
 import { FaTrash } from "react-icons/fa6";
 import axios from "axios";
 import useAppStore from "../store";
+import dayjs from "dayjs";
 
 type ChargesProps = {
   AppointmentId: number;
@@ -75,9 +77,28 @@ export default function Charges({ AppointmentId }: ChargesProps) {
     queryKey: ["charges"],
     queryFn: async () => {
       const res = await PostData("GetRecords", {
-        sp: "udp_GetChargesByAppointmentId",
+        sp: "udp_GetChargesByAppointmentIdAll",
         parameters: {
           AppointmentId,
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const { data: payments, isFetching: paymentFetching } = useQuery<
+    TPaymentsMain[]
+  >({
+    queryKey: ["payments"],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetPayments",
+        parameters: {
+          Id: AppointmentId,
         },
       });
       if (res) {
@@ -367,6 +388,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
     }
   };
   const handleSavePhicDeductions = async (v: TPhicDeductions) => {
+    console.log(v);
     try {
       setShowPhicDeduction(false);
       const res = await PostData("ProcessPhicDeduction", {
@@ -402,6 +424,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
         fk_Appointments_Id: AppointmentId,
         fk_HmoCompany_Id: v.fk_HmoCompany_Id,
       });
+
       if (res) {
         if (res.status === 1) {
           notification.success({
@@ -864,6 +887,43 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           maximumFractionDigits: 2,
         })}
       </div>
+
+      <div>
+        <Divider>Payments</Divider>
+        {paymentFetching ? (
+          <Loading size={64} />
+        ) : (
+          <DataTable
+            value={payments}
+            emptyMessage="No Records!"
+            stripedRows
+            size="small"
+            filterDisplay="row"
+          >
+            <Column field="Payee" header="Payee"></Column>
+            <Column field="OrNo" header="O.R. No."></Column>
+            <Column
+              align={"right"}
+              field="Date"
+              header="Date"
+              body={(data: TPaymentsMain) =>
+                dayjs(data.Date).format("MM/DD/YYYY")
+              }
+            ></Column>
+            <Column
+              align={"right"}
+              field="Amount"
+              header="Amount"
+              body={(data: TPaymentsMain) =>
+                data.Amount?.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              }
+            ></Column>
+          </DataTable>
+        )}
+      </div>
       <Modal
         open={openDiscount}
         onCancel={() => setOpenDiscount(false)}
@@ -898,12 +958,14 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           handleSaveHmoDeduction={handleSaveHmoDeduction}
           Balance={
             charges.isSuccess &&
-            charges.data
-              .reduce((sum: number, b: TCharges) => b.Net! + sum, 0)
-              .toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })
+            charges.data.reduce((sum: number, b: TCharges) => b.Net! + sum, 0)
+          }
+          HmoAmount={
+            charges.isFetched &&
+            charges.data.reduce(
+              (sum: number, b: TCharges) => b.HmoAmount! + sum,
+              0
+            )
           }
         />
       </Modal>
@@ -922,6 +984,7 @@ export default function Charges({ AppointmentId }: ChargesProps) {
           Id={AppointmentId.toString()}
           ChargeDetails={selectedRecord}
           Gender={appDetails?.data?.Sex as string}
+          AppointmentDetails={appDetails.data as TAppointments}
         />
       </Modal>
       <Modal

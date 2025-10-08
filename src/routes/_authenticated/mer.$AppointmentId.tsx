@@ -759,7 +759,7 @@ const Mer = () => {
               },
             ]}
           >
-            <DatePicker format="MM/DD/YYYY" />
+            <DatePicker disabled format="MM/DD/YYYY" />
           </Form.Item>
           <Form.Item name="AppointmentId" label="Appointment Id">
             <Input readOnly className="font-bold" />

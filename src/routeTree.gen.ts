@@ -56,6 +56,9 @@ import { Route as AuthenticatedAppointmentdetailsIdImport } from './routes/_auth
 const AuthenticatedXraytemplatesLazyImport = createFileRoute(
   '/_authenticated/xraytemplates',
 )()
+const AuthenticatedReportsLazyImport = createFileRoute(
+  '/_authenticated/reports',
+)()
 const AuthenticatedReceivingLazyImport = createFileRoute(
   '/_authenticated/receiving',
 )()
@@ -142,6 +145,13 @@ const AuthenticatedXraytemplatesLazyRoute =
   } as any).lazy(() =>
     import('./routes/_authenticated/xraytemplates.lazy').then((d) => d.Route),
   )
+
+const AuthenticatedReportsLazyRoute = AuthenticatedReportsLazyImport.update({
+  path: '/reports',
+  getParentRoute: () => AuthenticatedRoute,
+} as any).lazy(() =>
+  import('./routes/_authenticated/reports.lazy').then((d) => d.Route),
+)
 
 const AuthenticatedReceivingLazyRoute = AuthenticatedReceivingLazyImport.update(
   {
@@ -634,6 +644,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReceivingLazyImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/_authenticated/reports': {
+      preLoaderRoute: typeof AuthenticatedReportsLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
     '/_authenticated/xraytemplates': {
       preLoaderRoute: typeof AuthenticatedXraytemplatesLazyImport
       parentRoute: typeof AuthenticatedImport
@@ -791,6 +805,7 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedMedtechsLazyRoute,
     AuthenticatedRadtechsLazyRoute,
     AuthenticatedReceivingLazyRoute,
+    AuthenticatedReportsLazyRoute,
     AuthenticatedXraytemplatesLazyRoute,
     AuthenticatedAppointmentdetailsIdRoute,
     AuthenticatedBranchprofileCodeRoute,

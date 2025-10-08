@@ -31,25 +31,31 @@ const QPatients: FC<Props> = ({ CurrentDepartment }) => {
     handleGetPatients();
   }, [CurrentDepartment]);
   return (
-    <div className="bg-green-500">
-      <div className="font-bold text-6xl text-yellow-200 text-center">
-        {CurrentDepartment.CounterName2}
-      </div>
+    <>
+      {listOfPatients.length >= 0 ? (
+        <div>
+          <div className="bg-green-500">
+            <div className="font-bold text-6xl text-yellow-200 text-center">
+              {CurrentDepartment.CounterName2}
+            </div>
 
-      {listOfPatients.map((v: any) => (
-        <div className="grid  grid-cols-12 gap-4" key={v.Id}>
-          <div className="font-bold text-6xl text-yellow-100 text-center col-span-4 mb-4">
-            {v.QueueNo}
+            {listOfPatients.map((v: any) => (
+              <div className="grid  grid-cols-12 gap-4" key={v.Id}>
+                <div className="font-bold text-5xl text-yellow-100 text-center col-span-4 mb-4">
+                  {v.QueueNo}
+                </div>
+                <div className="font-bold text-5xl text-yellow-100  col-span-8">
+                  {v.StatusDesc}
+                </div>
+                {/* <div className="font-bold text-4xl text-yellow-100 text-center col-span-8">
+      {v.StatusDesc}
+    </div> */}
+              </div>
+            ))}
           </div>
-          <div className="font-bold text-6xl text-yellow-100  col-span-8">
-            {v.StatusDesc}
-          </div>
-          {/* <div className="font-bold text-4xl text-yellow-100 text-center col-span-8">
-              {v.StatusDesc}
-            </div> */}
         </div>
-      ))}
-    </div>
+      ) : null}
+    </>
   );
 };
 

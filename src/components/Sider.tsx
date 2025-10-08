@@ -187,19 +187,19 @@ const Sider = () => {
           ),
           key: "mnuQueuingDiag",
         },
-        {
-          label: (
-            <Link
-              to="/queuing/$Code"
-              params={{
-                Code: "2",
-              }}
-            >
-              Queuing Consultation
-            </Link>
-          ),
-          key: "mnuQueuing2",
-        },
+        // {
+        //   label: (
+        //     <Link
+        //       to="/queuing/$Code"
+        //       params={{
+        //         Code: "2",
+        //       }}
+        //     >
+        //       Queuing Consultation
+        //     </Link>
+        //   ),
+        //   key: "mnuQueuing2",
+        // },
         {
           label: (
             <Link

@@ -8,7 +8,10 @@ import { PrimeReactProvider } from "primereact/api";
 // import "primeflex/primeflex.css";
 import "primereact/resources/primereact.css";
 import "primereact/resources/themes/fluent-light/theme.css";
-
+import { App as AntApp } from "antd";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+const queryClient = new QueryClient();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   // <React.StrictMode>
   <ConfigProvider
@@ -20,7 +23,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   >
     <StyleProvider hashPriority="high">
       <PrimeReactProvider>
-        <App />
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <App />
+            <ReactQueryDevtools initialIsOpen={false} />
+          </QueryClientProvider>
+        </AntApp>
       </PrimeReactProvider>
     </StyleProvider>
   </ConfigProvider>

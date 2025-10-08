@@ -24,6 +24,8 @@ const ListOfPatients = () => {
   const [filters] = useState({
     Name: { value: null, matchMode: FilterMatchMode.CONTAINS },
     PatientNo: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    MemberNo: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    Company: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
   const [Id, setId] = useState(0);
   const [showPatientProfile, setShowPatientProfile] = useState(false);
@@ -167,28 +169,11 @@ const ListOfPatients = () => {
               header="Action"
               body={(data: any) => actionBodyTemplate(data)}
             ></Column>
-            <Column
-              field="PatientNo"
-              header="Patient No."
-              filter
-              style={{ minWidth: "12rem" }}
-            ></Column>
-            <Column
-              field="Name"
-              header="Name"
-              style={{ minWidth: "12rem" }}
-              filter
-            ></Column>
-            <Column
-              field="DateOfBirthStr"
-              header="Date of birth"
-              style={{ minWidth: "12rem" }}
-            ></Column>
-            <Column
-              field="Address"
-              header="Address"
-              style={{ minWidth: "12rem" }}
-            ></Column>
+            <Column field="PatientNo" header="Patient No." filter></Column>
+            <Column field="MemberNo" header="Member No." filter></Column>
+            <Column field="Name" header="Name" filter></Column>
+            <Column field="DateOfBirthStr" header="Date of birth"></Column>
+            <Column field="Company" header="Company" filter></Column>
           </DataTable>
         )}
       </div>

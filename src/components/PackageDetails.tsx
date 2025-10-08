@@ -266,7 +266,7 @@ export default function PackageDetails({ Id2 }: { Id2: string }) {
               label="Price"
               rules={[{ required: true, message: "Price is required!" }]}
             >
-              <InputNumber min={1} style={{ width: "100%" }} precision={2} />
+              <InputNumber min={0} style={{ width: "100%" }} precision={2} />
             </Form.Item>
             <Form.Item
               name="Qty"

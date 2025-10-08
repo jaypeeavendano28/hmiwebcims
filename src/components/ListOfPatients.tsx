@@ -1,8 +1,8 @@
-import { Button, Divider, Form, Input, Modal, Space, Tooltip } from "antd";
+import { Button, Divider, Form, Modal, Space, Tooltip } from "antd";
 import { TPatientInformation } from "../types";
 import { FaUserCheck } from "react-icons/fa";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PostData, isNullOrUndefinedOrBlank } from "../helpers";
+import { PostData } from "../helpers";
 import Loading from "./loading";
 import { DataTable } from "primereact/datatable";
 import { FC, useState } from "react";
@@ -22,28 +22,30 @@ const ListOfPatients: FC<Props> = ({ handleSelect }) => {
   const [expandedRows, setExpandedRows] = useState(null);
   const [filters] = useState({
     Name: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    MemberNo: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    Company: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
   const listOfPatients = useQuery({
     queryKey: ["listOfPatients"],
     queryFn: async () => {
       const res = await PostData("GetRecords", {
-        sp: "udp_SearchPatients",
+        sp: "udp_GetPatients",
         parameters: {
-          Lastname: isNullOrUndefinedOrBlank(form.getFieldValue("Lastname"))
-            ? ""
-            : form.getFieldValue("Lastname"),
-          Firstname: isNullOrUndefinedOrBlank(form.getFieldValue("Firstname"))
-            ? ""
-            : form.getFieldValue("Firstname"),
-          Middlename: isNullOrUndefinedOrBlank(form.getFieldValue("Middlename"))
-            ? ""
-            : form.getFieldValue("Middlename"),
-          PatientNo: isNullOrUndefinedOrBlank(form.getFieldValue("PatientNo"))
-            ? ""
-            : form.getFieldValue("PatientNo"),
-          MemberNo: isNullOrUndefinedOrBlank(form.getFieldValue("MemberNo"))
-            ? ""
-            : form.getFieldValue("MemberNo"),
+          // Lastname: isNullOrUndefinedOrBlank(form.getFieldValue("Lastname"))
+          //   ? ""
+          //   : form.getFieldValue("Lastname"),
+          // Firstname: isNullOrUndefinedOrBlank(form.getFieldValue("Firstname"))
+          //   ? ""
+          //   : form.getFieldValue("Firstname"),
+          // Middlename: isNullOrUndefinedOrBlank(form.getFieldValue("Middlename"))
+          //   ? ""
+          //   : form.getFieldValue("Middlename"),
+          // PatientNo: isNullOrUndefinedOrBlank(form.getFieldValue("PatientNo"))
+          //   ? ""
+          //   : form.getFieldValue("PatientNo"),
+          // MemberNo: isNullOrUndefinedOrBlank(form.getFieldValue("MemberNo"))
+          //   ? ""
+          //   : form.getFieldValue("MemberNo"),
         },
       });
       if (res) {
@@ -113,7 +115,7 @@ const ListOfPatients: FC<Props> = ({ handleSelect }) => {
   return (
     <div className="cardBackGround">
       <Divider>List of Patients</Divider>
-      <Form
+      {/* <Form
         form={form}
         layout="vertical"
         onFinish={() =>
@@ -155,7 +157,16 @@ const ListOfPatients: FC<Props> = ({ handleSelect }) => {
             </div>
           </div>
         </div>
-      </Form>
+      </Form> */}
+      <Button
+        type="primary"
+        onClick={() => {
+          setId(0);
+          setShowPatientProfile(true);
+        }}
+      >
+        New
+      </Button>
       <div className="mt-2">
         {listOfPatients.isLoading ? (
           <Loading size={64} />
@@ -190,22 +201,9 @@ const ListOfPatients: FC<Props> = ({ handleSelect }) => {
               // filter
               style={{ minWidth: "12rem" }}
             ></Column>
-            <Column
-              field="Name"
-              header="Name"
-              style={{ minWidth: "12rem" }}
-              // filter
-            ></Column>
-            <Column
-              field="DateOfBirthStr"
-              header="Date of birth"
-              style={{ minWidth: "12rem" }}
-            ></Column>
-            <Column
-              field="Address"
-              header="Address"
-              style={{ minWidth: "12rem" }}
-            ></Column>
+            <Column field="MemberNo" header="Member No." filter></Column>
+            <Column field="Name" header="Name" filter></Column>
+            <Column field="Company" header="Company" filter></Column>
           </DataTable>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AutoComplete,
   Button,
@@ -7,15 +7,18 @@ import {
   Form,
   Input,
   Radio,
-  notification,
   Modal,
+  Select,
+  Popover,
+  App,
 } from "antd";
 import { FC, useEffect, useRef, useState } from "react";
-import { PostData } from "../helpers";
-import { TPatientInformation, TSettings } from "../types";
+import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
+import { THmoCompany, TPatientInformation, TSettings } from "../types";
 import useAppStore from "../store";
 import dayjs from "dayjs";
 import Webcam from "react-webcam";
+import { AxiosError } from "axios";
 type Props = {
   Id: number;
   handleCloseModal: (PatientNo: string) => void;
@@ -28,6 +31,8 @@ type Props = {
 const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
   // const [patientId, setPatientId] = useState(Id);
   // const [picture, setPicture] = useState<string | null>(null);
+  const q = useQueryClient();
+  const { notification } = App.useApp();
   const webcamRef = useRef<Webcam>(null);
   const [showWebCam, setShowWebCam] = useState(false);
   const store = useAppStore();
@@ -72,6 +77,21 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
     staleTime: 0,
   });
 
+  const company = useQuery({
+    queryKey: ["company"],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetCompany",
+        parameters: {},
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
   const handleSubmitForm = async (v: TPatientInformation) => {
     setIsSubmitting(true);
     const res = await PostData("SavePatientProfile", {
@@ -79,6 +99,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
       BranchCode: store.branchCode,
       DateOfBirth: dayjs(v.DateOfBirth).format("YYYY-MM-DD"),
       PatientId: sessionStorage.getItem("PatientId"),
+      Company: isNullOrUndefinedOrBlank(v.Company) ? 0 : v.Company,
     });
     if (res) {
       setIsSubmitting(false);
@@ -128,6 +149,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
           MemberNo: x.MemberNo,
           ContactNos: x.ContactNos,
           Occupation: x.Occupation,
+          Company: x.Company,
         });
       }
     } else {
@@ -197,6 +219,70 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
 
   //   handleUploadPatientPicture(imageSrc);
   // }, [webcamRef]);
+
+  const content = () => {
+    const [formCompany] = Form.useForm();
+    const handleSubmitForm = async () => {
+      try {
+        setIsSubmitting(true);
+        const res = await PostData("SaveHmoCompany", {
+          Name: formCompany.getFieldValue("Name"),
+          Type: "C",
+          Balance: 0,
+        });
+        if (res) {
+          if (res.status === 1) {
+            notification.success({
+              message: "Successfully saved!",
+              placement: "topRight",
+              duration: 3,
+            });
+            formCompany.resetFields();
+            q.invalidateQueries({ queryKey: ["company"] });
+            setIsSubmitting(false);
+          } else {
+            notification.error({
+              message: res.message,
+              placement: "topRight",
+              duration: 3,
+            });
+            setIsSubmitting(false);
+          }
+        }
+      } catch (error: AxiosError | any) {
+        notification.error({
+          message: error.response?.data,
+          placement: "topRight",
+          duration: 3,
+        });
+      }
+    };
+    return (
+      <div>
+        <Form
+          form={formCompany}
+          layout="vertical"
+          onFinish={() => handleSubmitForm()}
+        >
+          <Form.Item
+            name="Name"
+            label="Company Name"
+            rules={[
+              {
+                required: true,
+                message: "Company Name is required!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form>
+      </div>
+    );
+  };
   useEffect(() => {
     handleGetDetails();
   }, []);
@@ -289,6 +375,16 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
             <Form.Item name="ContactNos" label="Contact Nos.">
               <Input />
             </Form.Item>
+          </div>
+          <div>
+            {/* <Form.Item
+              name="Street"
+              label="Street"
+              className="col-span-2"
+              normalize={(v) => v.toUpperCase()}
+            >
+              <Input />
+            </Form.Item> */}
           </div>
           {/* <div className="grid md:grid-cols-4 gap-4">
             <Form.Item
@@ -384,34 +480,41 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
               </AutoComplete>
             </Form.Item>
           </div>
+
+          <div className="grid grid-cols-12 gap-4">
+            <Form.Item name="Company" label="Company" className="col-span-5">
+              <Select
+                showSearch
+                allowClear
+                filterOption={(input, option) =>
+                  (
+                    option!.children
+                      ?.toString()
+                      .toLocaleLowerCase() as unknown as string
+                  ).includes(input.toLocaleLowerCase())
+                }
+              >
+                {company.data &&
+                  company.data.map((d: THmoCompany) => (
+                    <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                      {d.Name}
+                    </Select.Option>
+                  ))}
+              </Select>
+            </Form.Item>
+            <div className="flex flex-col justify-center">
+              <Popover content={content} title="New Company" trigger="click">
+                <Button type="primary">New</Button>
+              </Popover>
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <Button type="primary" htmlType="submit" loading={isSubmitting}>
               Submit
             </Button>
           </div>
         </div>
-        {/* <div>
-            <Divider>Patient Picture</Divider>
-            <div className="grid place-items-center">
-              <Avatar
-                size={256}
-                // width={200}
-                // src="https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png"
-                src={picture as string}
-              />
-              <Space className="mt-2" direction="vertical">
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    setShowWebCam(true);
-                  }}
-                  disabled={patientId <= 0}
-                >
-                  Capture from Webcam
-                </Button>
-              </Space>
-            </div>
-          </div> */}
       </Form>
       <Modal
         open={showWebCam}

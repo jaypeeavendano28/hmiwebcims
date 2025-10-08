@@ -6,9 +6,11 @@ import {
   List,
   notification,
   Select,
+  Switch,
 } from "antd";
 import { FC, useEffect, useState } from "react";
 import {
+  TAppointments,
   TCharges,
   TDoctors,
   THmoCompany,
@@ -24,9 +26,15 @@ type Props = {
   Id: string;
   ChargeDetails: TCharges | undefined;
   Gender: string;
+  AppointmentDetails: TAppointments | undefined;
 };
 
-const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
+const AddCharge: FC<Props> = ({
+  Id,
+  ChargeDetails,
+  Gender,
+  AppointmentDetails,
+}) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [doctors, setDoctors] = useState<TDoctors[] | undefined>([]);
   const store = useAppStore();
@@ -77,6 +85,15 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
   };
 
   const handleGetItems = async () => {
+    let DepartmentId = "";
+    if (form.getFieldValue("ShowAllCharges") === false) {
+      if (AppointmentDetails?.AppointmentType === "DIA") {
+        DepartmentId = "1040";
+      } else if (AppointmentDetails?.AppointmentType === "AMB") {
+        DepartmentId = "1041";
+      }
+    }
+
     try {
       const res = await PostData("GetRecords", {
         sp: "udp_GetItemPrices2",
@@ -86,6 +103,7 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
             ? ""
             : form.getFieldValue("SearchStr"),
           Gender: Gender,
+          DepartmentId: DepartmentId,
         },
       });
       if (res) {
@@ -113,16 +131,16 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
       return;
     }
 
-    if (selectedItem && selectedItem!.NeedAPhysician === "Y") {
-      if (isNullOrUndefinedOrBlank(v.fk_Doctors_Id)) {
-        notification.error({
-          message: "Please select a doctor/physician!",
-          placement: "topRight",
-          duration: 3,
-        });
-        return;
-      }
-    }
+    // if (selectedItem && selectedItem!.NeedAPhysician === "Y") {
+    //   if (isNullOrUndefinedOrBlank(v.fk_Doctors_Id)) {
+    //     notification.error({
+    //       message: "Please select a doctor/physician!",
+    //       placement: "topRight",
+    //       duration: 3,
+    //     });
+    //     return;
+    //   }
+    // }
 
     v.HmoAmount = 0;
 
@@ -163,12 +181,15 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
       }
     }
   };
+  const onChange = () => {
+    handleGetItems();
+  };
   useEffect(() => {
     handleGetDoctors();
     handleGetItems();
     if (ChargeDetails !== undefined) {
       setSelectedItem(ChargeDetails);
-      console.log(ChargeDetails);
+
       form.setFieldsValue({
         Price: ChargeDetails.Price,
         PaymentType: ChargeDetails.PaymentType,
@@ -187,9 +208,27 @@ const AddCharge: FC<Props> = ({ Id, ChargeDetails, Gender }) => {
       >
         <div className="grid lg:grid-cols-2 gap-4">
           <div>
-            <Form.Item name="SearchStr" label="Item Description">
-              <Input onChange={handleGetItems} />
-            </Form.Item>
+            <div className="grid grid-cols-3 gap-4">
+              <Form.Item
+                name="SearchStr"
+                label="Item Description"
+                className="col-span-2"
+              >
+                <Input onChange={handleGetItems} />
+              </Form.Item>
+              <Form.Item
+                label="Show all charges?"
+                name="ShowAllCharges"
+                valuePropName="checked"
+              >
+                <Switch
+                  onChange={onChange}
+                  checkedChildren="Yes"
+                  unCheckedChildren="No"
+                  defaultChecked
+                />
+              </Form.Item>
+            </div>
 
             <List>
               <VirtualList

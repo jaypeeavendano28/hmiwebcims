@@ -102,7 +102,7 @@ export type TItems = {
   Description2?: string;
   ForGender?: string;
   Strength?: string;
-  ItemDescription?:string
+  ItemDescription?: string;
 };
 
 export type TDepartments = {
@@ -202,6 +202,7 @@ export type TPatientInformation = {
   MemberNo?: string;
   ContactNos?: string;
   Occupation?: string;
+  Company?: number;
 };
 
 export type TAppointments = {
@@ -209,7 +210,7 @@ export type TAppointments = {
   BranchCode?: string;
   AppointmentNo?: string;
   fk_PatientInformation_Id?: number;
-  fk_HmoCompany_Id?:number;
+  fk_HmoCompany_Id?: number;
   Date?: Date;
   DateStr?: string;
   CivilStatus?: string;
@@ -246,12 +247,12 @@ export type TAppointments = {
   Status?: string;
   ElapseTime?: number;
   Diagnosis?: string;
-  DiscountType?:string;
-  fk_DiscountTypes_Id?:number
-  LoaApprovedBy?:string
-  HmoCompanyName?:string
-  FinalizedBy?:string
-  FinalizedDate?:Date
+  DiscountType?: string;
+  fk_DiscountTypes_Id?: number;
+  LoaApprovedBy?: string;
+  HmoCompanyName?: string;
+  FinalizedBy?: string;
+  FinalizedDate?: Date;
 };
 
 export type TAppointmentType = {
@@ -278,6 +279,7 @@ export type THmoCompany = {
   DeletedBy?: string;
   DateDeleted?: Date;
   Type?: string;
+  Deleted?: boolean;
 };
 
 export type TPrice = {
@@ -300,7 +302,7 @@ export type TPrice = {
   ItemId?: number;
   PriceCategory2?: string;
   Department?: string;
-  PriceCategoryCode?:string
+  PriceCategoryCode?: string;
 };
 
 export type TDoctors = {
@@ -369,9 +371,9 @@ export type TCharges = {
   StatusDate?: string;
   StatusSetBy?: string;
   StatusRemarks?: string;
-  Diagnosis?:string
-  Vat?:number
-  PhicAmount?:number
+  Diagnosis?: string;
+  Vat?: number;
+  PhicAmount?: number;
 };
 
 export type TQCounters = {
@@ -402,6 +404,7 @@ export type TPriceCategory = {
   DateUpdated?: string;
   DeletedBy?: string;
   DateDeleted?: string;
+  Deleted?: string;
 };
 
 export type TPaymentType = {
@@ -471,9 +474,9 @@ export type TPaymentsMain = {
   DeletedBy?: string;
   DateDeleted?: string;
   DeleteReason?: string;
-  UpdatedBy?:string;
-  DateUpdated?:string;
-  Amount2?:number;
+  UpdatedBy?: string;
+  DateUpdated?: string;
+  Amount2?: number;
 };
 
 export type TPaymentsDetail = {
@@ -562,9 +565,9 @@ export type TMer = {
   ClassC2Label?: string;
   ClassDLabel?: string;
   ClassOLabel?: string;
-  Appointment?:string;
-  AppointmentRemarks?:string;
-  DisplaySignatureIfAny?:string;
+  Appointment?: string;
+  AppointmentRemarks?: string;
+  DisplaySignatureIfAny?: string;
 };
 
 export type TMerOthers = {
@@ -744,8 +747,8 @@ export type TPackageDetails = {
   DateAdded?: string;
   DeletedBy?: string;
   DateDeleted?: string;
-  UpdatedBy?:string;
-  DateUpdated?:string;
+  UpdatedBy?: string;
+  DateUpdated?: string;
 };
 
 export type TMedtechs = {
@@ -810,180 +813,213 @@ export type TFinalizeSettings = {
   table: string;
 };
 
-export type TAccountsReceivable = { 
-Id:number
-fk_Appointments_Id?:number
-fk_HmoCompany_Id?:number
-Amount?:number
-DatePaid?:Date
-DatePaidStr?:string
-Payment?:number
-DatePaid2?:Date
-DatePaid2Str?:string
-Payment2?:number
-Balance?:number
-AddedBy?:string
-DateAdded?:Date
-DateAddedStr?:string
-DeletedBy?:string
-DateDeleted?:Date
-DateDeletedStr?:string
-PaymentEncodedBy?:string
-PaymentDateEncoded?:Date
-PaymentDateEncodedStr?:string
-Name?:string
-PatientName?:string
-AppointmentId?:number
-}
+export type TAccountsReceivable = {
+  Id: number;
+  fk_Appointments_Id?: number;
+  fk_HmoCompany_Id?: number;
+  Amount?: number;
+  DatePaid?: Date;
+  DatePaidStr?: string;
+  Payment?: number;
+  DatePaid2?: Date;
+  DatePaid2Str?: string;
+  Payment2?: number;
+  Balance?: number;
+  AddedBy?: string;
+  DateAdded?: Date;
+  DateAddedStr?: string;
+  DeletedBy?: string;
+  DateDeleted?: Date;
+  DateDeletedStr?: string;
+  PaymentEncodedBy?: string;
+  PaymentDateEncoded?: Date;
+  PaymentDateEncodedStr?: string;
+  Name?: string;
+  PatientName?: string;
+  AppointmentId?: number;
+};
 
 export type TArPayments = {
-  Id:number
-fk_AccountsReceivable_Id?:number
-Date?:Date
-DateStr?:string
-Amount?:number
-AddedBy?:string
-DateAdded?:string
-UpdatedBy?:string
-DateUpdated?:string
-DeletedBy?:string
-DateDeleted?:string
-Reference?:string
-Ewt?:number
-}
+  Id: number;
+  fk_AccountsReceivable_Id?: number;
+  Date?: Date;
+  DateStr?: string;
+  Amount?: number;
+  AddedBy?: string;
+  DateAdded?: string;
+  UpdatedBy?: string;
+  DateUpdated?: string;
+  DeletedBy?: string;
+  DateDeleted?: string;
+  Reference?: string;
+  Ewt?: number;
+};
 
-export type TChart =  {
-Id:number
-fk_Appointments_Id?:number
-Specialist?:number
-Started?:Date
-Ended?:Date
-RequestingPhysician?:number
-AssessmentDiagnosis?:string
-Icd10?:string
-Ruv?:string
-Planx?:string
-AddedBy?:string
-DateAdded?:Date
-UpdatedBy?:string
-DateUpdated?:Date
-}
+export type TChart = {
+  Id: number;
+  fk_Appointments_Id?: number;
+  Specialist?: number;
+  Started?: Date;
+  Ended?: Date;
+  RequestingPhysician?: number;
+  AssessmentDiagnosis?: string;
+  Icd10?: string;
+  Ruv?: string;
+  Planx?: string;
+  AddedBy?: string;
+  DateAdded?: Date;
+  UpdatedBy?: string;
+  DateUpdated?: Date;
+};
 
 export type TICd10 = {
-  Id:number
-ACR_GROUPID:string
-CODE_TYPE:string
-ITEM_CODE:string
-ITEM_DESC:string
-LEVE1HOSP_CR1_AMT:number
-LEVE1HOSP_CR2_AMT:number
-LEVE2HOSP_CR1_AMT:number
-LEVE2HOSP_CR2_AMT:number
-LEVE3HOSP_CR1_AMT:number
-LEVE3HOSP_CR2_AMT:number
-ASC_CR1_AMT:number
-ASC_CR2_AMT:number
-PCF_CR1_AMT:number
-PCF_CR2_AMT:number
-MATCLINIC_CR1_AMT:number
-MATCLINIC_CR2_AMT:number
-FSDC_CR1_AMT:number
-FSDC_CR2_AMT:number
-TSEKAP_CR1_AMT:number
-TSEKAP_CR2_AMT:number
-PCB_CR1_AMT:number
-PCB_CR2_AMT:number
-RHU_CR1_AMT:number
-RHU_CR2_AMT:number
-OPMC_CR1_AMT:number
-OPMC_CR2_AMT:number
-TBDOTSC_CR1_AMT:number
-TBDOTSC_CR2_AMT:number
-ABTC_CR1_AMT:number
-ABTC_CR2_AMT:number
-}
+  Id: number;
+  ACR_GROUPID: string;
+  CODE_TYPE: string;
+  ITEM_CODE: string;
+  ITEM_DESC: string;
+  LEVE1HOSP_CR1_AMT: number;
+  LEVE1HOSP_CR2_AMT: number;
+  LEVE2HOSP_CR1_AMT: number;
+  LEVE2HOSP_CR2_AMT: number;
+  LEVE3HOSP_CR1_AMT: number;
+  LEVE3HOSP_CR2_AMT: number;
+  ASC_CR1_AMT: number;
+  ASC_CR2_AMT: number;
+  PCF_CR1_AMT: number;
+  PCF_CR2_AMT: number;
+  MATCLINIC_CR1_AMT: number;
+  MATCLINIC_CR2_AMT: number;
+  FSDC_CR1_AMT: number;
+  FSDC_CR2_AMT: number;
+  TSEKAP_CR1_AMT: number;
+  TSEKAP_CR2_AMT: number;
+  PCB_CR1_AMT: number;
+  PCB_CR2_AMT: number;
+  RHU_CR1_AMT: number;
+  RHU_CR2_AMT: number;
+  OPMC_CR1_AMT: number;
+  OPMC_CR2_AMT: number;
+  TBDOTSC_CR1_AMT: number;
+  TBDOTSC_CR2_AMT: number;
+  ABTC_CR1_AMT: number;
+  ABTC_CR2_AMT: number;
+};
 
 export type TPhicDeductions = {
-  Id:number
-fk_Appointments_Id?:number
-CaseRate1?:string
-CaseRate1Desc?:string
-CaseRate1Amount?:number
-CaseRate2?:string
-CaseRate2Desc?:string
-CaseRate2Amount?:string
-AddedBy?:string
-DateAdded?:Date
-UpdatedBy?:string
-DateUpdated?:Date
-}
+  Id: number;
+  fk_Appointments_Id?: number;
+  CaseRate1?: string;
+  CaseRate1Desc?: string;
+  CaseRate1Amount?: number;
+  CaseRate2?: string;
+  CaseRate2Desc?: string;
+  CaseRate2Amount?: string;
+  AddedBy?: string;
+  DateAdded?: Date;
+  UpdatedBy?: string;
+  DateUpdated?: Date;
+};
 
 export type TDiscounts = {
-  Id:number
-fk_Appointments_Id?:number
-fk_DiscountTypes_Id?:number
-Gross?:number
-Rate?:number
-Amount?:number
-AddedBy?:string
-DateAdded?:Date
-UpdatedBy?:string
-DateUpdated?:Date
-DeletedBy?:string
-DateDeleted?:Date
-}
-export type TDiscountTypes = { 
-  Id:number
-Description?:string
-fk_ChartOfAccounts_AccountId?:number
-AddedBy?:string
-DateAdded?:Date
-UpdatedBy?:string
-DateUpdated?:Date
-DeletedBy?:string
-DateDeleted?:Date
-PharmacyDiscount?:number
-PhicDiscount?:number
-LessVat:string
-fk_DiscountTypes_Id?:number
-}
+  Id: number;
+  fk_Appointments_Id?: number;
+  fk_DiscountTypes_Id?: number;
+  Gross?: number;
+  Rate?: number;
+  Amount?: number;
+  AddedBy?: string;
+  DateAdded?: Date;
+  UpdatedBy?: string;
+  DateUpdated?: Date;
+  DeletedBy?: string;
+  DateDeleted?: Date;
+};
+export type TDiscountTypes = {
+  Id: number;
+  Description?: string;
+  fk_ChartOfAccounts_AccountId?: number;
+  AddedBy?: string;
+  DateAdded?: Date;
+  UpdatedBy?: string;
+  DateUpdated?: Date;
+  DeletedBy?: string;
+  DateDeleted?: Date;
+  PharmacyDiscount?: number;
+  PhicDiscount?: number;
+  LessVat: string;
+  fk_DiscountTypes_Id?: number;
+};
 
-export type THmoDeduction={
-  Id:number
-fk_Appointments_Id?:number
-fk_HmoCompany_Id?:number
-Amount?:number
-AddedBy?:string
-DateAdded?:Date
-UpdatedBy?:string
-DateUpdated?:Date
-DeletedBy?:string
-DateDeleted?:Date
-}
+export type THmoDeduction = {
+  Id: number;
+  fk_Appointments_Id?: number;
+  fk_HmoCompany_Id?: number;
+  Amount?: number;
+  AddedBy?: string;
+  DateAdded?: Date;
+  UpdatedBy?: string;
+  DateUpdated?: Date;
+  DeletedBy?: string;
+  DateDeleted?: Date;
+  IsReset?: boolean;
+};
 export type TProfessionalFee = {
-  Id:number
-  fk_Appointments_Id?:number
-  fk_Doctors_Id?:number
-  fk_Discounttypes_Id?:number
-  fk_HmoCompany_Id?:number
-  Amount?:number
-  Vat?:number
-  Discount?:number
-  Phic?:number
-  Hmo?:number
-  Net?:number
-  AddedBy?:string
-  DateAdded?:Date
-  UpdatedBy?:string
-  DateUpdated?:Date
-  DeletedBy?:string
-  DateDeleted?:Date
-  Doctor?:string
-}
+  Id: number;
+  fk_Appointments_Id?: number;
+  fk_Doctors_Id?: number;
+  fk_Discounttypes_Id?: number;
+  fk_HmoCompany_Id?: number;
+  Amount?: number;
+  Vat?: number;
+  Discount?: number;
+  Phic?: number;
+  Hmo?: number;
+  Net?: number;
+  AddedBy?: string;
+  DateAdded?: Date;
+  UpdatedBy?: string;
+  DateUpdated?: Date;
+  DeletedBy?: string;
+  DateDeleted?: Date;
+  Doctor?: string;
+};
 
 export type TSearchIcd = {
-  Description?:string;
-  Icd10?:string;
-  Rvs?:string;
-}
+  Description?: string;
+  Icd10?: string;
+  Rvs?: string;
+};
 
+export type Tamount = {
+  pitemCode?: string;
+  pcaseRateCode?: string;
+  pcaseRateDescription?: string;
+  peffectivityDate?: string;
+  peffectivityEndDate?: string;
+  pitemDescription?: string;
+  pcheckFacilityABTC?: string;
+  pcheckFacilityASC?: string;
+  pcheckFacilityCIU?: string;
+  pcheckFacilityDATRC?: string;
+  pcheckFacilityDSP?: string;
+  pcheckFacilityFPC?: string;
+  pcheckFacilityFSDC?: string;
+  pcheckFacilityH1?: string;
+  pcheckFacilityH2?: string;
+  pcheckFacilityH3?: string;
+  pcheckFacilityHIVTH?: string;
+  pcheckFacilityMAT?: string;
+  pcheckFacilityOPMC?: string;
+  pcheckFacilityPCB?: string;
+  pcheckFacilityPCF?: string;
+  pcheckFacilityRHU?: string;
+  pcheckFacilityTBDOTSC?: string;
+  pcheckFacilityTSEKAP?: string;
+  pprimaryCaseRate?: string;
+  pprimaryHCIFee?: string;
+  pprimaryProfFee?: string;
+  psecondaryCaseRate?: string;
+  psecondaryHCIFee?: string;
+  psecondaryProfFee?: string;
+};

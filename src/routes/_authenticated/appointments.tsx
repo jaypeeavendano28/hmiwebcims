@@ -28,6 +28,7 @@ import RequestForMedicines from "../../components/RequestForMedicines";
 import { FaFileWaveform } from "react-icons/fa6";
 import Cookies from "js-cookie";
 import { TbCurrencyPeso } from "react-icons/tb";
+import ResultStatus from "../../components/ResultStatus";
 export const Route = createFileRoute("/_authenticated/appointments")({
   component: () => <Appointments />,
 });
@@ -168,19 +169,31 @@ const Appointments = () => {
 
   const rowExpansionTemplate = (data: TAppointments) => {
     return (
-      <div className="p-3">
-        <div>Appointment Id</div>
+      <div className="grid grid-cols-3 gap-4">
         <div>
-          <strong>{data.Id}</strong>
-        </div>
+          <div className="p-3">
+            <div>Appointment No.</div>
+            <div>
+              <strong>{data.AppointmentNo}</strong>
+            </div>
+            <div>Appointment Id</div>
+            <div>
+              <strong>{data.Id}</strong>
+            </div>
 
-        <div>Updated By</div>
-        <div>
-          <strong>{data.UpdatedBy}</strong>
+            <div>Updated By</div>
+            <div>
+              <strong>{data.UpdatedBy}</strong>
+            </div>
+            <div>Date Updated</div>
+            <div>
+              <strong>{data.DateUpdated}</strong>
+            </div>
+          </div>
         </div>
-        <div>Date Updated</div>
-        <div>
-          <strong>{data.DateUpdated}</strong>
+        <div className="col-span-2">
+          <Divider>Result Status</Divider>
+          <ResultStatus AppointmentId={data.Id!} />
         </div>
       </div>
     );

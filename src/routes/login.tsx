@@ -10,7 +10,6 @@ import { TBranches } from "../types";
 export const Route = createFileRoute("/login")({
   component: () => <LogIn />,
 });
-
 const LogIn = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const store = useAppStore();

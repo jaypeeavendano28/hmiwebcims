@@ -8,12 +8,14 @@ type DiscountProps = {
   Balance: number;
   handleSaveHmoDeduction: (data: THmoDeduction) => void;
   HmoCompany: number;
+  HmoAmount: number;
 };
 
 export default function HmoDeduction({
   Balance,
   handleSaveHmoDeduction,
   HmoCompany,
+  HmoAmount,
 }: DiscountProps) {
   const [form] = Form.useForm();
   const hmos = useQuery<THmoCompany[]>({
@@ -32,13 +34,7 @@ export default function HmoDeduction({
   });
 
   useEffect(() => {
-    form.setFieldValue(
-      "Amount",
-      Balance.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
-    );
+    form.setFieldValue("Amount", Number(Balance));
     if (!isNullOrUndefinedOrBlank(HmoCompany) && HmoCompany !== 0) {
       form.setFieldValue("fk_HmoCompany_Id", HmoCompany);
     }
@@ -57,8 +53,9 @@ export default function HmoDeduction({
           ]}
         >
           <Select
+            disabled
             allowClear
-            placeholder="Select a person"
+            placeholder="Select an HMO!"
             showSearch
             filterOption={(input, option) =>
               (
@@ -81,7 +78,11 @@ export default function HmoDeduction({
 
         <div className="flex justify-end">
           <Space>
-            <Button type="primary" htmlType="submit" disabled={Balance <= 0}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              disabled={Balance <= 0 || HmoAmount > 0}
+            >
               Submit
             </Button>
             <Popconfirm
@@ -89,11 +90,11 @@ export default function HmoDeduction({
               okText="Yes"
               cancelText="No"
               onConfirm={() => {
-                const x: THmoDeduction = { Id: 0, fk_HmoCompany_Id: 0 };
+                const x: THmoDeduction = { Id: 0, IsReset: true };
                 handleSaveHmoDeduction(x);
               }}
             >
-              <Button type="primary" danger>
+              <Button type="primary" danger disabled={HmoAmount <= 0}>
                 Reset HMO/Company Deductions
               </Button>
             </Popconfirm>

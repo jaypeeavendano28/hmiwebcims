@@ -46,11 +46,10 @@ const UserAccess = () => {
   const filterOption = (inputValue: any, option: any) =>
     option.ModuleName.toLowerCase().indexOf(inputValue.toLowerCase()) > -1;
   const onChange = async (
-    targetKeys: string[],
+    _: string[],
     direction: TransferDirection,
     moveKeys: string[]
   ) => {
-    console.log(targetKeys);
     const res = await PostData("SaveUserAccess", {
       lst: moveKeys,
       Direction: direction,
