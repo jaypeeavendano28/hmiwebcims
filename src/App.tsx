@@ -17,7 +17,7 @@ declare module "@tanstack/react-router" {
 const App = () => {
   const authentication = useAuth();
   const store = useAppStore();
-    const handleWithAccess = async (ModuleId: number, Description: string) => {
+    const handleWithAccess = async (ModuleId: number) => {
       const res = await WithAccess({
         sp: "udp_WithAccess",
         parameters: {
@@ -34,29 +34,29 @@ const App = () => {
       }
     };
     const handleCheckAccess = async () => {
-      let x = await handleWithAccess(38, ""); ///Reception (Diagnosistics)
+      let x = await handleWithAccess(38); ///Reception (Diagnosistics)
       store.setWithReceptionDiagnostics(x!);
-      x = await handleWithAccess(39, ""); ///Reception (Hemodialysis/Ambulatory)
+      x = await handleWithAccess(39); ///Reception (Hemodialysis/Ambulatory)
       store.setWithReceptionHemo(x!);
-      x = await handleWithAccess(40, ""); ///Cashier
+      x = await handleWithAccess(40); ///Cashier
       store.setWithCashier(x!);
-      x = await handleWithAccess(41, ""); ///Apppointments
+      x = await handleWithAccess(41); ///Apppointments
       store.setWithApppointments(x!);
-      x = await handleWithAccess(42, ""); ///Registered Patients
+      x = await handleWithAccess(42); ///Registered Patients
       store.setWithRegisteredPatients(x!);
-      x = await handleWithAccess(43, ""); ///Hemodialysis/Ambulatory
+      x = await handleWithAccess(43); ///Hemodialysis/Ambulatory
       store.setWithHemoAmb(x!);
-      x = await handleWithAccess(44, ""); ///Consultations
+      x = await handleWithAccess(44); ///Consultations
       store.setWithConsultations(x!);
-      x = await handleWithAccess(45, ""); ///Patient Master List
+      x = await handleWithAccess(45); ///Patient Master List
       store.setWithPatientMasterList(x!);
-      x = await handleWithAccess(46, ""); ///Pharmacy
+      x = await handleWithAccess(46); ///Pharmacy
       store.setWithPharmacy(x!);
-      x = await handleWithAccess(47, ""); ///Accounts Receivable
+      x = await handleWithAccess(47); ///Accounts Receivable
       store.setWithAR(x!);
-      x = await handleWithAccess(48, ""); ///Queuing
+      x = await handleWithAccess(48); ///Queuing
       store.setWithQueuing(x!);
-      x = await handleWithAccess(49, ""); ///Utilities
+      x = await handleWithAccess(49); ///Utilities
       store.setWithUtilities(x!);
     }
     
