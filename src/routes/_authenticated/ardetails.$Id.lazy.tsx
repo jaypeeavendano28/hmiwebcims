@@ -1,11 +1,11 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { isNullOrUndefinedOrBlank, PostData } from "../../helpers";
-import { TAccountsReceivable, TArPayments } from "../../types";
-import { DataTable } from "primereact/datatable";
-import { useState } from "react";
-import { FilterMatchMode } from "primereact/api";
-import { Column } from "primereact/column";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createLazyFileRoute } from '@tanstack/react-router';
+import { isNullOrUndefinedOrBlank, PostData } from '../../helpers';
+import { TAccountsReceivable, TArPayments } from '../../types';
+import { DataTable } from 'primereact/datatable';
+import { useState } from 'react';
+import { FilterMatchMode } from 'primereact/api';
+import { Column } from 'primereact/column';
 import {
   Button,
   DatePicker,
@@ -18,16 +18,23 @@ import {
   Space,
   Switch,
   Tooltip,
-} from "antd";
-import { ColumnGroup } from "primereact/columngroup";
-import { Row } from "primereact/row";
-import { FaPesoSign } from "react-icons/fa6";
-import dayjs from "dayjs";
-import ChargesPerAppointment from "../../components/ChargesPerAppointment";
-import { FaRegEdit } from "react-icons/fa";
-import { MdDeleteOutline } from "react-icons/md";
+} from 'antd';
+import { ColumnGroup } from 'primereact/columngroup';
+import { Row } from 'primereact/row';
+import { FaPesoSign } from 'react-icons/fa6';
+import dayjs from 'dayjs';
+import ChargesPerAppointment from '../../components/ChargesPerAppointment';
+import { FaRegEdit } from 'react-icons/fa';
+import { MdDeleteOutline } from 'react-icons/md';
+import useAppStore from '../../store';
+import axios from 'axios';
 
-export const Route = createLazyFileRoute("/_authenticated/ardetails/$Id")({
+const isDev = import.meta.env.DEV;
+const prodApi = import.meta.env.VITE_PROD_API;
+const devApi = import.meta.env.VITE_DEV_API;
+const apiUrl = isDev ? devApi : prodApi;
+
+export const Route = createLazyFileRoute('/_authenticated/ardetails/$Id')({
   component: () => <ArDetails />,
 });
 
@@ -49,16 +56,20 @@ const ArDetails = () => {
   const [selected, setSelected] = useState<TAccountsReceivable | null>(null);
   const [isDelete, setIsDeleted] = useState<boolean>(false);
   const [showModal, setShowModal] = useState(false);
+
+  const [isProcessing, setIsProccessing] = useState(false);
+  const store = useAppStore();
+
   const [filters] = useState({
     PatientName: { value: null, matchMode: FilterMatchMode.CONTAINS },
     AppointmentType: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
   const { Id } = Route.useParams();
   const details = useQuery({
-    queryKey: ["details"],
+    queryKey: ['details'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetHmoCompanyDetails",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetHmoCompanyDetails',
         parameters: { Id },
       });
       if (res) {
@@ -69,21 +80,20 @@ const ArDetails = () => {
     staleTime: 0,
   });
 
+  const withBalanceOnly = isNullOrUndefinedOrBlank(
+    formSearch.getFieldValue('WithBalanceOnly'),
+  )
+    ? 'Y'
+    : formSearch.getFieldValue('WithBalanceOnly');
   const handleGetList = async () => {
     try {
-      const withBalanceOnly = isNullOrUndefinedOrBlank(
-        formSearch.getFieldValue("WithBalanceOnly")
-      )
-        ? "Y"
-        : formSearch.getFieldValue("WithBalanceOnly");
-
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetArDetails",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetArDetails',
         parameters: {
           Id,
-          WithBalanceOnly: withBalanceOnly === true ? "Y" : "N",
-          DateFrom: formSearch.getFieldValue("DateFrom").format("YYYY-MM-DD"),
-          DateTo: formSearch.getFieldValue("DateTo").format("YYYY-MM-DD"),
+          WithBalanceOnly: withBalanceOnly === true ? 'Y' : 'N',
+          DateFrom: formSearch.getFieldValue('DateFrom').format('YYYY-MM-DD'),
+          DateTo: formSearch.getFieldValue('DateTo').format('YYYY-MM-DD'),
         },
       });
       if (res) {
@@ -194,8 +204,8 @@ const ArDetails = () => {
           footer="Totals:"
           colSpan={5}
           footerStyle={{
-            textAlign: "right",
-            fontWeight: "bold",
+            textAlign: 'right',
+            fontWeight: 'bold',
           }}
         />
         <Column className="text-lg text-right" footer={totalAmount} />
@@ -208,16 +218,16 @@ const ArDetails = () => {
     if (!isDelete) {
       if (values.Amount > selected!.Balance!) {
         notification.error({
-          message: "Amount must not be greater than balance!",
-          placement: "topRight",
+          message: 'Amount must not be greater than balance!',
+          placement: 'topRight',
           duration: 3,
         });
       }
     }
 
-    const res = await PostData("SaveArPayment", {
+    const res = await PostData('SaveArPayment', {
       fk_AccountsReceivable_Id: selected?.Id,
-      Date: values.Date.format("YYYY-MM-DD"),
+      Date: values.Date.format('YYYY-MM-DD'),
       Amount: values.Amount,
       Id: rowId,
       HmoCompany: details.data?.Id,
@@ -235,7 +245,7 @@ const ArDetails = () => {
   };
 
   const handleDeletePayment = async (Id: number) => {
-    const res = await PostData("SaveArPayment", {
+    const res = await PostData('SaveArPayment', {
       Id,
       IsDelete: true,
     });
@@ -243,7 +253,7 @@ const ArDetails = () => {
       form.resetFields();
       setShowModal(false);
       await q.refetchQueries({
-        queryKey: ["lstArDetails"],
+        queryKey: ['lstArDetails'],
       });
       setRowId(0);
       setIsDeleted(false);
@@ -287,38 +297,38 @@ const ArDetails = () => {
   };
 
   const saveAsExcelFile = (buffer: any, fileName: any) => {
-    import("file-saver").then((module) => {
+    import('file-saver').then((module) => {
       if (module && module.default) {
         let EXCEL_TYPE =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8";
-        let EXCEL_EXTENSION = ".xlsx";
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
+        let EXCEL_EXTENSION = '.xlsx';
         const data = new Blob([buffer], {
           type: EXCEL_TYPE,
         });
 
         module.default.saveAs(
           data,
-          fileName + "_export_" + new Date().getTime() + EXCEL_EXTENSION
+          fileName + '_export_' + new Date().getTime() + EXCEL_EXTENSION,
         );
       }
     });
   };
   const exportExcel = () => {
-    import("xlsx").then((xlsx) => {
+    import('xlsx').then((xlsx) => {
       const worksheet = xlsx.utils.json_to_sheet(lstArDetails!);
-      const workbook = { Sheets: { data: worksheet }, SheetNames: ["data"] };
+      const workbook = { Sheets: { data: worksheet }, SheetNames: ['data'] };
       const excelBuffer = xlsx.write(workbook, {
-        bookType: "xlsx",
-        type: "array",
+        bookType: 'xlsx',
+        type: 'array',
       });
 
-      saveAsExcelFile(excelBuffer, "ARDetails");
+      saveAsExcelFile(excelBuffer, 'ARDetails');
     });
   };
 
   const handleGetArPayments = async (rowId: number) => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetArPayments",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetArPayments',
       parameters: {
         Id: rowId,
       },
@@ -327,6 +337,52 @@ const ArDetails = () => {
       setArPayments(res.parameters.lst);
     }
   };
+
+  const handlePrint = async () => {
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
+
+    const url = apiUrl + '/api/GenerateReport';
+    try {
+      setIsProccessing(true);
+      await axios({
+        url: url,
+        method: 'GET',
+        responseType: 'blob',
+        params: {
+          ReportName: 'ARDetails.rdl',
+          AppointmentId: Id,
+          Type: withBalanceOnly === true ? 'Y' : 'N',
+          DateFrom: formSearch.getFieldValue('DateFrom').format('YYYY-MM-DD'),
+          DateTo: formSearch.getFieldValue('DateTo').format('YYYY-MM-DD'),
+          BranchCode: store.branchCode,
+        },
+      }).then((response) => {
+        let newBlob;
+        newBlob = new Blob([response.data], {
+          type: 'application/pdf',
+        });
+
+        const data = window.URL.createObjectURL(newBlob);
+
+        const a = document.createElement('a');
+
+        a.setAttribute('href', data);
+        a.setAttribute('target', '_blank');
+
+        a.click();
+        // setIsSubmitting(false);
+      });
+    } catch (error: any) {
+      // setIsSubmitting(false);
+      let errorString = error.response.data;
+      errorString = JSON.parse(await error.response.data.text());
+      return { Status: 0, Message: errorString.Message };
+    } finally {
+      setIsProccessing(false);
+    }
+  };
+
   return (
     <>
       <div className="text-center text-xl">Accounts Receivable Details</div>
@@ -355,7 +411,7 @@ const ArDetails = () => {
         onFinish={handleSearch}
         initialValues={{
           WithBalanceOnly: true,
-          DateFrom: dayjs().startOf("M"),
+          DateFrom: dayjs().startOf('M'),
           DateTo: dayjs(),
         }}
       >
@@ -378,13 +434,18 @@ const ArDetails = () => {
       </Form>
 
       <div className="mt-2">
-        <Button type="primary" onClick={exportExcel}>
-          Export to excel
-        </Button>
+        <div className="flex gap-x-2">
+          <Button type="primary" onClick={exportExcel}>
+            Export to excel
+          </Button>
+          <Button type="primary" loading={isProcessing} onClick={handlePrint}>
+            Generate Report
+          </Button>
+        </div>
 
         <DataTable
           value={lstArDetails!}
-          tableStyle={{ minWidth: "50rem" }}
+          tableStyle={{ minWidth: '50rem' }}
           paginator
           rows={25}
           rowsPerPageOptions={[10, 25, 50]}
@@ -400,29 +461,29 @@ const ArDetails = () => {
         >
           <Column
             expander={lstArDetails && lstArDetails.length > 0}
-            style={{ width: "5rem" }}
+            style={{ width: '5rem' }}
           />
           <Column
             field="AppointmentId"
             header="Appointment Id"
-            style={{ width: "100px" }}
+            style={{ width: '100px' }}
           ></Column>
           <Column
             field="AppointmentType"
             header="Appointment Type"
             filter
-            style={{ width: "200px" }}
+            style={{ width: '200px' }}
           ></Column>
           <Column
             field="Date"
             header="Date"
-            body={(data: any) => dayjs(data.Date).format("MM/DD/YYYY")}
+            body={(data: any) => dayjs(data.Date).format('MM/DD/YYYY')}
           ></Column>
           <Column field="PatientName" header="Patient Name" filter></Column>
           <Column
             field="Amount"
             header="Amount"
-            alignHeader={"right"}
+            alignHeader={'right'}
             className="text-right"
             body={(data: TAccountsReceivable) =>
               data.Amount?.toLocaleString(undefined, {
@@ -434,7 +495,7 @@ const ArDetails = () => {
           <Column
             field="Payment"
             header="Payments"
-            alignHeader={"right"}
+            alignHeader={'right'}
             className="text-right"
             body={(data: TAccountsReceivable) =>
               data.Payment?.toLocaleString(undefined, {
@@ -446,7 +507,7 @@ const ArDetails = () => {
           <Column
             field="Balance"
             header="Balance"
-            alignHeader={"right"}
+            alignHeader={'right'}
             className="text-right"
             body={bodyBalance}
           ></Column>
@@ -486,14 +547,14 @@ const ArDetails = () => {
           <Form.Item
             label="Date"
             name="Date"
-            rules={[{ required: true, message: "Date is required!" }]}
+            rules={[{ required: true, message: 'Date is required!' }]}
           >
             <DatePicker format="MM/DD/YYYY" />
           </Form.Item>
           <Form.Item
             label="Amount Paid"
             name="Amount"
-            rules={[{ required: true, message: "Amount is required!" }]}
+            rules={[{ required: true, message: 'Amount is required!' }]}
           >
             <InputNumber precision={2} />
           </Form.Item>
@@ -524,7 +585,7 @@ const ArDetails = () => {
 
           <DataTable
             value={ArPayments}
-            tableStyle={{ minWidth: "50rem" }}
+            tableStyle={{ minWidth: '50rem' }}
             emptyMessage="No Records!"
             stripedRows
             size="small"
@@ -536,27 +597,27 @@ const ArDetails = () => {
           >
             <Column
               expander={ArPayments && ArPayments.length > 0}
-              style={{ width: "5rem" }}
+              style={{ width: '5rem' }}
             />
             <Column
               field="DateStr"
               header="Date"
-              style={{ width: "100px" }}
+              style={{ width: '100px' }}
             ></Column>
             <Column
               field="Reference"
               header="Reference"
-              style={{ width: "200px" }}
+              style={{ width: '200px' }}
             ></Column>
             <Column
               field="Amount"
               header="Amount"
-              style={{ width: "200px" }}
+              style={{ width: '200px' }}
             ></Column>
             <Column
               field="Ewt"
               header="EWT"
-              style={{ width: "200px" }}
+              style={{ width: '200px' }}
             ></Column>
             <Column
               field="action"

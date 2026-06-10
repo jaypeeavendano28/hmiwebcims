@@ -1,16 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { PostData, WithAccess } from "../../helpers";
-import { DataTable } from "primereact/datatable";
-import Loading from "../../components/loading";
-import { Column } from "primereact/column";
-import { useEffect, useState } from "react";
-import { FilterMatchMode } from "primereact/api";
-import { TBranches } from "../../types";
-import { Divider, notification } from "antd";
-import useAppStore from "../../store";
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router';
+import { PostData, WithAccess } from '../../helpers';
+import { DataTable } from 'primereact/datatable';
+import Loading from '../../components/loading';
+import { Column } from 'primereact/column';
+import { useEffect, useState } from 'react';
+import { FilterMatchMode } from 'primereact/api';
+import { TBranches } from '../../types';
+import { Button, Divider, notification, Space, Tooltip } from 'antd';
+import useAppStore from '../../store';
+import { BiEdit } from 'react-icons/bi';
 
-export const Route = createFileRoute("/_authenticated/branches")({
+export const Route = createFileRoute('/_authenticated/branches')({
   component: () => <Branches />,
 });
 
@@ -23,10 +24,10 @@ const Branches = () => {
   });
 
   const branches = useQuery({
-    queryKey: ["branches"],
+    queryKey: ['branches'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetBranches",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetBranches',
         parameters: {},
       });
       if (res) {
@@ -36,22 +37,22 @@ const Branches = () => {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
-  // const actionBodyTemplate = (data: TBranches) => {
-  //   return (
-  //     <Space>
-  //       <Tooltip title="Edit">
-  //         <Link
-  //           to="/branchprofile/$code"
-  //           params={{
-  //             code: data.Code,
-  //           }}
-  //         >
-  //           <Button type="primary" icon={<BiEdit />} />
-  //         </Link>
-  //       </Tooltip>
-  //     </Space>
-  //   );
-  // };
+  const actionBodyTemplate = (data: TBranches) => {
+    return (
+      <Space>
+        <Tooltip title="Edit">
+          <Link
+            to="/branchprofile/$code"
+            params={{
+              code: data.Code,
+            }}
+          >
+            <Button type="primary" icon={<BiEdit />} />
+          </Link>
+        </Tooltip>
+      </Space>
+    );
+  };
   const rowExpansionTemplate = (data: TBranches) => {
     return (
       <div className="p-3">
@@ -68,7 +69,7 @@ const Branches = () => {
   };
   const handleWithAccess = async () => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: 4,
@@ -77,18 +78,18 @@ const Branches = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-Branches",
-          placement: "topRight",
+          message: 'Access denied for module-Branches',
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/",
+          to: '/',
         });
       }
     }
   };
   useEffect(() => {
-    store.setHideSideBar("N");
+    store.setHideSideBar('N');
     handleWithAccess();
   }, []);
   return (
@@ -100,7 +101,7 @@ const Branches = () => {
         ) : (
           <DataTable
             value={branches.data}
-            tableStyle={{ minWidth: "50rem" }}
+            tableStyle={{ minWidth: '50rem' }}
             paginator
             rows={10}
             rowsPerPageOptions={[10, 25, 50]}
@@ -126,6 +127,16 @@ const Branches = () => {
             <Column field="Name" header="Name" filter></Column>
             <Column field="AddressLine1" header="AddressLine1"></Column>
             <Column field="AddressLine2" header="AddressLine2"></Column>
+            <Column
+              field="DohAccreditationNo"
+              header="DOH Accreditation No."
+            ></Column>
+            <Column
+              field="action"
+              header="Action"
+              body={(data: any) => actionBodyTemplate(data)}
+            ></Column>{' '}
+            */
           </DataTable>
         )}
       </div>

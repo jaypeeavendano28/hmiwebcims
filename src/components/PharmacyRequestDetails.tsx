@@ -1,31 +1,29 @@
-import { useEffect, useState } from "react";
-import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { Button, Form, InputNumber, notification, Space, Tooltip } from "antd";
-import { FaRegEdit } from "react-icons/fa";
-import dayjs from "dayjs";
-import { ColumnGroup } from "primereact/columngroup";
-import { Row } from "primereact/row";
+import { useEffect, useState } from 'react';
+import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Button, Form, InputNumber, notification, Space, Tooltip } from 'antd';
+import { FaRegEdit } from 'react-icons/fa';
+import dayjs from 'dayjs';
+import { ColumnGroup } from 'primereact/columngroup';
+import { Row } from 'primereact/row';
 
 export default function PharmacyRequestDetails({
   Id,
   handleClose,
   AppointmentId,
-  RenderedBy,
 }: {
   Id?: number;
   AppointmentId?: number;
   handleClose: () => void;
-  RenderedBy: string;
 }) {
   const [selectedRecord, setSelectedRecord] = useState<any | undefined>();
   const [form] = Form.useForm();
 
   const [list, setList] = useState([]);
   const hadleGetRequestDetails = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetPharmacyRequestDetails",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetPharmacyRequestDetails',
       parameters: {
         Id: Id,
       },
@@ -38,7 +36,7 @@ export default function PharmacyRequestDetails({
     return (
       <Space>
         <Tooltip title="Render Request">
-          {isNullOrUndefinedOrBlank(RenderedBy) && (
+          {/* {isNullOrUndefinedOrBlank(RenderedBy) && (
             <FaRegEdit
               size={24}
               color="green"
@@ -49,7 +47,17 @@ export default function PharmacyRequestDetails({
                 setSelectedRecord(data);
               }}
             />
-          )}
+          )} */}
+          <FaRegEdit
+            size={24}
+            color="green"
+            className="cursor-pointer"
+            onClick={() => {
+              form.setFieldValue('Qty', data.Qty);
+
+              setSelectedRecord(data);
+            }}
+          />
         </Tooltip>
       </Space>
     );
@@ -57,8 +65,8 @@ export default function PharmacyRequestDetails({
   const handleFinish = (v: any) => {
     if (v.Qty > selectedRecord.Qty) {
       notification.error({
-        message: "Quantity must not be greater than the requested quantity!",
-        placement: "topRight",
+        message: 'Quantity must not be greater than the requested quantity!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -75,7 +83,12 @@ export default function PharmacyRequestDetails({
   };
   const handleSubmit = async () => {
     try {
-      const res = await PostData("SaveRenderRequest", {
+      console.log({
+        AppointmentId: AppointmentId,
+        Date: dayjs(),
+        Items: list,
+      });
+      const res = await PostData('SaveRenderRequest', {
         AppointmentId: AppointmentId,
         Date: dayjs(),
         Items: list,
@@ -83,15 +96,15 @@ export default function PharmacyRequestDetails({
       if (res) {
         if (res.status === 1) {
           notification.success({
-            message: "Successfully saved!",
-            placement: "topRight",
+            message: 'Successfully saved!',
+            placement: 'topRight',
             duration: 3,
           });
           handleClose();
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -99,13 +112,13 @@ export default function PharmacyRequestDetails({
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
   const formatCurrency = (value: number) => {
-    return value.toLocaleString("en-PH");
+    return value.toLocaleString('en-PH');
   };
 
   const net = () => {
@@ -133,8 +146,8 @@ export default function PharmacyRequestDetails({
           footer="Totals:"
           colSpan={2}
           footerStyle={{
-            textAlign: "right",
-            fontWeight: "bold",
+            textAlign: 'right',
+            fontWeight: 'bold',
           }}
         />
 
@@ -163,7 +176,7 @@ export default function PharmacyRequestDetails({
               rules={[
                 {
                   required: true,
-                  message: "Quantity is required!",
+                  message: 'Quantity is required!',
                 },
               ]}
             >
@@ -209,7 +222,7 @@ export default function PharmacyRequestDetails({
             <Button
               type="primary"
               onClick={handleSubmit}
-              disabled={!isNullOrUndefinedOrBlank(RenderedBy)}
+              // disabled={!isNullOrUndefinedOrBlank(RenderedBy)}
               className="mt-2"
             >
               Submit

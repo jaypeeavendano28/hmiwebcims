@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { PostData, WithAccess, isNullOrUndefinedOrBlank } from "../../helpers";
-import useAppStore from "../../store";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { PostData, WithAccess, isNullOrUndefinedOrBlank } from '../../helpers';
+import useAppStore from '../../store';
 import {
   Button,
   Card,
@@ -12,26 +12,28 @@ import {
   InputNumber,
   Modal,
   Popconfirm,
+  Popover,
   Select,
   Space,
   Tooltip,
   notification,
-} from "antd";
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import dayjs from "dayjs";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import Calling from "../../components/calling";
-import { TAppointments, TCharges } from "../../types";
-import { BiSearch } from "react-icons/bi";
-import ListOfAppointments from "../../components/ListOfAppointments";
-import _ from "lodash";
-import { BsMegaphoneFill } from "react-icons/bs";
-import Cookies from "js-cookie";
-import ListOfOr from "../../components/ListOfOr";
+} from 'antd';
+import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import Calling from '../../components/calling';
+import { TAppointments, TCharges } from '../../types';
+import { BiSearch } from 'react-icons/bi';
+import ListOfAppointments from '../../components/ListOfAppointments';
+import _ from 'lodash';
+import { BsMegaphoneFill } from 'react-icons/bs';
+import Cookies from 'js-cookie';
+import ListOfOr from '../../components/ListOfOr';
+import axios from 'axios';
 
-export const Route = createFileRoute("/_authenticated/cashier")({
+export const Route = createFileRoute('/_authenticated/cashier')({
   component: () => <Cashier />,
 });
 // const isDev = import.meta.env.DEV;
@@ -41,7 +43,7 @@ export const Route = createFileRoute("/_authenticated/cashier")({
 // const ApiUrl = isDev ? devApi : prodApi;
 const Cashier = () => {
   const [AppointmentId, setAppointmentId] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const [showListOfOr, setShowListOfOr] = useState(false);
   const [showAddCharges, setShowAddCharges] = useState(false);
@@ -62,9 +64,19 @@ const Cashier = () => {
   const [formOthers] = Form.useForm();
   const store = useAppStore();
   const router = useRouter();
+
+  const [open, setOpen] = useState(false);
+
+  const [isProcessing, setIsProccessing] = useState(false);
+
+  const isDev = import.meta.env.DEV;
+  const prodApi = import.meta.env.VITE_PROD_API;
+  const devApi = import.meta.env.VITE_DEV_API;
+  const apiUrl = isDev ? devApi : prodApi;
+
   const handleWithAccess = async () => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: 23,
@@ -73,30 +85,30 @@ const Cashier = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-Cashier",
-          placement: "topRight",
+          message: 'Access denied for module-Cashier',
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/",
+          to: '/',
         });
       }
     }
   };
 
   const handleGetInQueue = async () => {
-    const cashierLocation = Cookies.get("CashierLoc");
+    const cashierLocation = Cookies.get('CashierLoc');
 
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetPatientPerCounterWithMode",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetPatientPerCounterWithMode',
       parameters: {
         BranchCode: store.branchCode,
-        Date: !isNullOrUndefinedOrBlank(form.getFieldValue("Date"))
-          ? dayjs(form.getFieldValue("Date")).format("YYYYMMDD")
-          : dayjs().format("YYYYMMDD"),
-        Mode: "N",
+        Date: !isNullOrUndefinedOrBlank(form.getFieldValue('Date'))
+          ? dayjs(form.getFieldValue('Date')).format('YYYYMMDD')
+          : dayjs().format('YYYYMMDD'),
+        Mode: 'N',
         CounterName: cashierLocation,
-        Mode2: form.getFieldValue("TypeOfAppointment"),
+        Mode2: form.getFieldValue('TypeOfAppointment'),
       },
     });
     if (res) {
@@ -104,8 +116,8 @@ const Cashier = () => {
     }
   };
   const handleGetCashierLocations = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetCashierLocations",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetCashierLocations',
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -115,19 +127,19 @@ const Cashier = () => {
     }
   };
   const handleGetCharges = async (AppointmentId: number) => {
-    let mode = "";
-    const cashierLocation = form1.getFieldValue("CashierLocation");
+    let mode = '';
+    const cashierLocation = form1.getFieldValue('CashierLocation');
 
-    if (cashierLocation === "CASHIERHEMO") {
-      mode = "H";
-    } else if (cashierLocation === "CASHIERPHA") {
-      mode = "P";
-    } else if (cashierLocation === "CASHIER") {
-      mode = "D";
+    if (cashierLocation === 'CASHIERHEMO') {
+      mode = 'H';
+    } else if (cashierLocation === 'CASHIERPHA') {
+      mode = 'P';
+    } else if (cashierLocation === 'CASHIER') {
+      mode = 'D';
     }
 
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetChargesByAppointmentIdForCashier",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetChargesByAppointmentIdForCashier',
       parameters: {
         AppointmentId: AppointmentId,
         Mode: mode,
@@ -145,7 +157,7 @@ const Cashier = () => {
           <Button
             type="primary"
             onClick={() => {
-              form1.setFieldValue("Date", dayjs());
+              form1.setFieldValue('Date', dayjs());
               setAppointmentId(0);
               setNewMode(true);
               handleGetLastOrNo();
@@ -182,7 +194,7 @@ const Cashier = () => {
             disabled={newMode}
             onClick={() => {
               setSelectedRecord(data);
-              handleCall({ ...data, Status: "C" });
+              handleCall({ ...data, Status: 'C' });
               setShowModal(true);
             }}
           />
@@ -194,8 +206,8 @@ const Cashier = () => {
     setAppointmentId(appointmenttId);
     setNewMode(true);
     setShowPatient(false);
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetAppointmentDetails",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetAppointmentDetails',
       parameters: {
         Id: appointmenttId,
       },
@@ -224,14 +236,14 @@ const Cashier = () => {
     //   window.speechSynthesis.speak(speech);
     //   window.speechSynthesis.speak(speech);
     // }
-    let cashierLocation = "";
+    let cashierLocation = '';
 
-    if (form.getFieldValue("TypeOfAppointment") === "D") {
-      cashierLocation = "CASHIER";
-    } else if (form.getFieldValue("TypeOfAppointment") === "H") {
-      cashierLocation = "CASHIERHEMO";
-    } else if (form.getFieldValue("TypeOfAppointment") === "P") {
-      cashierLocation = "CASHIERPHA";
+    if (form.getFieldValue('TypeOfAppointment') === 'D') {
+      cashierLocation = 'CASHIER';
+    } else if (form.getFieldValue('TypeOfAppointment') === 'H') {
+      cashierLocation = 'CASHIERHEMO';
+    } else if (form.getFieldValue('TypeOfAppointment') === 'P') {
+      cashierLocation = 'CASHIERPHA';
     }
 
     const valuesToSave = {
@@ -242,22 +254,22 @@ const Cashier = () => {
       Code: cashierLocation,
     };
 
-    const res = await PostData("CallCounter", valuesToSave);
+    const res = await PostData('CallCounter', valuesToSave);
     if (res) {
       if (res.status === 1) {
-        if (data.Status === "C") {
+        if (data.Status === 'C') {
           setShowModal(true);
-        } else if (data.Status === "O") {
+        } else if (data.Status === 'O') {
           setSelectedRecord({});
           handleGetInQueue();
-        } else if (data.Status === "A") {
+        } else if (data.Status === 'A') {
           setShowModal(false);
           handleSelect(selectedRecord.fk_Appointments_Id);
         }
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 5,
         });
       }
@@ -274,17 +286,17 @@ const Cashier = () => {
     );
   };
   const handleGetLastOrNo = async () => {
-    const value = form1.getFieldValue("CashierLocation");
-    Cookies.set("CashierLocation", value);
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetLastOrNo",
+    const value = form1.getFieldValue('CashierLocation');
+    Cookies.set('CashierLocation', value);
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetLastOrNo',
       parameters: {
         BranchCode: store.branchCode,
         CashierLocation: value,
       },
     });
     if (res) {
-      form1.setFieldValue("OrNo", res.parameters.lst[0].OrNo.toString());
+      form1.setFieldValue('OrNo', res.parameters.lst[0].OrNo.toString());
     }
   };
   const handleRefresh = () => {
@@ -295,8 +307,8 @@ const Cashier = () => {
     setNewMode(false);
     form1.resetFields();
     handleGetInQueue();
-    if (!isNullOrUndefinedOrBlank(Cookies.get("CashierLocation"))) {
-      form1.setFieldValue("CashierLocation", Cookies.get("CashierLocation"));
+    if (!isNullOrUndefinedOrBlank(Cookies.get('CashierLocation'))) {
+      form1.setFieldValue('CashierLocation', Cookies.get('CashierLocation'));
       handleGetLastOrNo();
     }
   };
@@ -304,49 +316,49 @@ const Cashier = () => {
     try {
       if (isNullOrUndefinedOrBlank(charges)) {
         notification.error({
-          message: "Amount to be paid must be greater than zero!",
-          placement: "topRight",
+          message: 'Amount to be paid must be greater than zero!',
+          placement: 'topRight',
           duration: 3,
         });
         return;
       }
 
-      let qCounter = "";
+      let qCounter = '';
 
-      if (form.getFieldValue("TypeOfAppointment") === "D") {
-        qCounter = "CASHIER";
-      } else if (form.getFieldValue("TypeOfAppointment") === "H") {
-        qCounter = "CASHIERHEMO";
-      } else if (form.getFieldValue("TypeOfAppointment") === "P") {
-        qCounter = "CASHIERPHA";
+      if (form.getFieldValue('TypeOfAppointment') === 'D') {
+        qCounter = 'CASHIER';
+      } else if (form.getFieldValue('TypeOfAppointment') === 'H') {
+        qCounter = 'CASHIERHEMO';
+      } else if (form.getFieldValue('TypeOfAppointment') === 'P') {
+        qCounter = 'CASHIERPHA';
       }
 
       const v = await form1.validateFields();
 
       const cashAmount: number = isNullOrUndefinedOrBlank(
-        form1.getFieldValue("Cash")
+        form1.getFieldValue('Cash'),
       )
         ? 0
-        : form1.getFieldValue("Cash");
+        : form1.getFieldValue('Cash');
       const c: number = cashAmount - amount;
       setChange(c);
 
       if (c < 0) {
         notification.error({
-          message: "Invalid cash amount!",
-          placement: "topRight",
+          message: 'Invalid cash amount!',
+          placement: 'topRight',
           duration: 3,
         });
         return;
       }
       setSetIsSubmitting(true);
 
-      const res = await PostData("SavePayment", {
+      const res = await PostData('SavePayment', {
         Main: {
           ...v,
           Amount: amount,
           fk_Branches_Code: store.branchCode,
-          CashierLocation: form1.getFieldValue("CashierLocation"),
+          CashierLocation: form1.getFieldValue('CashierLocation'),
           QId: isNullOrUndefinedOrBlank(selectedRecord) ? 0 : selectedRecord.Id,
           QCounter: qCounter,
         },
@@ -356,15 +368,15 @@ const Cashier = () => {
         setSetIsSubmitting(false);
         if (res.status === 1) {
           notification.success({
-            message: "Payment successfully saved!",
-            placement: "topRight",
+            message: 'Payment successfully saved!',
+            placement: 'topRight',
             duration: 3,
           });
           handleRefresh();
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -374,7 +386,7 @@ const Cashier = () => {
       if (!error.errorFields) {
         notification.error({
           message: error.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -391,10 +403,10 @@ const Cashier = () => {
   };
   const handleComputeChange = () => {
     const cashAmount: number = isNullOrUndefinedOrBlank(
-      form1.getFieldValue("Cash")
+      form1.getFieldValue('Cash'),
     )
       ? 0
-      : form1.getFieldValue("Cash");
+      : form1.getFieldValue('Cash');
     const c = cashAmount - amount;
     setChange(c);
   };
@@ -455,15 +467,15 @@ const Cashier = () => {
     handleComputeAmount();
   };
   const handleTypeChange = (value: string) => {
-    if (value === "H") {
-      Cookies.set("CashierLoc", "CASHIERHEMO");
-    } else if (value === "D") {
-      Cookies.set("CashierLoc", "CASHIER");
-    } else if (value === "P") {
-      Cookies.set("CashierLoc", "CASHIERPHA");
+    if (value === 'H') {
+      Cookies.set('CashierLoc', 'CASHIERHEMO');
+    } else if (value === 'D') {
+      Cookies.set('CashierLoc', 'CASHIER');
+    } else if (value === 'P') {
+      Cookies.set('CashierLoc', 'CASHIERPHA');
     }
 
-    Cookies.set("TypeOfAppointment", value);
+    Cookies.set('TypeOfAppointment', value);
 
     handleGetInQueue();
   };
@@ -474,30 +486,142 @@ const Cashier = () => {
   }, [charges]);
 
   useEffect(() => {
-    if (!isNullOrUndefinedOrBlank(Cookies.get("TypeOfAppointment"))) {
-      form.setFieldValue("TypeOfAppointment", Cookies.get("TypeOfAppointment"));
+    if (!isNullOrUndefinedOrBlank(Cookies.get('TypeOfAppointment'))) {
+      form.setFieldValue('TypeOfAppointment', Cookies.get('TypeOfAppointment'));
     }
     handleWithAccess();
     handleGetInQueue();
-    form.setFieldValue("Date", dayjs());
+    form.setFieldValue('Date', dayjs());
     handleGetCashierLocations();
-    if (!isNullOrUndefinedOrBlank(Cookies.get("CashierLocation"))) {
-      form1.setFieldValue("CashierLocation", Cookies.get("CashierLocation"));
+    if (!isNullOrUndefinedOrBlank(Cookies.get('CashierLocation'))) {
+      form1.setFieldValue('CashierLocation', Cookies.get('CashierLocation'));
       handleGetLastOrNo();
     }
   }, []);
+
+  const handlePrint = async (values: any) => {
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
+
+    const url = apiUrl + '/api/GenerateReport';
+    const [from, to] = values.date;
+    try {
+      setIsProccessing(true);
+      await axios({
+        url: url, //your url
+        method: 'GET',
+        responseType: 'blob',
+        params: {
+          ReportName: 'Cashier.rdl',
+          DateFrom: dayjs(from).format('MM/DD/YYYY'),
+          DateTo: dayjs(to).format('MM/DD/YYYY'),
+          BranchCode: store.branchCode,
+          Type: store.userId,
+        },
+      }).then((response) => {
+        let newBlob;
+        newBlob = new Blob([response.data], {
+          type: 'application/pdf',
+        });
+
+        const data = window.URL.createObjectURL(newBlob);
+
+        const a = document.createElement('a');
+
+        a.setAttribute('href', data);
+        a.setAttribute('target', '_blank');
+
+        a.click();
+        // setIsSubmitting(false);
+      });
+    } catch (error: any) {
+      // setIsSubmitting(false);
+      let errorString = error.response.data;
+      errorString = JSON.parse(await error.response.data.text());
+      return { Status: 0, Message: errorString.Message };
+    } finally {
+      setIsProccessing(false);
+    }
+  };
+
   return (
     <div className="cardBackGround">
       <Divider>Cashier</Divider>
-      <Button type="primary" onClick={() => setShowListOfOr(true)}>
-        List of Official Receipts
-      </Button>
+      <div className="flex items-center gap-x-3 mb-2">
+        <Button type="primary" onClick={() => setShowListOfOr(true)}>
+          List of Official Receipts
+        </Button>
+        {/* <Button
+        type="primary"
+        onClick={handlePrint}
+        loading={isProcessing}
+        className="ml-2"
+      >
+        Print
+      </Button> */}
+        <Popover
+          open={open}
+          content={
+            <div>
+              <Form
+                onFinish={(values: any) => {
+                  handlePrint(values);
+                  setOpen(false);
+                }}
+                initialValues={{ date: [dayjs(), dayjs()] }}
+                requiredMark={false}
+              >
+                <Form.Item
+                  name="date"
+                  className="!mb-2"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Please select Month and Year',
+                    },
+                  ]}
+                >
+                  <DatePicker.RangePicker
+                    format="MM/DD/YYYY"
+                    className="!w-full"
+                  />
+                </Form.Item>
+                <div className="flex gap-x-2 items-center justify-end">
+                  <Button onClick={() => setOpen(false)} size="small">
+                    Close
+                  </Button>
+                  <Button
+                    htmlType="submit"
+                    loading={isProcessing}
+                    type="primary"
+                    size="small"
+                  >
+                    Print
+                  </Button>
+                </div>
+              </Form>
+            </div>
+          }
+          trigger="click"
+          arrow={false}
+          placement="right"
+        >
+          <Button
+            type="primary"
+            loading={isProcessing}
+            onClick={() => setOpen(true)}
+          >
+            Generate Report
+          </Button>
+        </Popover>
+      </div>
       <div className="grid lg:grid-cols-12 gap-4">
         <div className="col-span-4">
           <Card title="In Queue">
             <Form
               form={form}
-              onFinish={() => q.invalidateQueries({ queryKey: ["inQueue"] })}
+              initialValues={{ Date: dayjs() }}
+              onFinish={() => q.invalidateQueries({ queryKey: ['inQueue'] })}
             >
               <Form.Item
                 name="TypeOfAppointment"
@@ -505,7 +629,7 @@ const Cashier = () => {
                 rules={[
                   {
                     required: true,
-                    message: "Please select type of appointment!",
+                    message: 'Please select type of appointment!',
                   },
                 ]}
               >
@@ -536,7 +660,7 @@ const Cashier = () => {
             >
               <Column
                 expander={inQueue?.length > 0}
-                style={{ width: "2rem" }}
+                style={{ width: '2rem' }}
               />
               <Column
                 field="action"
@@ -554,6 +678,7 @@ const Cashier = () => {
             <Form
               form={form1}
               layout="vertical"
+              initialValues={{ Date: dayjs() }}
               scrollToFirstError
               onFinish={handleSavePayment}
             >
@@ -566,7 +691,7 @@ const Cashier = () => {
                       rules={[
                         {
                           required: true,
-                          message: "Cashier location is required!",
+                          message: 'Cashier location is required!',
                         },
                       ]}
                     >
@@ -608,7 +733,7 @@ const Cashier = () => {
                     rules={[
                       {
                         required: true,
-                        message: "Payee is required!",
+                        message: 'Payee is required!',
                       },
                     ]}
                     normalize={(v) => v.toUpperCase()}
@@ -657,7 +782,7 @@ const Cashier = () => {
                   </div>
                   <div className="flex justify-end font-bold text-xl">
                     Total:
-                    {amount.toLocaleString("en-US", {
+                    {amount.toLocaleString('en-US', {
                       maximumFractionDigits: 2,
                     })}
                   </div>
@@ -673,13 +798,13 @@ const Cashier = () => {
                     ]}
                   >
                     <InputNumber
-                      style={{ width: "100%" }}
+                      style={{ width: '100%' }}
                       onBlur={handleComputeChange}
                     />
                   </Form.Item>
                   <div className="flex justify-end font-bold text-xl">
-                    Change:{" "}
-                    {change.toLocaleString("en-US", {
+                    Change:{' '}
+                    {change.toLocaleString('en-US', {
                       maximumFractionDigits: 2,
                     })}
                   </div>
@@ -733,7 +858,7 @@ const Cashier = () => {
             type="primary"
             danger
             onClick={() => {
-              handleCall({ ...selectedRecord, Status: "O" });
+              handleCall({ ...selectedRecord, Status: 'O' });
               setShowModal(false);
             }}
           >
@@ -742,7 +867,7 @@ const Cashier = () => {
           <Button
             type="primary"
             onClick={() => {
-              handleCall({ ...selectedRecord, Status: "A" });
+              handleCall({ ...selectedRecord, Status: 'A' });
               setShowModal(false);
             }}
           >
@@ -759,7 +884,7 @@ const Cashier = () => {
       >
         <ListOfAppointments
           handleSelect={handleSelect}
-          TypeOfAppointment={form.getFieldValue("TypeOfAppointment")}
+          TypeOfAppointment={form.getFieldValue('TypeOfAppointment')}
         />
       </Modal>
       <Modal
@@ -775,7 +900,7 @@ const Cashier = () => {
             rules={[
               {
                 required: true,
-                message: "Description is required!",
+                message: 'Description is required!',
               },
             ]}
             normalize={(v) => v.toUpperCase()}
@@ -788,13 +913,13 @@ const Cashier = () => {
             rules={[
               {
                 required: true,
-                message: "Amount is required!",
+                message: 'Amount is required!',
               },
             ]}
           >
             <InputNumber
               style={{
-                width: "100%",
+                width: '100%',
               }}
             />
           </Form.Item>

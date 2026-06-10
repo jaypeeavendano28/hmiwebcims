@@ -1,9 +1,9 @@
-import { FC, useEffect, useState } from "react";
-import { PostData } from "../helpers";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { Space, Tooltip } from "antd";
-import { BiBookOpen } from "react-icons/bi";
+import { FC, useEffect, useState } from 'react';
+import { PostData } from '../helpers';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Space, Tooltip } from 'antd';
+import { BiBookOpen } from 'react-icons/bi';
 
 type Props = {
   PatientId?: number;
@@ -15,8 +15,8 @@ const ExistingLabResults: FC<Props> = ({ PatientId, handleOpen, Key }) => {
   const [labresults, setLabResults] = useState([]);
   const handleLabResults = async () => {
     try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetLabResultsByPatientId",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetLabResultsByPatientId',
         parameters: {
           PatientId: PatientId,
         },

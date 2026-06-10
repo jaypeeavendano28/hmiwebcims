@@ -2,9 +2,9 @@ import {
   createLazyFileRoute,
   useNavigate,
   useRouter,
-} from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useAuth } from "../../hooks/userAuth";
+} from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../../hooks/userAuth';
 import {
   App,
   Button,
@@ -16,25 +16,29 @@ import {
   Select,
   Space,
   Tooltip,
-} from "antd";
-import useAppStore from "../../store";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
-import dayjs from "dayjs";
-import { BellOutlined } from "@ant-design/icons";
-import { FilterMatchMode } from "primereact/api";
-import Calling from "../../components/calling";
-import { TQNo } from "../../types";
-import Loading from "../../components/loading";
-import { BiNotepad } from "react-icons/bi";
-import { GiCancel } from "react-icons/gi";
-import { AxiosError } from "axios";
+} from 'antd';
+import useAppStore from '../../store';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
+import dayjs from 'dayjs';
+import { BellOutlined } from '@ant-design/icons';
+import { FilterMatchMode } from 'primereact/api';
+import Calling from '../../components/calling';
+import { TQNo } from '../../types';
+import Loading from '../../components/loading';
+import { BiNotepad } from 'react-icons/bi';
+import { GiCancel } from 'react-icons/gi';
+import { AxiosError } from 'axios';
 
-export const Route = createLazyFileRoute("/_authenticated/reception/$Code")({
+export const Route = createLazyFileRoute('/_authenticated/reception/$Code')({
   component: () => <Reception />,
 });
+
+type ReceptionQueueRow = TQNo & {
+  DateAdded?: string | Date;
+};
 
 const Reception = () => {
   const { notification } = App.useApp();
@@ -48,7 +52,8 @@ const Reception = () => {
   const q = useQueryClient();
   const [IsSubmitting, setIsSubmitting] = useState(false);
   const [form] = Form.useForm();
-  const [date, setDate] = useState(dayjs(new Date()).format("YYYYMMDD"));
+  const [date, setDate] = useState(dayjs(new Date()).format('YYYYMMDD'));
+  const [now, setNow] = useState(dayjs());
   const store = useAppStore();
   const router = useRouter();
   const auth = useAuth();
@@ -57,23 +62,23 @@ const Reception = () => {
 
     if (!res) {
       notification.error({
-        message: "Access denied-Reception",
-        placement: "topRight",
+        message: 'Access denied-Reception',
+        placement: 'topRight',
         duration: 3,
       });
-      store.setHideSideBar("N");
+      store.setHideSideBar('N');
       router.navigate({
-        to: "/",
+        to: '/',
       });
     }
-    form.setFieldValue("Counter", localStorage.getItem("counter"));
+    form.setFieldValue('Counter', localStorage.getItem('counter'));
   };
 
   const counters = useQuery({
-    queryKey: ["counters"],
+    queryKey: ['counters'],
     queryFn: async () => {
-      let res = await PostData("GetRecords", {
-        sp: "udp_GetReceptionCounters",
+      let res = await PostData('GetRecords', {
+        sp: 'udp_GetReceptionCounters',
         parameters: {},
       });
       if (res) {
@@ -84,10 +89,10 @@ const Reception = () => {
   });
 
   const patientsOnQueue = useQuery({
-    queryKey: ["patientsOnQueue", Code],
+    queryKey: ['patientsOnQueue', Code],
     queryFn: async () => {
-      let res = await PostData("GetRecords", {
-        sp: "udp_GetQueueList",
+      let res = await PostData('GetRecords', {
+        sp: 'udp_GetQueueList',
         parameters: {
           date: date,
           code: Code,
@@ -102,13 +107,13 @@ const Reception = () => {
   });
 
   const donePatients = useQuery({
-    queryKey: ["donePatients", Code],
+    queryKey: ['donePatients', Code],
     queryFn: async () => {
-      let res = await PostData("GetRecords", {
-        sp: "udp_GetQList",
+      let res = await PostData('GetRecords', {
+        sp: 'udp_GetQList',
         parameters: {
           date: date,
-          option: "D",
+          option: 'D',
           code: Code,
         },
       });
@@ -120,15 +125,15 @@ const Reception = () => {
     refetchInterval: 1000 * 5,
   });
   const handleRefresh = (values: any) => {
-    setDate(dayjs(values.Date).format("YYYYMMDD"));
-    q.invalidateQueries({ queryKey: ["patientsOnQueue"] });
+    setDate(dayjs(values.Date).format('YYYYMMDD'));
+    q.invalidateQueries({ queryKey: ['patientsOnQueue'] });
   };
 
   const handleCall = async (data: TQNo) => {
-    if (isNullOrUndefinedOrBlank(form.getFieldValue("Counter"))) {
+    if (isNullOrUndefinedOrBlank(form.getFieldValue('Counter'))) {
       notification.error({
-        message: "Please select a counter!",
-        placement: "topRight",
+        message: 'Please select a counter!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -137,36 +142,36 @@ const Reception = () => {
     const valuesToSave = {
       ...data,
       Username: store.username,
-      Counter: form.getFieldValue("Counter"),
+      Counter: form.getFieldValue('Counter'),
     };
 
     setIsSubmitting(true);
-    const res = await PostData("CallReception", valuesToSave);
+    const res = await PostData('CallReception', valuesToSave);
     if (res) {
       if (res.status === 1) {
-        if (data.Status === "C") {
+        if (data.Status === 'C') {
           setShowModal(true);
-          q.invalidateQueries({ queryKey: ["patientsOnQueue"] });
-        } else if (data.Status === "O") {
+          q.invalidateQueries({ queryKey: ['patientsOnQueue'] });
+        } else if (data.Status === 'O') {
           setSelectedRecord(undefined);
           setIsSubmitting(false);
-          q.invalidateQueries({ queryKey: ["patientsOnQueue"] });
-        } else if (data.Status === "A") {
+          q.invalidateQueries({ queryKey: ['patientsOnQueue'] });
+        } else if (data.Status === 'A') {
           setIsSubmitting(false);
           setShowModal(false);
 
-          localStorage.setItem("code", data?.Code!);
+          localStorage.setItem('code', data?.Code!);
           navigate({
-            to: "/appointmentdetails/$Id",
+            to: '/appointmentdetails/$Id',
             params: {
-              Id: "0",
+              Id: '0',
             },
           });
         }
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 5,
         });
       }
@@ -175,21 +180,21 @@ const Reception = () => {
   const handleCancel = async (data: TQNo) => {
     try {
       setIsSubmitting(true);
-      const res = await PostData("CancelQReception", data);
+      const res = await PostData('CancelQReception', data);
       if (res) {
         setIsSubmitting(false);
 
         if (res.status === 1) {
-          q.invalidateQueries({ queryKey: ["patientsOnQueue"] });
+          q.invalidateQueries({ queryKey: ['patientsOnQueue'] });
           notification.success({
-            message: "Successfully cancelled!",
-            placement: "topRight",
+            message: 'Successfully cancelled!',
+            placement: 'topRight',
             duration: 5,
           });
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 5,
           });
         }
@@ -198,7 +203,7 @@ const Reception = () => {
       setIsSubmitting(false);
       notification.error({
         message: error.response?.data.message || error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 5,
       });
     }
@@ -214,10 +219,10 @@ const Reception = () => {
             onClick={() => {
               setSelectedRecord(data);
               sessionStorage.setItem(
-                "selectedInReception",
-                JSON.stringify(data)
+                'selectedInReception',
+                JSON.stringify(data),
               );
-              handleCall({ ...data, Status: "C" });
+              handleCall({ ...data, Status: 'C' });
             }}
             className="text-center"
             loading={IsSubmitting}
@@ -254,14 +259,14 @@ const Reception = () => {
             icon={<BiNotepad />}
             onClick={() => {
               sessionStorage.setItem(
-                "selectedInReception",
-                JSON.stringify(data)
+                'selectedInReception',
+                JSON.stringify(data),
               );
               navigate({
-                to: "/appointmentdetails/$Id",
+                to: '/appointmentdetails/$Id',
                 params: {
                   Id: isNullOrUndefinedOrBlank(data.AppointmentId)
-                    ? "0"
+                    ? '0'
                     : data.AppointmentId!.toString(),
                 },
               });
@@ -273,25 +278,58 @@ const Reception = () => {
       </Space>
     );
   };
+  const waitingTimeBodyTemplate = (data: ReceptionQueueRow) => {
+    if (!data.DateAdded) return '-';
+
+    const dateAdded = dayjs(data.DateAdded);
+    if (!dateAdded.isValid()) return '-';
+
+    const secondsWaiting = Math.max(now.diff(dateAdded, 'second'), 0);
+    const days = Math.floor(secondsWaiting / 86400);
+    const hours = Math.floor((secondsWaiting % 86400) / 3600);
+    const minutes = Math.floor((secondsWaiting % 3600) / 60);
+    const seconds = secondsWaiting % 60;
+
+    if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ${hours
+        .toString()
+        .padStart(2, '0')} hr`;
+    }
+
+    if (hours > 0) {
+      return `${hours} hr ${minutes.toString().padStart(2, '0')} min`;
+    }
+
+    return `${minutes} min ${seconds.toString().padStart(2, '0')} sec`;
+  };
   const handleAccept = () => {
     setShowModal(false);
     sessionStorage.setItem(
-      "selectedInReception",
-      JSON.stringify(selectedRecord)
+      'selectedInReception',
+      JSON.stringify(selectedRecord),
     );
   };
   useEffect(() => {
-    store.setHideSideBar("N");
+    store.setHideSideBar('N');
 
     handleInitialize();
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(dayjs());
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <div className="cardBackground">
       <Divider>
         Reception-
-        {Code === "1"
-          ? "Diagnostic/APE/Consultation"
-          : "Hemodialysis/Ambulatory"}
+        {Code === '1'
+          ? 'Diagnostic/APE/Consultation'
+          : 'Hemodialysis/Ambulatory'}
       </Divider>
       <div>
         <Form
@@ -311,7 +349,7 @@ const Reception = () => {
             </Form.Item>
             <Form.Item label="Counter" name="Counter">
               <Select
-                style={{ width: "100%" }}
+                style={{ width: '100%' }}
                 showSearch
                 allowClear
                 filterOption={(input, option) =>
@@ -322,7 +360,7 @@ const Reception = () => {
                   ).includes(input.toLocaleLowerCase())
                 }
                 onChange={(v) => {
-                  localStorage.setItem("counter", v);
+                  localStorage.setItem('counter', v);
                 }}
               >
                 {counters.data &&
@@ -375,6 +413,13 @@ const Reception = () => {
                 <Column field="QNo" header="Queue No." filter></Column>
                 <Column field="Counter" header="Counter" filter></Column>
                 <Column field="StatusDesc" header="Status"></Column>
+                <Column
+                  field="DateAdded"
+                  header="Waiting Time"
+                  body={(data: ReceptionQueueRow) =>
+                    waitingTimeBodyTemplate(data)
+                  }
+                ></Column>
                 <Column field="CalledCount" header="Call Count"></Column>
               </DataTable>
             )}
@@ -429,10 +474,10 @@ const Reception = () => {
             danger
             onClick={() => {
               const data: TQNo = JSON.parse(
-                sessionStorage.getItem("selectedInReception")!
+                sessionStorage.getItem('selectedInReception')!,
               );
 
-              handleCall({ ...data, Status: "O" });
+              handleCall({ ...data, Status: 'O' });
               setShowModal(false);
             }}
           >
@@ -442,10 +487,10 @@ const Reception = () => {
             type="primary"
             onClick={() => {
               const data: TQNo = JSON.parse(
-                sessionStorage.getItem("selectedInReception")!
+                sessionStorage.getItem('selectedInReception')!,
               );
 
-              handleCall({ ...data, Status: "A" });
+              handleCall({ ...data, Status: 'A' });
               setShowModal(false);
             }}
           >

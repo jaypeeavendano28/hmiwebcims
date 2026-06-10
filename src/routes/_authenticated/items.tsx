@@ -1,18 +1,18 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
-import { Button, Divider, Modal, Space, Tooltip, notification } from "antd";
-import useAppStore from "../../store";
-import { PostData, WithAccess } from "../../helpers";
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { DataTable } from "primereact/datatable";
-import Loading from "../../components/loading";
-import { FilterMatchMode } from "primereact/api";
-import { Column } from "primereact/column";
-import { TItems } from "../../types";
-import { BiEdit, BiNote, BiTrash } from "react-icons/bi";
-import { TbCurrencyPeso } from "react-icons/tb";
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
+import { Button, Divider, Modal, Space, Tooltip, notification } from 'antd';
+import useAppStore from '../../store';
+import { PostData, WithAccess } from '../../helpers';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DataTable } from 'primereact/datatable';
+import Loading from '../../components/loading';
+import { FilterMatchMode } from 'primereact/api';
+import { Column } from 'primereact/column';
+import { TItems } from '../../types';
+import { BiBuilding, BiEdit, BiNote, BiTrash } from 'react-icons/bi';
+import { TbCurrencyPeso } from 'react-icons/tb';
 
-export const Route = createFileRoute("/_authenticated/items")({
+export const Route = createFileRoute('/_authenticated/items')({
   component: () => <Items />,
 });
 
@@ -31,10 +31,10 @@ const Items = () => {
   const store = useAppStore();
 
   const items = useQuery({
-    queryKey: ["items"],
+    queryKey: ['items'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetItems",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetItems',
         parameters: {},
       });
       if (res) {
@@ -47,7 +47,7 @@ const Items = () => {
 
   const handleWithAccess = async () => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: 8,
@@ -56,12 +56,12 @@ const Items = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-Items",
-          placement: "topRight",
+          message: 'Access denied for module-Items',
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/",
+          to: '/',
         });
       }
     }
@@ -74,12 +74,28 @@ const Items = () => {
           <Link
             to="/itemprofile/$Id"
             params={{
-              Id: data !== undefined ? data.Id : "",
+              Id: data !== undefined ? data.Id : '',
             }}
           >
             <Button type="primary" icon={<BiEdit />} />
           </Link>
         </Tooltip>
+
+        <Tooltip title="Item Departments">
+          <Link
+            to="/itemsdepartment/$Id"
+            params={{
+              Id: data !== undefined ? data.Id : '',
+            }}
+          >
+            <Button
+              type="primary"
+              icon={<BiBuilding />}
+              disabled={String(data.Inventoriable) === 'Y' ? false : true}
+            />
+          </Link>
+        </Tooltip>
+
         <Tooltip title="Prices">
           <Link
             to="/itemprice/$Id"
@@ -90,7 +106,7 @@ const Items = () => {
           >
             <Button
               icon={<TbCurrencyPeso />}
-              disabled={data.ForSale === "N"}
+              disabled={data.ForSale === 'N'}
               type="primary"
             />
           </Link>
@@ -131,27 +147,27 @@ const Items = () => {
     );
   };
   const handleDeleteItem = async () => {
-    const res = await PostData("DeleteItem", selectedItem);
+    const res = await PostData('DeleteItem', selectedItem);
     if (res) {
       if (res.status === 1) {
         notification.success({
-          message: "Sucessfully deleted!",
-          placement: "topRight",
+          message: 'Sucessfully deleted!',
+          placement: 'topRight',
           duration: 3,
         });
-        q.invalidateQueries({ queryKey: ["items"] });
+        q.invalidateQueries({ queryKey: ['items'] });
         setShowDelete(false);
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
     }
   };
   useEffect(() => {
-    store.setHideSideBar("N");
+    store.setHideSideBar('N');
     handleWithAccess();
   }, []);
   return (
@@ -160,7 +176,7 @@ const Items = () => {
       <Link
         to="/itemprofile/$Id"
         params={{
-          Id: "0",
+          Id: '0',
         }}
       >
         <Button type="primary" icon={<BiNote />}>
@@ -173,7 +189,7 @@ const Items = () => {
         ) : (
           <DataTable
             value={items.data}
-            tableStyle={{ minWidth: "50rem" }}
+            tableStyle={{ minWidth: '50rem' }}
             paginator
             rows={10}
             rowsPerPageOptions={[10, 25, 50]}
@@ -188,7 +204,7 @@ const Items = () => {
           >
             <Column
               expander={items.data!.length > 0}
-              style={{ width: "5rem" }}
+              style={{ width: '5rem' }}
             />
             <Column
               field="action"

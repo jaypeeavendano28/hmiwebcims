@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AutoComplete,
   Button,
@@ -11,14 +11,14 @@ import {
   Select,
   Popover,
   App,
-} from "antd";
-import { FC, useEffect, useRef, useState } from "react";
-import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
-import { THmoCompany, TPatientInformation, TSettings } from "../types";
-import useAppStore from "../store";
-import dayjs from "dayjs";
-import Webcam from "react-webcam";
-import { AxiosError } from "axios";
+} from 'antd';
+import { FC, useEffect, useRef, useState } from 'react';
+import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
+import { THmoCompany, TPatientInformation, TSettings } from '../types';
+import useAppStore from '../store';
+import dayjs from 'dayjs';
+import Webcam from 'react-webcam';
+import { AxiosError } from 'axios';
 type Props = {
   Id: number;
   handleCloseModal: (PatientNo: string) => void;
@@ -41,15 +41,15 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
   const videoConstraints = {
     width: 400,
     height: 400,
-    facingMode: "user",
+    facingMode: 'user',
   };
   const city = useQuery({
-    queryKey: ["city"],
+    queryKey: ['city'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetSettings",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
         parameters: {
-          Code: "CITY",
+          Code: 'CITY',
         },
       });
       if (res) {
@@ -61,12 +61,62 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
   });
 
   const barangay = useQuery({
-    queryKey: ["barangay"],
+    queryKey: ['barangay'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetSettings",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
         parameters: {
-          Code: "BARANGAY",
+          Code: 'BARANGAY',
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const PlaceOfBirth = useQuery({
+    queryKey: ['PlaceOfBirth'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: {
+          Code: 'PLACEOFBIRTH',
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const Nationality = useQuery({
+    queryKey: ['Nationality'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: {
+          Code: 'NATIONALITY',
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+  const Religion = useQuery({
+    queryKey: ['Religion'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: {
+          Code: 'RELIGION',
         },
       });
       if (res) {
@@ -78,10 +128,40 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
   });
 
   const company = useQuery({
-    queryKey: ["company"],
+    queryKey: ['company'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetCompany",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetCompany',
+        parameters: {},
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const hmo = useQuery({
+    queryKey: ['hmo'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetHmo',
+        parameters: {},
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const occupation = useQuery({
+    queryKey: ['occupation'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetOccupation',
         parameters: {},
       });
       if (res) {
@@ -94,31 +174,32 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
 
   const handleSubmitForm = async (v: TPatientInformation) => {
     setIsSubmitting(true);
-    const res = await PostData("SavePatientProfile", {
+    const res = await PostData('SavePatientProfile', {
       ...v,
       BranchCode: store.branchCode,
-      DateOfBirth: dayjs(v.DateOfBirth).format("YYYY-MM-DD"),
-      PatientId: sessionStorage.getItem("PatientId"),
+      DateOfBirth: dayjs(v.DateOfBirth).format('YYYY-MM-DD'),
+      PatientId: sessionStorage.getItem('PatientId'),
       Company: isNullOrUndefinedOrBlank(v.Company) ? 0 : v.Company,
     });
+
     if (res) {
       setIsSubmitting(false);
 
       if (res.status === 1) {
         notification.success({
-          message: "Successfully saved!",
-          placement: "topRight",
+          message: 'Successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
-        form.setFieldValue("Id", res.parameters.Id);
-        sessionStorage.setItem("PatientId", res.parameters.Id);
+        form.setFieldValue('Id', res.parameters.Id);
+        sessionStorage.setItem('PatientId', res.parameters.Id);
         // setPatientId(res.parameters.Id);
 
         handleCloseModal(res.parameters.PatientNo);
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -126,8 +207,8 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
   };
   const handleGetDetails = async () => {
     if (Id > 0) {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetPatientInformationById",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPatientInformationById',
         parameters: {
           Id,
         },
@@ -150,6 +231,13 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
           ContactNos: x.ContactNos,
           Occupation: x.Occupation,
           Company: x.Company,
+          PlaceOfBirth: x.PlaceOfBirth,
+          Nationality: x.Nationality,
+          CivilStatus: x.CivilStatus,
+          Religion: x.Religion,
+          PassportNo: x.PassportNo,
+          SeamanBookNo: x.SeamanBookNo,
+          HMO: x.HMO,
         });
       }
     } else {
@@ -220,30 +308,30 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
   //   handleUploadPatientPicture(imageSrc);
   // }, [webcamRef]);
 
-  const content = () => {
+  const content = (type: 'C' | 'H') => {
     const [formCompany] = Form.useForm();
     const handleSubmitForm = async () => {
       try {
         setIsSubmitting(true);
-        const res = await PostData("SaveHmoCompany", {
-          Name: formCompany.getFieldValue("Name"),
-          Type: "C",
+        const res = await PostData('SaveHmoCompany', {
+          Name: formCompany.getFieldValue('Name'),
+          Type: type,
           Balance: 0,
         });
         if (res) {
           if (res.status === 1) {
             notification.success({
-              message: "Successfully saved!",
-              placement: "topRight",
+              message: 'Successfully saved!',
+              placement: 'topRight',
               duration: 3,
             });
             formCompany.resetFields();
-            q.invalidateQueries({ queryKey: ["company"] });
+            q.invalidateQueries({ queryKey: ['company'] });
             setIsSubmitting(false);
           } else {
             notification.error({
               message: res.message,
-              placement: "topRight",
+              placement: 'topRight',
               duration: 3,
             });
             setIsSubmitting(false);
@@ -252,7 +340,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
       } catch (error: AxiosError | any) {
         notification.error({
           message: error.response?.data,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -270,7 +358,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
             rules={[
               {
                 required: true,
-                message: "Company Name is required!",
+                message: 'Company Name is required!',
               },
             ]}
           >
@@ -306,7 +394,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
               rules={[
                 {
                   required: true,
-                  message: "Lastname is required!",
+                  message: 'Lastname is required!',
                 },
               ]}
               normalize={(v) => v.toUpperCase()}
@@ -319,7 +407,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
               rules={[
                 {
                   required: true,
-                  message: "Firstname is required!",
+                  message: 'Firstname is required!',
                 },
               ]}
               normalize={(v) => v.toUpperCase()}
@@ -348,7 +436,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
               rules={[
                 {
                   required: true,
-                  message: "Date of birth is required!",
+                  message: 'Date of birth is required!',
                 },
               ]}
             >
@@ -360,7 +448,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
               rules={[
                 {
                   required: true,
-                  message: "Gender is required!",
+                  message: 'Gender is required!',
                 },
               ]}
             >
@@ -430,7 +518,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
               rules={[
                 {
                   required: true,
-                  message: "City/Municipality is required!",
+                  message: 'City/Municipality is required!',
                 },
               ]}
             >
@@ -454,11 +542,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
                   ))}
               </AutoComplete>
             </Form.Item>
-            <Form.Item
-              name="Barangay"
-              label="Barangay"
-              normalize={(v) => v.toUpperCase()}
-            >
+            <Form.Item name="Barangay" label="Barangay">
               <AutoComplete
                 filterOption={(inputValue, option) =>
                   option!
@@ -482,8 +566,120 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
           </div>
 
           <div className="grid grid-cols-12 gap-4">
+            <Form.Item name="HMO" label="HMO" className="col-span-5">
+              <Select
+                style={{ width: '100%' }}
+                showSearch
+                allowClear
+                filterOption={(input, option) =>
+                  String(option?.title ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              >
+                {hmo.data?.map((d: THmoCompany) => (
+                  <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                    {d.Name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <div className="flex justify-start items-center">
+              <Popover
+                content={content('H')}
+                title="New Company/HMO"
+                trigger="click"
+              >
+                <Button type="primary">New</Button>
+              </Popover>
+            </div>
             <Form.Item name="Company" label="Company" className="col-span-5">
               <Select
+                showSearch
+                allowClear
+                filterOption={(input, option) =>
+                  String(option?.title ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              >
+                {company.data
+                  ?.filter((d: THmoCompany) => d.Type === 'C')
+                  .map((d: THmoCompany) => (
+                    <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                      {d.Name}
+                    </Select.Option>
+                  ))}
+              </Select>
+            </Form.Item>
+
+            <div className="flex flex-col justify-center">
+              <Popover
+                content={content('C')}
+                title="New Company"
+                trigger="click"
+              >
+                <Button type="primary">New</Button>
+              </Popover>
+            </div>
+            <Form.Item
+              name="PlaceOfBirth"
+              label="Place OF Birth"
+              className="col-span-3"
+            >
+              <AutoComplete
+                filterOption={(inputValue, option) =>
+                  option!
+                    .value!.toString()
+                    .toUpperCase()
+                    .indexOf(inputValue.toUpperCase()) !== -1
+                }
+              >
+                {PlaceOfBirth.data &&
+                  PlaceOfBirth.data!.map((v: TSettings) => (
+                    <AutoComplete.Option
+                      key={v.Id}
+                      value={v.Value}
+                      title={v.Value}
+                    >
+                      {v.Value}
+                    </AutoComplete.Option>
+                  ))}
+              </AutoComplete>
+            </Form.Item>
+            <Form.Item
+              name="Nationality"
+              label="Nationality"
+              className="col-span-3"
+            >
+              <AutoComplete
+                filterOption={(inputValue, option) =>
+                  option!
+                    .value!.toString()
+                    .toUpperCase()
+                    .indexOf(inputValue.toUpperCase()) !== -1
+                }
+              >
+                {Nationality.data &&
+                  Nationality.data!.map((v: TSettings) => (
+                    <AutoComplete.Option
+                      key={v.Id}
+                      value={v.Value}
+                      title={v.Value}
+                    >
+                      {v.Value}
+                    </AutoComplete.Option>
+                  ))}
+              </AutoComplete>
+            </Form.Item>
+
+            <Form.Item
+              name="CivilStatus"
+              label="Civil Status"
+              className="col-span-3"
+            >
+              <Select
+                style={{ width: '100%' }}
                 showSearch
                 allowClear
                 filterOption={(input, option) =>
@@ -494,19 +690,84 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
                   ).includes(input.toLocaleLowerCase())
                 }
               >
-                {company.data &&
-                  company.data.map((d: THmoCompany) => (
-                    <Select.Option key={d.Id} value={d.Id} title={d.Name}>
-                      {d.Name}
-                    </Select.Option>
-                  ))}
+                <Select.Option key="D" value="D" title="Divorced">
+                  Divorced
+                </Select.Option>
+                <Select.Option key="L" value="L" title="Legally Separated">
+                  Legally Separated
+                </Select.Option>
+                <Select.Option key="M" value="M" title="Married">
+                  Married
+                </Select.Option>
+                <Select.Option key="S" value="S" title="Single">
+                  Single
+                </Select.Option>
+                <Select.Option key="W" value="W" title="Widowed">
+                  Widowed
+                </Select.Option>
               </Select>
             </Form.Item>
-            <div className="flex flex-col justify-center">
-              <Popover content={content} title="New Company" trigger="click">
-                <Button type="primary">New</Button>
-              </Popover>
-            </div>
+            <Form.Item name="Religion" label="Religion" className="col-span-3">
+              <AutoComplete
+                filterOption={(inputValue, option) =>
+                  option!
+                    .value!.toString()
+                    .toUpperCase()
+                    .indexOf(inputValue.toUpperCase()) !== -1
+                }
+              >
+                {Religion.data &&
+                  Religion.data!.map((v: TSettings) => (
+                    <AutoComplete.Option
+                      key={v.Id}
+                      value={v.Value}
+                      title={v.Value}
+                    >
+                      {v.Value}
+                    </AutoComplete.Option>
+                  ))}
+              </AutoComplete>
+            </Form.Item>
+            <Form.Item
+              name="PassportNo"
+              label="Passport No."
+              className="col-span-3"
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="SeamanBookNo"
+              label="Seaman's Book No."
+              className="col-span-3"
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="Occupation"
+              label="Occupation"
+              className="col-span-3"
+              normalize={(v) => v.toUpperCase()}
+            >
+              <AutoComplete
+                filterOption={(inputValue, option) =>
+                  option!
+                    .value!.toString()
+                    .toUpperCase()
+                    .indexOf(inputValue.toUpperCase()) !== -1
+                }
+              >
+                {occupation.data &&
+                  occupation.data!.map((v: any) => (
+                    <AutoComplete.Option
+                      key={v.Value}
+                      value={v.Value}
+                      title={v.Value}
+                    >
+                      {v.Value}
+                    </AutoComplete.Option>
+                  ))}
+              </AutoComplete>
+            </Form.Item>
           </div>
 
           <div className="flex justify-end">

@@ -1,9 +1,10 @@
-import { FC, useEffect, useState } from "react";
-import { PostData } from "../helpers";
-import useAppStore from "../store";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { TAppointments } from "../types";
+import { FC, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { PostData } from '../helpers';
+import useAppStore from '../store';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { TAppointments } from '../types';
 import {
   Button,
   Dropdown,
@@ -12,21 +13,25 @@ import {
   Space,
   Tooltip,
   notification,
-} from "antd";
-import { BsCheckLg, BsClipboardCheck, BsMegaphoneFill } from "react-icons/bs";
-import Calling from "./calling";
-import { BiNotepad } from "react-icons/bi";
-import { useRouter } from "@tanstack/react-router";
-import dayjs from "dayjs";
-import { FaUpload } from "react-icons/fa6";
-import { GiMedicines } from "react-icons/gi";
-import RequestForMedicines from "./RequestForMedicines";
+} from 'antd';
+import { BsCheckLg, BsClipboardCheck, BsMegaphoneFill } from 'react-icons/bs';
+import Calling from './calling';
+import { BiNotepad } from 'react-icons/bi';
+import { useRouter } from '@tanstack/react-router';
+import dayjs from 'dayjs';
+import { FaUpload } from 'react-icons/fa6';
+import { GiMedicines } from 'react-icons/gi';
+import RequestForMedicines from './RequestForMedicines';
 
 type Props = {
   CounterCode: string;
   DateFrom: string;
   DateTo: string;
   Station: string;
+  isDone: boolean;
+  MemberNo: string;
+  Name: string;
+  IsMobile: boolean;
 };
 
 const PatientsPerCounter: FC<Props> = ({
@@ -34,29 +39,67 @@ const PatientsPerCounter: FC<Props> = ({
   DateFrom,
   DateTo,
   Station,
+  isDone,
+  MemberNo,
+  Name,
+  IsMobile,
 }) => {
   const [showRequest, setShowRequest] = useState(false);
   const router = useRouter();
   const [selectedRecord, setSelectedRecord] = useState<any | undefined>();
   const [showModal, setShowModal] = useState(false);
   const [IsSubmitting, setIsSubmitting] = useState(false);
+  const [now, setNow] = useState(dayjs());
   const store = useAppStore();
-  const [listOfPatients, setListOfPatients] = useState([]);
+  const queryClient = useQueryClient();
+  const effectiveIsDone = IsMobile || isDone;
 
-  const handleGetListOfPatients = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetPatientsPerCounter",
-      parameters: {
-        BranchCode: store.branchCode,
-        CounterCode: CounterCode,
-        DateFrom: DateFrom,
-        DateTo: DateTo,
-      },
-    });
+  const patientsQueryKey = [
+    'patientsPerCounter',
+    store.branchCode,
+    CounterCode,
+    DateFrom,
+    DateTo,
+    effectiveIsDone,
+    Name,
+    MemberNo,
+    IsMobile,
+  ] as const;
 
-    if (res) {
-      setListOfPatients(res.parameters.lst);
-    }
+  const patients = useQuery({
+    queryKey: patientsQueryKey,
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPatientsPerCounter',
+        parameters: {
+          BranchCode: store.branchCode,
+          CounterCode,
+          DateFrom,
+          DateTo,
+          IsDone: effectiveIsDone,
+          Name,
+          MemberNo,
+          IsMobile,
+        },
+      });
+
+      return res?.parameters.lst ?? [];
+    },
+    refetchOnWindowFocus: true,
+  });
+
+  const listOfPatients = patients.data ?? [];
+
+  const refreshPatientQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: patientsQueryKey,
+        exact: true,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['patientPerCounter'],
+      }),
+    ]);
   };
 
   const handleCall = async (data: any) => {
@@ -69,81 +112,76 @@ const PatientsPerCounter: FC<Props> = ({
       QNo: data.QueueNo,
       Code: data.CounterCode,
       fk_Appointments_Id: data.fk_Appointments_Id,
-      ElapseTime: "",
+      ElapseTime: '',
       Station,
     };
 
-    const res = await PostData("CallCounter", valuesToSave);
+    const res = await PostData('CallCounter', valuesToSave);
     if (res) {
       setIsSubmitting(false);
       if (res.status === 1) {
-        if (data.Status === "C") {
+        if (data.Status === 'C') {
           setShowModal(true);
-        } else if (data.Status === "O") {
+        } else if (data.Status === 'O') {
           setSelectedRecord({});
           setShowModal(false);
-        } else if (data.Status === "A") {
+        } else if (data.Status === 'A') {
           setSelectedRecord(data);
           setShowModal(false);
-          if (CounterCode === "LAB") {
+          if (CounterCode === 'LAB') {
             handleLabResult(data);
           }
         }
-        handleGetListOfPatients();
+        await refreshPatientQueries();
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 5,
         });
       }
     }
   };
-  const items: MenuProps["items"] = [
+  const items: MenuProps['items'] = [
     {
-      key: "A",
-      label: "Attending",
+      key: 'A',
+      label: 'Attending',
       onClick: () => {
-        handleCall({ ...selectedRecord, Status: "A" });
-        window.location.reload();
+        void handleCall({ ...selectedRecord, Status: 'A' });
       },
     },
     {
-      key: "D",
-      label: "Done",
+      key: 'D',
+      label: 'Done',
       onClick: (e) => {
-        handleCall({ ...selectedRecord, Status: e.key });
-        window.location.reload();
+        void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: "E",
-      label: "Deferred",
+      key: 'E',
+      label: 'Deferred',
       onClick: (e) => {
-        handleCall({ ...selectedRecord, Status: e.key });
-        window.location.reload();
+        void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: "O",
-      label: "Out When Called",
+      key: 'O',
+      label: 'Out When Called',
       onClick: (e) => {
-        handleCall({ ...selectedRecord, Status: e.key });
-        window.location.reload();
+        void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: "W",
-      label: "Waiting",
+      key: 'W',
+      label: 'Waiting',
       onClick: (e) => {
-        handleCall({ ...selectedRecord, Status: e.key });
-        window.location.reload();
+        void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
   ];
   const handleLabResult = (data: any) => {
     router.navigate({
-      to: "/laboratoryresults/$Id",
+      to: '/laboratoryresults/$Id',
       params: {
         Id: data.fk_Appointments_Id,
       },
@@ -152,7 +190,7 @@ const PatientsPerCounter: FC<Props> = ({
 
   const handleXrayResult = (data: any) => {
     router.navigate({
-      to: "/xrayresult/$Id",
+      to: '/xrayresult/$Id',
       params: {
         Id: data.fk_Appointments_Id,
       },
@@ -161,7 +199,7 @@ const PatientsPerCounter: FC<Props> = ({
 
   const handleCardioResult = (data: any) => {
     router.navigate({
-      to: "/cardioresult/$Id",
+      to: '/cardioresult/$Id',
       params: {
         Id: data.fk_Appointments_Id,
       },
@@ -170,49 +208,41 @@ const PatientsPerCounter: FC<Props> = ({
 
   const handleUltrasoundResult = (data: any) => {
     router.navigate({
-      to: "/ultrasound/$Id",
+      to: '/ultrasound/$Id',
       params: {
         Id: data.fk_Appointments_Id,
       },
     });
   };
-  // const actionBodyElapseTime = (data: TAppointments) => {
-  //   const [elapseTime, setElapseTime] = useState("");
-  //   const handleSetElapseTime = () => {
-  //     const e: number = dayjs().diff(dayjs(data.DateAdded), "m");
-  //     const d: string = e.toString();
-  //     setElapseTime(d);
-  //   };
-  //   if (data.Status !== "D") {
-  //     setInterval(handleSetElapseTime, 1000);
-  //   }
-
-  //   return <p>{elapseTime}</p>;
-  // };
-
   const actionBodyElapseTime = (data: TAppointments) => {
-    const [elapseTime, setElapseTime] = useState("");
-    const handleSetElapseTime = () => {
-      const e: number = dayjs().diff(dayjs(data.DateAdded), "m");
-      const d: string = e.toString();
-      if (data.Status !== "D") {
-        setElapseTime(d);
-      }
-    };
+    if (data.Status === 'D') return data.ElapseTime ?? '-';
+    if (!data.DateAdded) return '-';
 
-    if (data.Status !== "D") {
-      setInterval(handleSetElapseTime, 1000);
-    }
-    if (data.Status !== "D") {
-      return <p>{elapseTime}</p>;
+    const dateAdded = dayjs(data.DateAdded);
+    if (!dateAdded.isValid()) return '-';
+
+    const elapsedSeconds = Math.max(now.diff(dateAdded, 'second'), 0);
+    const days = Math.floor(elapsedSeconds / 86400);
+    const hours = Math.floor((elapsedSeconds % 86400) / 3600);
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+    const seconds = elapsedSeconds % 60;
+
+    if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ${hours
+        .toString()
+        .padStart(2, '0')} hr`;
     }
 
-    return <p>{data.ElapseTime}</p>;
+    if (hours > 0) {
+      return `${hours} hr ${minutes.toString().padStart(2, '0')} min`;
+    }
+
+    return `${minutes} min ${seconds.toString().padStart(2, '0')} sec`;
   };
   const handleUploadDocument = async (data: any) => {
     try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetPatientInformationByAppointmentId",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPatientInformationByAppointmentId',
         parameters: {
           AppointmentId: data.fk_Appointments_Id,
         },
@@ -220,7 +250,7 @@ const PatientsPerCounter: FC<Props> = ({
 
       if (res) {
         router.navigate({
-          to: "/uploaddocuments/$Id",
+          to: '/uploaddocuments/$Id',
           params: {
             Id: res.parameters.lst[0].Id,
           },
@@ -229,7 +259,7 @@ const PatientsPerCounter: FC<Props> = ({
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -237,31 +267,35 @@ const PatientsPerCounter: FC<Props> = ({
   const actionBodyTemplate = (data: TAppointments) => {
     return (
       <Space>
-        <Tooltip title="Call">
-          <Button
-            type="primary"
-            icon={<BsMegaphoneFill />}
-            onClick={() => {
-              setSelectedRecord({ ...data, Status: "C" });
-              handleCall({ ...data, Status: "C" });
-            }}
-            className="text-center"
-            loading={IsSubmitting}
-            // disabled={data.CurrentQStatus === "A"}
-          />
-        </Tooltip>
-        <Tooltip title="Change Status">
-          <Dropdown menu={{ items }} placement="top" trigger={["click"]}>
+        {!IsMobile && !effectiveIsDone && (
+          <Tooltip title="Call">
             <Button
               type="primary"
-              icon={<BsClipboardCheck />}
+              icon={<BsMegaphoneFill />}
               onClick={() => {
-                setSelectedRecord(data);
+                setSelectedRecord({ ...data, Status: 'C' });
+                handleCall({ ...data, Status: 'C' });
               }}
+              className="text-center"
+              loading={IsSubmitting}
+              disabled={data.CurrentQStatus === 'A' || data.cantCall}
             />
-          </Dropdown>
-        </Tooltip>
-        {CounterCode === "LAB" && (
+          </Tooltip>
+        )}
+        {!IsMobile && (
+          <Tooltip title="Change Status">
+            <Dropdown menu={{ items }} placement="top" trigger={['click']}>
+              <Button
+                type="primary"
+                icon={<BsClipboardCheck />}
+                onClick={() => {
+                  setSelectedRecord(data);
+                }}
+              />
+            </Dropdown>
+          </Tooltip>
+        )}
+        {CounterCode === 'LAB' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -272,7 +306,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {CounterCode === "XRAY" && (
+        {CounterCode === 'XRAY' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -284,7 +318,7 @@ const PatientsPerCounter: FC<Props> = ({
           </>
         )}
 
-        {CounterCode === "ULT" && (
+        {CounterCode === 'ULT' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -295,7 +329,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {CounterCode === "CARDIO" && (
+        {CounterCode === 'CARDIO' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -306,7 +340,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {(CounterCode === "DIA" || CounterCode === "AMB") && (
+        {(CounterCode === 'DIA' || CounterCode === 'AMB') && (
           <>
             <Tooltip title="Request for Medicines">
               <Button
@@ -325,9 +359,9 @@ const PatientsPerCounter: FC<Props> = ({
           />
         </Tooltip>
 
-        {data.Status === "D" && <BsCheckLg size={32} color="green" />}
+        {data.Status === 'D' && <BsCheckLg size={32} color="green" />}
 
-        {data.WithMer === "Y" && (
+        {data.WithMer === 'Y' && (
           <Tooltip title="MER is available">
             <BsCheckLg size={32} color="green" />
           </Tooltip>
@@ -335,17 +369,35 @@ const PatientsPerCounter: FC<Props> = ({
       </Space>
     );
   };
+  const descriptionsRowTemplate = (data: any) => {
+    return (
+      <div className="whitespace-normal break-words px-4 py-2 font-normal leading-5 text-gray-600">
+        {data.Descriptions}
+      </div>
+    );
+  };
   const handleRequest = (data: any) => {
     setSelectedRecord(data);
     setShowRequest(true);
   };
+
   useEffect(() => {
-    handleGetListOfPatients();
-  }, [CounterCode]);
+    const timer = window.setInterval(() => {
+      setNow(dayjs());
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const expandedDescriptionRows = listOfPatients.filter(
+    (patient: any) => patient.Descriptions,
+  );
+
   return (
     <div className="cardBackGround">
       <DataTable
         value={listOfPatients}
+        loading={patients.isFetching}
         // rows={10}
         // rowsPerPageOptions={[10, 25, 50]}
         filterDisplay="row"
@@ -355,7 +407,9 @@ const PatientsPerCounter: FC<Props> = ({
         // rowExpansionTemplate={rowExpansionTemplate}
         // expandedRows={expandedRows as any}
         // onRowToggle={(e) => setExpandedRows(e.data as any)}
-        tableStyle={{ fontSize: "12px", fontWeight: "bold" }}
+        rowExpansionTemplate={descriptionsRowTemplate}
+        expandedRows={expandedDescriptionRows as any}
+        tableStyle={{ fontSize: '12px', fontWeight: 'bold' }}
       >
         <Column
           field="action"
@@ -373,11 +427,25 @@ const PatientsPerCounter: FC<Props> = ({
         <Column field="QueueNo" header="Queue No." filter></Column>
         <Column field="MemberNo" header="Member No." filter></Column>
         <Column field="Company" header="Company" filter></Column>
-        <Column field="Status" header="Status" filter></Column>
+        <Column
+          hidden={IsMobile}
+          field="Status"
+          header="Status"
+          filter
+        ></Column>
+        <Column
+          field="DateCompleted"
+          header="Date Completed"
+          body={(data) =>
+            data.DateCompleted
+              ? dayjs(data.DateCompleted).format('MMM D, YYYY')
+              : '-'
+          }
+        ></Column>
 
         <Column
           field="ElapseTime"
-          header="Elapse Time(mins)"
+          header="Elapsed Time"
           body={(data) => actionBodyElapseTime(data)}
         ></Column>
       </DataTable>
@@ -400,7 +468,7 @@ const PatientsPerCounter: FC<Props> = ({
             type="primary"
             danger
             onClick={() => {
-              handleCall({ ...selectedRecord, Status: "O" });
+              handleCall({ ...selectedRecord, Status: 'O' });
               setShowModal(false);
             }}
           >
@@ -409,8 +477,8 @@ const PatientsPerCounter: FC<Props> = ({
           <Button
             type="primary"
             onClick={() => {
-              if (Station === "1") {
-                handleCall({ ...selectedRecord, Status: "A" });
+              if (Station === '1') {
+                handleCall({ ...selectedRecord, Status: 'A' });
               }
 
               setShowModal(false);

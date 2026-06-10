@@ -1,19 +1,19 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import useAppStore from "../../store";
-import { useEffect, useState } from "react";
-import Header from "../../components/Header";
-import { useAuth } from "../../hooks/userAuth";
-import { notification } from "antd";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import useAppStore from '../../store';
+import { useEffect, useState } from 'react';
+import Header from '../../components/Header';
+import { useAuth } from '../../hooks/userAuth';
+import { notification } from 'antd';
 //import dayjs from "dayjs";
 // import { PostData } from "../../helpers";
-import Cookies from "js-cookie";
-import axios from "axios";
+import Cookies from 'js-cookie';
+import axios from 'axios';
 //import { useReactToPrint } from "react-to-print";
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API;
 const devApi = import.meta.env.VITE_DEV_API;
 const apiUrl = isDev ? devApi : prodApi;
-export const Route = createFileRoute("/_authenticated/getqno")({
+export const Route = createFileRoute('/_authenticated/getqno')({
   component: () => <GetQNo />,
 });
 
@@ -49,69 +49,98 @@ const GetQNo = () => {
     // }
   };
   const handlePrintQ = async (code: string) => {
-    const url = apiUrl + "/api/GenerateReport";
-
     setIsProcessing(true);
+
     try {
-      await axios({
-        url: url, //your url
-        method: "GET",
-        responseType: "blob", // important
+      const response = await axios({
+        url: apiUrl + '/api/GenerateReport',
+        method: 'GET',
+        responseType: 'blob',
         params: {
-          ReportName: "q.rdl",
+          ReportName: 'q.rdl',
           Code: code,
         },
         headers: {
-          Authorization: ("Bearer " + Cookies.get("WebCimsTokenId")) as string,
+          Authorization: `Bearer ${Cookies.get('WebCimsTokenId')}`,
         },
-      }).then((response) => {
-        let newBlob = new Blob([response.data], {
-          type: "application/pdf",
-        });
-
-        if (newBlob) {
-          const data = window.URL.createObjectURL(newBlob);
-
-          var myWindow = window.open(data, "_blank", "width=800,height=600");
-
-          if (myWindow) {
-            var original = Promise.resolve(myWindow);
-            original
-              .then(() => {
-                myWindow!.focus();
-              })
-              .then(() => {
-                setTimeout(() => {
-                  myWindow!.print();
-                }, 2000);
-              })
-              .then(() => {
-                setTimeout(() => {
-                  myWindow?.close();
-                }, 6000);
-
-                setIsProcessing(false);
-              });
-          }
-        }
       });
-    } catch (error: any) {
-      let errorString = error.response.data;
-      errorString = JSON.parse(await error.response.data.text());
-      return { Status: 0, Message: errorString.Message };
+
+      const blob = new Blob([response.data], {
+        type: 'application/pdf',
+      });
+
+      const pdfUrl = URL.createObjectURL(blob);
+
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+
+      document.body.appendChild(iframe);
+
+      let cleaned = false;
+
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+
+        try {
+          URL.revokeObjectURL(pdfUrl);
+
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+
+        setIsProcessing(false);
+      };
+
+      iframe.onload = () => {
+        try {
+          const win = iframe.contentWindow;
+
+          if (!win) {
+            cleanup();
+            return;
+          }
+
+          win.addEventListener('afterprint', cleanup, {
+            once: true,
+          });
+
+          win.focus();
+          win.print();
+
+          // Fallback for browsers that don't fire afterprint
+          setTimeout(cleanup, 10000);
+        } catch (err) {
+          console.error(err);
+          cleanup();
+        }
+      };
+
+      iframe.src = pdfUrl;
+    } catch (error) {
+      console.error(error);
+      setIsProcessing(false);
     }
   };
   const handleWithAccess = async () => {
     const res = await auth.isWithAccess(13);
     if (!res) {
       notification.error({
-        message: "Access denied-Queuing",
-        placement: "topRight",
+        message: 'Access denied-Queuing',
+        placement: 'topRight',
         duration: 3,
       });
-      store.setHideSideBar("N");
+      store.setHideSideBar('N');
       router.navigate({
-        to: "/",
+        to: '/',
       });
     }
   };
@@ -143,7 +172,7 @@ const GetQNo = () => {
   useEffect(() => {
     handleWithAccess();
 
-    store.setHideSideBar("Y");
+    store.setHideSideBar('Y');
   }, []);
   // useEffect(() => {
   //   if (QNo !== "") {
@@ -159,7 +188,7 @@ const GetQNo = () => {
           className="bg-green-700 h-32 flex items-center justify-center hover:bg-green-900 cursor-pointer"
           onClick={() => {
             if (!IsProcessing) {
-              handleClick("ape");
+              handleClick('ape');
             }
           }}
         >
@@ -174,7 +203,7 @@ const GetQNo = () => {
           className="bg-blue-700 h-32 flex items-center justify-center hover:bg-blue-900"
           onClick={() => {
             if (!IsProcessing) {
-              handleClick("diag");
+              handleClick('diag');
             }
           }}
         >
@@ -191,7 +220,7 @@ const GetQNo = () => {
           className="bg-yellow-700 h-32 flex items-center justify-center hover:bg-yellow-900 cursor-pointer"
           onClick={() => {
             if (!IsProcessing) {
-              handleClick("ofw");
+              handleClick('ofw');
             }
           }}
         >
@@ -206,7 +235,7 @@ const GetQNo = () => {
           className="bg-pink-700 h-32 flex items-center justify-center hover:bg-pink-900 cursor-pointer"
           onClick={() => {
             if (!IsProcessing) {
-              handleClick("consultation");
+              handleClick('consultation');
             }
           }}
         >
@@ -223,7 +252,7 @@ const GetQNo = () => {
           className="bg-orange-700 h-32 flex items-center justify-center hover:bg-yellow-900 cursor-pointer"
           onClick={() => {
             if (!IsProcessing) {
-              handleClick("sc");
+              handleClick('sc');
             }
           }}
         >

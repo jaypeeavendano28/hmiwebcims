@@ -1,13 +1,13 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Button, Form, Input, Select, notification } from "antd";
-import { PostData } from "../helpers";
-import useAppStore from "../store";
-import { useEffect, useState } from "react";
-import Cookies from "js-cookie";
-import { useQuery } from "@tanstack/react-query";
-import { TBranches } from "../types";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { Button, Form, Input, Select, notification } from 'antd';
+import { PostData } from '../helpers';
+import useAppStore from '../store';
+import { useEffect, useState } from 'react';
+import Cookies from 'js-cookie';
+import { useQuery } from '@tanstack/react-query';
+import { TBranches } from '../types';
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute('/login')({
   component: () => <LogIn />,
 });
 const LogIn = () => {
@@ -17,10 +17,10 @@ const LogIn = () => {
   const router = useRouter();
 
   const branches = useQuery({
-    queryKey: ["branches"],
+    queryKey: ['branches'],
     queryFn: async () => {
-      const res = await PostData("GetRecords2", {
-        sp: "udp_GetBranches",
+      const res = await PostData('GetRecords2', {
+        sp: 'udp_GetBranches',
         parameters: {},
       });
       if (res) {
@@ -32,7 +32,7 @@ const LogIn = () => {
   });
   const handleLogIn = async (v: any) => {
     setIsProcessing(true);
-    const res = await PostData("Login", { ...v, BranchCode: v.BranchCode });
+    const res = await PostData('Login', { ...v, BranchCode: v.BranchCode });
     if (res) {
       setIsProcessing(false);
       if (res.status === 1) {
@@ -40,21 +40,22 @@ const LogIn = () => {
         store.setUsername(v.Username);
         store.setUserId(res.parameters.userId);
         store.setBranchCode(v.BranchCode);
-        Cookies.set("WebCimsTokenId", res.parameters.tokenId);
+        // store.setFullname(res.parameters.fullName);
+        Cookies.set('WebCimsTokenId', res.parameters.tokenId);
         router.navigate({
-          to: "/dashboard",
+          to: '/dashboard',
         });
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
     }
   };
   useEffect(() => {
-    store.setHideSideBar("Y");
+    store.setHideSideBar('Y');
   }, []);
   return (
     <div className="containerLogIn">
@@ -67,7 +68,7 @@ const LogIn = () => {
             rules={[
               {
                 required: true,
-                message: "Please select a branch!",
+                message: 'Please select a branch!',
               },
             ]}
           >
@@ -86,7 +87,7 @@ const LogIn = () => {
             rules={[
               {
                 required: true,
-                message: "Username is required!",
+                message: 'Username is required!',
               },
             ]}
           >
@@ -98,7 +99,7 @@ const LogIn = () => {
             rules={[
               {
                 required: true,
-                message: "Password is required!",
+                message: 'Password is required!',
               },
             ]}
           >

@@ -1,4 +1,5 @@
 import {
+  App,
   Button,
   DatePicker,
   Form,
@@ -7,13 +8,17 @@ import {
   notification,
   Select,
   Space,
-} from "antd";
-import { useEffect, useState } from "react";
-import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
-import { TItems } from "../types";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import dayjs from "dayjs";
+  Tooltip,
+} from 'antd';
+import { useEffect, useState } from 'react';
+import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
+import { TPrice } from '../types';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import dayjs from 'dayjs';
+import { useQuery } from '@tanstack/react-query';
+import useAppStore from '../store';
+import { BsTrash } from 'react-icons/bs';
 type Props = {
   Name?: string;
   AppointmentId?: number;
@@ -21,51 +26,99 @@ type Props = {
 export default function RequestForMedicines({ Name, AppointmentId }: Props) {
   const [form] = Form.useForm();
   const [form2] = Form.useForm();
-  const [items, setItems] = useState([]);
+  // const [items, setItems] = useState([]);
   const [addedItems, setAddedItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<any | undefined>();
-  const handleGetItems = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetInventoryItemsForRequest",
-      parameters: {},
-    });
+  const store = useAppStore();
+  const { modal } = App.useApp();
+  // const handleGetItems = async () => {
+  //   let res = await PostData("GetRecords", {
+  //     sp: "udp_GetInventoryItemsForRequest",
+  //     parameters: {},
+  //   });
 
-    if (res) {
-      setItems(res.parameters.lst);
-    }
-  };
+  //   if (res) {
+  //     setItems(res.parameters.lst);
+  //   }
+  // };
+
+  const items = useQuery({
+    queryKey: ['items_prices2'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetItemPrices2',
+        parameters: {
+          BranchCode: store.branchCode,
+          SearchStr: '',
+          Gender: '',
+          DepartmentId: 1016,
+        },
+      });
+      if (res) {
+        return res.parameters.lst as TPrice[];
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
   const handleSelectItem = (e: any) => {
-    const item: any = items.filter((f: any) => f.Id === e)[0];
+    const item: any = items.data?.filter((f: any) => f.Id === e)[0];
     setSelectedItem(item);
     form2.setFieldsValue({
       Price: item.Price,
-      QtyOnHand: item.Qty01,
+      QtyOnHand: item.Qty ?? 0,
+      Qty: undefined,
     });
   };
 
+  const allSelectedAddItemIds = addedItems.map((item) => item.Id);
   const handleAddItem = () => {
     if (isNullOrUndefinedOrBlank(selectedItem)) {
       notification.error({
-        message: "Please select an item!",
-        placement: "topRight",
+        message: 'Please select an item!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
     }
-    const price: number = form2.getFieldValue("Price");
-    const qty: number = form2.getFieldValue("Qty");
+    const price: number = form2.getFieldValue('Price');
+    const qty: number = form2.getFieldValue('Qty');
+
+    if (allSelectedAddItemIds.includes(selectedItem?.Id)) {
+      modal.error({
+        title: 'Pharmacy',
+        centered: true,
+        content: `${selectedItem?.Description} is already added!`,
+      });
+      return;
+    }
+
+    if (qty < 1) {
+      modal.error({
+        title: 'Pharmacy',
+        centered: true,
+        content: `Quantity cannot be zero or negative.`,
+      });
+      return;
+    }
 
     setAddedItems([
       ...addedItems,
       {
-        Description: selectedItem.Description,
+        Id: selectedItem?.Id,
+        Description: selectedItem?.Description,
         Price: price,
-        Qty: qty,
+        Quantity: qty,
         Amount: price * qty,
-        Id: selectedItem.Id,
+        fk_Items_Id: selectedItem?.ItemId,
       },
     ]);
-    form2.resetFields();
+    form2.setFieldsValue({
+      Items: undefined,
+      QtyOnHand: undefined,
+      Qty: undefined,
+    });
   };
 
   const handleComputeTotal = () => {
@@ -73,7 +126,7 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
     addedItems.map((v: any) => {
       amount = amount + v.Amount;
     });
-    form.setFieldValue("Amount", amount);
+    form.setFieldValue('Amount', amount);
   };
 
   const handleSubmit = async () => {
@@ -84,23 +137,43 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
     }
     if (addedItems.length === 0) {
       notification.error({
-        message: "Please add item(s)!",
-        placement: "topRight",
+        message: 'Please add item(s)!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
     }
-    const res = await PostData("SaveRequestedItems", {
+
+    // console.log({
+    //   AppointmentId: AppointmentId,
+    //   Date: values.Date,
+    //   Items: addedItems.map((item) => ({
+    //     Id: item.Id,
+    //     Qty: item.Quantity,
+    //     Price: item.Price,
+    //     fk_Appointments_Id: AppointmentId,
+    //     fk_Items_Id: item.fk_Items_Id,
+    //     Description: item.Description,
+    //   })),
+    // });
+    const res = await PostData('SaveRequestedItems', {
       AppointmentId: AppointmentId,
       Date: values.Date,
-      Items: addedItems,
+      Items: addedItems.map((item) => ({
+        Id: item.Id,
+        Qty: item.Quantity,
+        Price: item.Price,
+        fk_Appointments_Id: AppointmentId,
+        fk_Items_Id: item.fk_Items_Id,
+        Description: item.Description,
+      })),
     });
 
     if (res) {
       if (res.status === 1) {
         notification.success({
-          message: "Successfully saved!",
-          placement: "topRight",
+          message: 'Successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
         setAddedItems([]);
@@ -108,7 +181,7 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
     }
   };
   useEffect(() => {
-    handleGetItems();
+    // handleGetItems();
     form.setFieldsValue({
       Customer: Name,
       AppointmentId: AppointmentId,
@@ -118,6 +191,26 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
   useEffect(() => {
     handleComputeTotal();
   }, [addedItems]);
+
+  const actionBodyTemplate = (data: any) => {
+    const handleRemove = (data: any) => {
+      const x = addedItems.filter(
+        (f: any) => f.fk_Items_Id !== data.fk_Items_Id,
+      );
+      setAddedItems(x);
+    };
+    return (
+      <Space>
+        <Tooltip title="Remove">
+          <BsTrash
+            size={20}
+            className="text-red-500"
+            onClick={() => handleRemove(data)}
+          />
+        </Tooltip>
+      </Space>
+    );
+  };
   return (
     <>
       <div className="grid lg:grid-cols-6 gap-4">
@@ -137,7 +230,7 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
               rules={[
                 {
                   required: true,
-                  message: "Transaction Date and Time is required!",
+                  message: 'Transaction Date and Time is required!',
                 },
               ]}
             >
@@ -152,7 +245,7 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
               rules={[
                 {
                   required: true,
-                  message: "Customer is required!",
+                  message: 'Customer is required!',
                 },
               ]}
               normalize={(v) => v.toUpperCase()}
@@ -182,19 +275,25 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
                 onSelect={(e) => handleSelectItem(e)}
                 showSearch
                 allowClear
-                filterOption={(input, option) =>
-                  (
-                    option!.children
-                      ?.toString()
-                      .toLocaleLowerCase() as unknown as string
-                  ).includes(input.toLocaleLowerCase())
-                }
+                options={items.data?.map((d) => ({
+                  value: d.Id,
+                  // label: d.Description,
+                  label: `${d.Description} - ${d.Price}`,
+                }))}
+                optionFilterProp="label"
+                // filterOption={(input, option) =>
+                //   (
+                //     option!.children
+                //       ?.toString()
+                //       .toLocaleLowerCase() as unknown as string
+                //   ).includes(input.toLocaleLowerCase())
+                // }
               >
-                {items.map((d: TItems) => (
+                {/* {items.map((d: TItems) => (
                   <Select.Option key={d.Id} value={d.Id} title={d.Description}>
                     {d.Description}
                   </Select.Option>
-                ))}
+                ))} */}
               </Select>
             </Form.Item>
             <Form.Item name="QtyOnHand" label="Quantity On Hand">
@@ -207,11 +306,11 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
               rules={[
                 {
                   required: true,
-                  message: "Quantity is required!",
+                  message: 'Quantity is required!',
                 },
               ]}
             >
-              <InputNumber />
+              <InputNumber max={selectedItem?.Qty ? selectedItem?.Qty : 0} />
             </Form.Item>
             <Form.Item wrapperCol={{ offset: 4, span: 20 }}>
               <Space>
@@ -230,15 +329,20 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
           </Form>
           <DataTable
             value={addedItems}
-            tableStyle={{ minWidth: "50rem" }}
+            tableStyle={{ minWidth: '50rem' }}
             rowsPerPageOptions={[10, 25, 50]}
             emptyMessage="No Records!"
             stripedRows
             size="small"
           >
+            <Column
+              field="action"
+              header="Action"
+              body={(data: any) => actionBodyTemplate(data)}
+            ></Column>
             <Column field="Description" header="Description"></Column>
             {/* <Column field="Price" header="Price"></Column> */}
-            <Column field="Qty" header="Qty"></Column>
+            <Column field="Quantity" header="Qty"></Column>
             {/* <Column field="Amount" header="Amount"></Column> */}
           </DataTable>
         </div>

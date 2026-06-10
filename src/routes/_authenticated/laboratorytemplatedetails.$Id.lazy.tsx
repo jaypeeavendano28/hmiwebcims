@@ -120,7 +120,6 @@ const LaboratoryTemplateDetails = () => {
     setRowId(0);
   };
   const handleEdit = (data: any) => {
-   
     setRowId(data.Id);
     form.setFieldsValue({
       IsBold: data.IsBold,
@@ -132,7 +131,7 @@ const LaboratoryTemplateDetails = () => {
       Sequence: data.Sequence,
       Delete: "N",
       fk_Analytes_Id: data.fk_Analytes_Id,
-      IsHeader:data.IsHeader
+      IsHeader: data.IsHeader,
     });
   };
   const handleGetLaboratoryTemplateDetails = async () => {

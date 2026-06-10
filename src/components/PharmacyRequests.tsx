@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react";
-import { PostData } from "../helpers";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { Button, DatePicker, Form, Modal, Space, Tooltip } from "antd";
-import { BsCheck2 } from "react-icons/bs";
-import PharmacyRequestDetails from "./PharmacyRequestDetails";
-import useAppStore from "../store";
-import dayjs from "dayjs";
-import { ColumnGroup } from "primereact/columngroup";
-import { Row } from "primereact/row";
+import { useEffect, useState } from 'react';
+import { PostData } from '../helpers';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Button, DatePicker, Form, Modal, Space, Tooltip } from 'antd';
+import { BsCheck2 } from 'react-icons/bs';
+import PharmacyRequestDetails from './PharmacyRequestDetails';
+import useAppStore from '../store';
+import dayjs from 'dayjs';
+import { ColumnGroup } from 'primereact/columngroup';
+import { Row } from 'primereact/row';
 
 export default function PharmacyRequests() {
-  const [RenderedBy, setRenderedBy] = useState("");
+  // const [RenderedBy, setRenderedBy] = useState('');
   const [form] = Form.useForm();
   const [list, setList] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -19,12 +19,12 @@ export default function PharmacyRequests() {
   const [AppointmentId, setAppointmentId] = useState(0);
   const store = useAppStore();
   const handleGetList = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetPharmacyRequests",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetPharmacyRequests',
       parameters: {
         BranchCode: store.branchCode,
-        DateFrom: form.getFieldValue("DateFrom").format("MM/DD/YYYY"),
-        DateTo: form.getFieldValue("DateTo").format("MM/DD/YYYY"),
+        DateFrom: form.getFieldValue('DateFrom').format('MM/DD/YYYY'),
+        DateTo: form.getFieldValue('DateTo').format('MM/DD/YYYY'),
       },
     });
     if (res) {
@@ -35,24 +35,26 @@ export default function PharmacyRequests() {
   //   return <PharmacyRequestDetails Id={data.Id} />;
   // };
   const formatCurrency = (value: number) => {
-    return value.toLocaleString("en-PH");
+    return value.toLocaleString('en-PH');
   };
 
   const actionBodyTemplate = (data: any) => {
     return (
       <Space>
         <Tooltip title="Render Request">
-          <BsCheck2
-            size={24}
-            color="green"
-            className="cursor-pointer"
+          <Button
+            type="text"
+            className="!px-2"
+            disabled={data.DateRendered !== null}
             onClick={() => {
-              setRenderedBy(data.RenderedBy);
+              // setRenderedBy(data.RenderedBy);
               setId(data.Id);
               setAppointmentId(data.fk_Appointments_Id);
               setShowModal(true);
             }}
-          />
+          >
+            <BsCheck2 size={24} color="green" className="cursor-pointer" />
+          </Button>
         </Tooltip>
       </Space>
     );
@@ -76,8 +78,8 @@ export default function PharmacyRequests() {
           footer="Totals:"
           colSpan={3}
           footerStyle={{
-            textAlign: "right",
-            fontWeight: "bold",
+            textAlign: 'right',
+            fontWeight: 'bold',
           }}
         />
         <Column footer="" />
@@ -100,10 +102,10 @@ export default function PharmacyRequests() {
     <div>
       <Form form={form} layout="inline" onFinish={handleGetList}>
         <Form.Item name="DateFrom" label="Date From">
-          <DatePicker format={"MM/DD/YYYY"} />
+          <DatePicker format={'MM/DD/YYYY'} />
         </Form.Item>
         <Form.Item name="DateTo" label="Date To">
-          <DatePicker format={"MM/DD/YYYY"} />
+          <DatePicker format={'MM/DD/YYYY'} />
         </Form.Item>
         <Form.Item>
           <Button htmlType="submit" type="primary">
@@ -147,7 +149,7 @@ export default function PharmacyRequests() {
           Id={Id}
           handleClose={handleClose}
           AppointmentId={AppointmentId}
-          RenderedBy={RenderedBy}
+          // RenderedBy={RenderedBy}
         />
       </Modal>
     </div>

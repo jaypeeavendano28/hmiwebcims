@@ -1,17 +1,17 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import useAppStore from "../../store";
-import { useEffect, useState } from "react";
-import { useAuth } from "../../hooks/userAuth";
-import { notification } from "antd";
-import Header from "../../components/Header";
-import { TCounters, TQCounters } from "../../types";
-import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
-import dayjs from "dayjs";
-import Calling2 from "../../components/calling2";
-import Attending from "../../components/attending";
-import QPatients from "../../components/QPatients";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import useAppStore from '../../store';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../../hooks/userAuth';
+import { notification } from 'antd';
+import Header from '../../components/Header';
+import { TCounters, TQCounters } from '../../types';
+import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
+import dayjs from 'dayjs';
+import Calling2 from '../../components/calling2';
+import Attending from '../../components/attending';
+import QPatients from '../../components/QPatients';
 
-export const Route = createFileRoute("/_authenticated/queuing/$Code")({
+export const Route = createFileRoute('/_authenticated/queuing/$Code')({
   component: () => <Queuing />,
 });
 
@@ -19,18 +19,18 @@ const Queuing = () => {
   const [isCalling, setIsCalling] = useState(false);
   const [currentCounter, setCurrentCounter] = useState<any | undefined>();
   const [randomNo, setRandonNo] = useState(
-    Math.floor(Math.random() * 999999) + 1
+    Math.floor(Math.random() * 999999) + 1,
   );
   const { Code } = Route.useParams();
   const auth = useAuth();
   const store = useAppStore();
   const router = useRouter();
   const [Counters, setCounters] = useState<TCounters[] | undefined>([]);
-  const [Counter1, setCounter1] = useState<string | undefined>("");
-  const [Counter2, setCounter2] = useState<string | undefined>("");
-  const [Counter3, setCounter3] = useState<string | undefined>("");
-  const [Counter4, setCounter4] = useState<string | undefined>("");
-  const [Cashier, setCashier] = useState<string | undefined>("");
+  const [Counter1, setCounter1] = useState<string | undefined>('');
+  const [Counter2, setCounter2] = useState<string | undefined>('');
+  const [Counter3, setCounter3] = useState<string | undefined>('');
+  const [Counter4, setCounter4] = useState<string | undefined>('');
+  const [Cashier, setCashier] = useState<string | undefined>('');
 
   // const [Departments, setDepartments] = useState([]);
   const [ProcessQ, setProcessQ] = useState(false);
@@ -38,8 +38,8 @@ const Queuing = () => {
   // const [QCalling, setQCalling] = useState([]);
 
   const handleGetCounterValues = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetReceptionCounters",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetReceptionCounters',
       parameters: { Grp: Code },
     });
     if (res) {
@@ -48,18 +48,18 @@ const Queuing = () => {
   };
 
   const handleGetDepartments = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetPatientPerCounter2",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetPatientPerCounter2',
       parameters: {
         BranchCode: store.branchCode,
-        DateFrom: dayjs().format("YYYYMMDD"),
-        DateTo: dayjs().format("YYYYMMDD"),
+        DateFrom: dayjs().format('YYYYMMDD'),
+        DateTo: dayjs().format('YYYYMMDD'),
         Station: Code,
       },
     });
     if (res) {
       setProcessQ(true);
-      setCurrentCounter("");
+      setCurrentCounter('');
       const x = res.parameters.lst;
       for (const e of x) {
         setCurrentCounter(e);
@@ -70,17 +70,19 @@ const Queuing = () => {
     }
   };
 
+  console.log('currentCounter', Counters);
+
   const handleSetCounterValues = () => {
     Counters?.map((v: TCounters) => {
-      if (v.Code === "counter1") {
+      if (v.Code === 'counter1') {
         setCounter1(v.CurrentQ);
-      } else if (v.Code === "counter2") {
+      } else if (v.Code === 'counter2') {
         setCounter2(v.CurrentQ);
-      } else if (v.Code === "counter3") {
+      } else if (v.Code === 'counter3') {
         setCounter3(v.CurrentQ);
-      } else if (v.Code === "counter4") {
+      } else if (v.Code === 'counter4') {
         setCounter4(v.CurrentQ);
-      } else if (v.Code === "cashier") {
+      } else if (v.Code === 'cashier') {
         setCashier(v.CurrentQ);
       }
     });
@@ -91,7 +93,7 @@ const Queuing = () => {
   }, [randomNo]);
 
   useEffect(() => {
-    store.setHideSideBar("Y");
+    store.setHideSideBar('Y');
     const interval = setInterval(() => {
       handleGetCounterValues();
     }, 5000);
@@ -167,8 +169,8 @@ const Queuing = () => {
   // };
 
   const handleGetQCalling = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetQCalling",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetQCalling',
       parameters: {},
     });
     if (res) {
@@ -180,14 +182,14 @@ const Queuing = () => {
         const voices = window.speechSynthesis.getVoices();
         speech.voice = voices[0]; // change voice
         speech.rate = 0.7;
-        if (f.Station !== "2") {
-          speech.text = "Patient " + f.QNo + " please proceed to " + f.Counter;
+        if (f.Station !== '2') {
+          speech.text = 'Patient ' + f.QNo + ' please proceed to ' + f.Counter;
         } else {
-          speech.text = "Patient " + f.QNo + " please proceed to STATION 2";
+          speech.text = 'Patient ' + f.QNo + ' please proceed to STATION 2';
         }
         window.speechSynthesis.speak(speech);
         window.speechSynthesis.speak(speech);
-        const res = await PostData("UpdateQCalling", {
+        const res = await PostData('UpdateQCalling', {
           QNo: f.QNo,
           Counter: f.Counter,
         });
@@ -217,12 +219,12 @@ const Queuing = () => {
   useEffect(() => {
     if (!auth.isWithAccess(13)) {
       notification.error({
-        message: "Access denied-Queuing",
-        placement: "topRight",
+        message: 'Access denied-Queuing',
+        placement: 'topRight',
         duration: 3,
       });
       router.navigate({
-        to: "/",
+        to: '/',
       });
     }
   }, []);
@@ -233,25 +235,32 @@ const Queuing = () => {
         <div className="col-span-4">
           <Header />
 
-          {Counters?.map((v: TQCounters) => (
-            <div className="bg-orange-100 mt-2" key={v.Code}>
-              <div className="text-3xl font-bold text-center">
-                {v.Description}
+          {Counters?.map((v: TQCounters) => {
+            const isSameAsToday = v.DateAdded
+              ? dayjs(v.DateAdded).format('YYYYMMDD') ===
+                dayjs().format('YYYYMMDD')
+              : false;
+
+            return (
+              <div className="bg-orange-100 mt-2" key={v.Code}>
+                <div className="text-3xl font-bold text-center">
+                  {v.Description}
+                </div>
+                <div className="text-3xl font-bold text-center">
+                  {!isNullOrUndefinedOrBlank(v.CurrentQ) && isSameAsToday && (
+                    <div className="flex flex-row justify-center items-center">
+                      {v.Status === 'C' ? (
+                        <Calling2 size={64} />
+                      ) : (
+                        <Attending size={64} />
+                      )}
+                      {v.CurrentQ}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="text-3xl font-bold text-center">
-                {!isNullOrUndefinedOrBlank(v.CurrentQ) && (
-                  <div className="flex flex-row justify-center items-center">
-                    {v.Status === "C" ? (
-                      <Calling2 size={64} />
-                    ) : (
-                      <Attending size={64} />
-                    )}
-                    {v.CurrentQ}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="col-span-8 bg-green-500 p-4 min-h-screen">
           <>

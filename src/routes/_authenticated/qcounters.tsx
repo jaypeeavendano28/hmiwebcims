@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import {
   Button,
   Divider,
@@ -10,18 +10,18 @@ import {
   Space,
   Tooltip,
   notification,
-} from "antd";
-import { PostData, WithAccess, isNullOrUndefinedOrBlank } from "../../helpers";
-import { useEffect, useState } from "react";
-import Loading from "../../components/loading";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { TQCounters, TUsers } from "../../types";
-import { FilterMatchMode } from "primereact/api";
-import useAppStore from "../../store";
-import { BiEdit } from "react-icons/bi";
+} from 'antd';
+import { PostData, WithAccess, isNullOrUndefinedOrBlank } from '../../helpers';
+import { useEffect, useState } from 'react';
+import Loading from '../../components/loading';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { TQCounters, TUsers } from '../../types';
+import { FilterMatchMode } from 'primereact/api';
+import useAppStore from '../../store';
+import { BiEdit } from 'react-icons/bi';
 
-export const Route = createFileRoute("/_authenticated/qcounters")({
+export const Route = createFileRoute('/_authenticated/qcounters')({
   component: () => <QCounters />,
 });
 
@@ -42,8 +42,8 @@ const QCounters = () => {
   });
   const handleGetList = async () => {
     setIsProcessing(true);
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetQCounters",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetQCounters',
       parameters: {},
     });
     if (res) {
@@ -100,7 +100,7 @@ const QCounters = () => {
   };
   const handleWithAccess = async (ModuleId: number, Description: string) => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: ModuleId,
@@ -109,12 +109,12 @@ const QCounters = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-" + Description,
-          placement: "topRight",
+          message: 'Access denied for module-' + Description,
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/",
+          to: '/',
         });
       }
     }
@@ -122,7 +122,7 @@ const QCounters = () => {
   const handleSubmit = async (v: TQCounters) => {
     try {
       setIsProcessing(true);
-      const res = await PostData("SaveQCounter", {
+      const res = await PostData('SaveQCounter', {
         ...v,
         Id: selectedRecord?.Id,
       });
@@ -134,7 +134,7 @@ const QCounters = () => {
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 5,
           });
         }
@@ -143,15 +143,15 @@ const QCounters = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 5,
       });
     }
   };
 
   useEffect(() => {
-    store.setHideSideBar("N");
-    handleWithAccess(19, "Utilities-Queue Counters");
+    store.setHideSideBar('N');
+    handleWithAccess(19, 'Utilities-Queue Counters');
     handleGetList();
   }, []);
   return (
@@ -175,7 +175,7 @@ const QCounters = () => {
         ) : (
           <DataTable
             value={list}
-            tableStyle={{ minWidth: "50rem" }}
+            tableStyle={{ minWidth: '50rem' }}
             paginator
             rows={10}
             rowsPerPageOptions={[10, 25, 50]}
@@ -188,7 +188,7 @@ const QCounters = () => {
             expandedRows={expandedRows as any}
             onRowToggle={(e) => setExpandedRows(e.data as any)}
           >
-            <Column expander={list!.length > 0} style={{ width: "5rem" }} />
+            <Column expander={list!.length > 0} style={{ width: '5rem' }} />
             <Column
               field="action"
               header="Action"
@@ -260,13 +260,13 @@ const QCounters = () => {
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (
-                    getFieldValue("IsReceptionArea") &&
+                    getFieldValue('IsReceptionArea') &&
                     !isNullOrUndefinedOrBlank(value)
                   ) {
                     return Promise.resolve();
                   }
 
-                  return Promise.reject("This field is required!");
+                  return Promise.reject('This field is required!');
                 },
               }),
             ]}

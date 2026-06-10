@@ -1,17 +1,17 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import useAppStore from "../../store";
-import { useEffect, useState } from "react";
-import Header from "../../components/Header";
-import { useAuth } from "../../hooks/userAuth";
-import { notification } from "antd";
-import axios from "axios";
-import Cookies from "js-cookie";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import useAppStore from '../../store';
+import { useEffect, useState } from 'react';
+import Header from '../../components/Header';
+import { useAuth } from '../../hooks/userAuth';
+import { notification } from 'antd';
+import axios from 'axios';
+import Cookies from 'js-cookie';
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API;
 const devApi = import.meta.env.VITE_DEV_API;
 const apiUrl = isDev ? devApi : prodApi;
 
-export const Route = createFileRoute("/_authenticated/getqnohemo")({
+export const Route = createFileRoute('/_authenticated/getqnohemo')({
   component: () => <GetQNoHemo />,
 });
 
@@ -22,76 +22,98 @@ const GetQNoHemo = () => {
   const store = useAppStore();
 
   const handlePrintQ = async (code: string) => {
-    const url = apiUrl + "/api/GenerateReport";
+    const url = apiUrl + '/api/GenerateReport';
 
     setIsProcessing(true);
+
     try {
-      await axios({
-        url: url, //your url
-        method: "GET",
-        responseType: "blob", // important
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'blob',
         params: {
-          ReportName: "q.rdl",
+          ReportName: 'q.rdl',
           Code: code,
         },
         headers: {
-          Authorization: ("Bearer " + Cookies.get("WebCimsTokenId")) as string,
+          Authorization: `Bearer ${Cookies.get('WebCimsTokenId')}`,
         },
-      }).then((response) => {
-        let newBlob = new Blob([response.data], {
-          type: "application/pdf",
-        });
-
-        if (newBlob) {
-          const data = window.URL.createObjectURL(newBlob);
-
-          var myWindow = window.open(data, "_blank", "width=800,height=600");
-
-          if (myWindow) {
-            var original = Promise.resolve(myWindow);
-            original
-              .then(() => {
-                myWindow!.focus();
-              })
-              .then(() => {
-                setTimeout(() => {
-                  myWindow!.print();
-                }, 2000);
-              })
-              .then(() => {
-                setTimeout(() => {
-                  myWindow?.close();
-                }, 6000);
-
-                setIsProcessing(false);
-              });
-          }
-        }
       });
+
+      const blob = new Blob([response.data], {
+        type: 'application/pdf',
+      });
+
+      const pdfUrl = URL.createObjectURL(blob);
+
+      const printWindow = window.open(pdfUrl, '_blank', 'width=800,height=600');
+
+      if (printWindow) {
+        const timer = setInterval(() => {
+          try {
+            if (printWindow.document.readyState === 'complete') {
+              clearInterval(timer);
+
+              printWindow.focus();
+
+              setTimeout(() => {
+                printWindow.print();
+
+                setTimeout(() => {
+                  printWindow.close();
+                  URL.revokeObjectURL(pdfUrl);
+                  setIsProcessing(false);
+                }, 3000);
+              }, 1000);
+            }
+          } catch {
+            // PDF viewer may block access; fallback
+            clearInterval(timer);
+
+            setTimeout(() => {
+              printWindow.print();
+
+              setTimeout(() => {
+                printWindow.close();
+                URL.revokeObjectURL(pdfUrl);
+                setIsProcessing(false);
+              }, 3000);
+            }, 2000);
+          }
+        }, 500);
+      } else {
+        setIsProcessing(false);
+      }
     } catch (error: any) {
+      setIsProcessing(false);
+
       let errorString = error.response.data;
       errorString = JSON.parse(await error.response.data.text());
-      return { Status: 0, Message: errorString.Message };
+
+      return {
+        Status: 0,
+        Message: errorString.Message,
+      };
     }
   };
   const handleWithAccess = async () => {
     const res = await auth.isWithAccess(13);
     if (!res) {
       notification.error({
-        message: "Access denied-Queuing",
-        placement: "topRight",
+        message: 'Access denied-Queuing',
+        placement: 'topRight',
         duration: 3,
       });
-      store.setHideSideBar("N");
+      store.setHideSideBar('N');
       router.navigate({
-        to: "/",
+        to: '/',
       });
     }
   };
   useEffect(() => {
     handleWithAccess();
 
-    store.setHideSideBar("Y");
+    store.setHideSideBar('Y');
   }, []);
   // useEffect(() => {
   //   if (QNo !== "") {
@@ -106,7 +128,7 @@ const GetQNoHemo = () => {
           className="bg-green-700 h-32 flex items-center justify-center hover:bg-green-900 cursor-pointer"
           onClick={() => {
             if (!IsProcessing) {
-              handlePrintQ("hemo");
+              handlePrintQ('hemo');
             }
           }}
         >
@@ -121,7 +143,7 @@ const GetQNoHemo = () => {
           className="bg-blue-700 h-32 flex items-center justify-center hover:bg-blue-900"
           onClick={() => {
             if (!IsProcessing) {
-              handlePrintQ("amb");
+              handlePrintQ('amb');
             }
           }}
         >

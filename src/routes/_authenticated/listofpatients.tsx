@@ -130,7 +130,7 @@ const ListOfPatients = () => {
   }, []);
   return (
     <div className="cardBackGround">
-      <Divider>List of Patients</Divider>
+      <Divider>Patient Master List</Divider>
       <Button
         type="primary"
         onClick={() => {

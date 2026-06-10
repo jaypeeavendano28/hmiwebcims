@@ -1,17 +1,17 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { PostData, WithAccess } from "../../../helpers";
-import { TBranches } from "../../../types";
-import { useEffect, useRef, useState } from "react";
-import { Button, Divider, Form, Image, Input, notification } from "antd";
-import Cookies from "js-cookie";
-import axios from "axios";
-import useAppStore from "../../../store";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { PostData, WithAccess } from '../../../helpers';
+import { TBranches } from '../../../types';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Divider, Form, Image, Input, notification } from 'antd';
+import Cookies from 'js-cookie';
+import axios from 'axios';
+import useAppStore from '../../../store';
 const isDev = import.meta.env.DEV;
-const prodApi = import.meta.env.VITE_PROD_API + "/api/";
-const devApi = import.meta.env.VITE_DEV_API + "/api/";
+const prodApi = import.meta.env.VITE_PROD_API + '/api/';
+const devApi = import.meta.env.VITE_DEV_API + '/api/';
 const apiUrl = isDev ? devApi : prodApi;
 
-export const Route = createFileRoute("/_authenticated/branchprofile/$code")({
+export const Route = createFileRoute('/_authenticated/branchprofile/$code')({
   component: () => <BranchProfile />,
 });
 
@@ -28,10 +28,10 @@ const BranchProfile = () => {
   const [form] = Form.useForm();
   const { code } = Route.useParams();
   const handleGetDetails = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetBranchDetails",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetBranchDetails',
       parameters: {
-        Code: code,
+        BranchCode: code,
       },
     });
     if (res) {
@@ -43,10 +43,11 @@ const BranchProfile = () => {
         AddressLine2: x.AddressLine2,
         AddressLine3: x.AddressLine3,
         AddressLine4: x.AddressLine4,
+        DohAccreditationNo: x.DohAccreditationNo,
       });
     }
-    res = await PostData("GetRecordsImages", {
-      sp: "udp_GetBranchHeader",
+    res = await PostData('GetRecordsImages', {
+      sp: 'udp_GetBranchHeader',
       parameters: {
         Code: code,
       },
@@ -55,8 +56,8 @@ const BranchProfile = () => {
       setPicture(res.parameters.lst[0].Image);
     }
 
-    res = await PostData("GetRecordsImages", {
-      sp: "udp_GetBranchWatermark",
+    res = await PostData('GetRecordsImages', {
+      sp: 'udp_GetBranchWatermark',
       parameters: {
         Code: code,
       },
@@ -66,21 +67,21 @@ const BranchProfile = () => {
     }
   };
   const handleSubmitForm = async (v: TBranches) => {
-    const res = await PostData("SaveBranchProfile", v);
+    const res = await PostData('SaveBranchProfile', v);
     if (res) {
       if (res.status === 1) {
         notification.success({
-          message: "Successfully saved!",
-          placement: "topRight",
+          message: 'Successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/branches",
+          to: '/branches',
         });
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -98,31 +99,31 @@ const BranchProfile = () => {
     try {
       const fd = new FormData();
 
-      fd.append("image", image);
-      fd.append("Code", code);
+      fd.append('image', image);
+      fd.append('Code', code);
       axios.defaults.baseURL = apiUrl;
-      axios.defaults.headers.common["Authorization"] = ("Bearer " +
-        Cookies.get("WebCimsTokenId")) as string;
+      axios.defaults.headers.common['Authorization'] = ('Bearer ' +
+        Cookies.get('WebCimsTokenId')) as string;
 
       await axios({
-        method: "post",
-        url: "UploadBranchHeader",
+        method: 'post',
+        url: 'UploadBranchHeader',
         data: fd,
         headers: {
-          "Content-Type": "multipart/form-data",
+          'Content-Type': 'multipart/form-data',
         },
       })
         .then((res: any) => {
           if (res.data.status === 1) {
             notification.success({
-              message: "Successfully saved!",
-              placement: "topRight",
+              message: 'Successfully saved!',
+              placement: 'topRight',
               duration: 3,
             });
           } else {
             notification.error({
               message: res.data.message,
-              placement: "topRight",
+              placement: 'topRight',
               duration: 3,
             });
           }
@@ -139,31 +140,31 @@ const BranchProfile = () => {
     try {
       const fd = new FormData();
 
-      fd.append("image", image);
-      fd.append("Code", code);
+      fd.append('image', image);
+      fd.append('Code', code);
       axios.defaults.baseURL = apiUrl;
-      axios.defaults.headers.common["Authorization"] = ("Bearer " +
-        Cookies.get("WebCimsTokenId")) as string;
+      axios.defaults.headers.common['Authorization'] = ('Bearer ' +
+        Cookies.get('WebCimsTokenId')) as string;
 
       await axios({
-        method: "post",
-        url: "UploadBranchWatermark",
+        method: 'post',
+        url: 'UploadBranchWatermark',
         data: fd,
         headers: {
-          "Content-Type": "multipart/form-data",
+          'Content-Type': 'multipart/form-data',
         },
       })
         .then((res: any) => {
           if (res.data.status === 1) {
             notification.success({
-              message: "Successfully saved!",
-              placement: "topRight",
+              message: 'Successfully saved!',
+              placement: 'topRight',
               duration: 3,
             });
           } else {
             notification.error({
               message: res.data.message,
-              placement: "topRight",
+              placement: 'topRight',
               duration: 3,
             });
           }
@@ -179,10 +180,10 @@ const BranchProfile = () => {
     if (files[0] === undefined) return false;
 
     let filename = files[0].name;
-    if (filename.lastIndexOf(".") <= 0) {
+    if (filename.lastIndexOf('.') <= 0) {
       notification.error({
-        message: "Invalid image file!",
-        placement: "topRight",
+        message: 'Invalid image file!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -190,8 +191,8 @@ const BranchProfile = () => {
 
     if (files[0].size >= 2000000) {
       notification.error({
-        message: "File must not be greater than 2MB!",
-        placement: "topRight",
+        message: 'File must not be greater than 2MB!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -205,7 +206,7 @@ const BranchProfile = () => {
   };
   const handleWithAccess = async () => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: 5,
@@ -214,12 +215,12 @@ const BranchProfile = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-Branches-Edit",
-          placement: "topRight",
+          message: 'Access denied for module-Branches-Edit',
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/",
+          to: '/',
         });
       }
     }
@@ -234,10 +235,10 @@ const BranchProfile = () => {
     if (files[0] === undefined) return false;
 
     let filename = files[0].name;
-    if (filename.lastIndexOf(".") <= 0) {
+    if (filename.lastIndexOf('.') <= 0) {
       notification.error({
-        message: "Invalid image file!",
-        placement: "topRight",
+        message: 'Invalid image file!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -245,8 +246,8 @@ const BranchProfile = () => {
 
     if (files[0].size >= 2000000) {
       notification.error({
-        message: "File must not be greater than 2MB!",
-        placement: "topRight",
+        message: 'File must not be greater than 2MB!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -259,7 +260,7 @@ const BranchProfile = () => {
     }
   };
   useEffect(() => {
-    store.setHideSideBar("N");
+    store.setHideSideBar('N');
     handleWithAccess();
     handleGetDetails();
   }, []);
@@ -281,7 +282,7 @@ const BranchProfile = () => {
                 rules={[
                   {
                     required: true,
-                    message: "Name is required!",
+                    message: 'Name is required!',
                   },
                 ]}
               >
@@ -293,7 +294,7 @@ const BranchProfile = () => {
                 rules={[
                   {
                     required: true,
-                    message: "Address line 1 is required!",
+                    message: 'Address line 1 is required!',
                   },
                 ]}
               >
@@ -306,6 +307,12 @@ const BranchProfile = () => {
                 <Input />
               </Form.Item>
               <Form.Item name="AddressLine4" label="Address Line 4">
+                <Input />
+              </Form.Item>
+              <Form.Item
+                name="DohAccreditationNo"
+                label="DOH Accreditation No."
+              >
                 <Input />
               </Form.Item>
               <div className="flex justify-end">
@@ -325,7 +332,7 @@ const BranchProfile = () => {
                 Upload from computer
               </Button>
               <input
-                style={{ display: "none" }}
+                style={{ display: 'none' }}
                 ref={fileInput}
                 type="file"
                 accept=".jpg"
@@ -345,7 +352,7 @@ const BranchProfile = () => {
                 Upload from computer
               </Button>
               <input
-                style={{ display: "none" }}
+                style={{ display: 'none' }}
                 ref={fileInputWatermark}
                 type="file"
                 accept=".jpg"

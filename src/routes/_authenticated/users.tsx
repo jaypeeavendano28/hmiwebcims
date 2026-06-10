@@ -1,16 +1,16 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
-import { Button, Divider, Modal, Space, Tooltip, notification } from "antd";
-import { PostData, WithAccess } from "../../helpers";
-import { useEffect, useState } from "react";
-import Loading from "../../components/loading";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { TUsers } from "../../types";
-import { MdOutlineDelete } from "react-icons/md";
-import { FilterMatchMode } from "primereact/api";
-import { FiUserCheck, FiUsers } from "react-icons/fi";
-import useAppStore from "../../store";
-export const Route = createFileRoute("/_authenticated/users")({
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
+import { Button, Divider, Modal, Space, Tooltip, notification } from 'antd';
+import { PostData, WithAccess } from '../../helpers';
+import { useEffect, useState } from 'react';
+import Loading from '../../components/loading';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { TUsers } from '../../types';
+import { MdOutlineCountertops, MdOutlineDelete } from 'react-icons/md';
+import { FilterMatchMode } from 'primereact/api';
+import { FiUserCheck, FiUsers } from 'react-icons/fi';
+import useAppStore from '../../store';
+export const Route = createFileRoute('/_authenticated/users')({
   component: () => <Users />,
 });
 
@@ -28,8 +28,8 @@ const Users = () => {
   });
   const handleGetUsers = async () => {
     setIsProcessing(true);
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetUsers",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetUsers',
       parameters: {},
     });
     if (res) {
@@ -41,16 +41,16 @@ const Users = () => {
   };
   const handleDelete = async () => {
     try {
-      const res = await PostData("DeleteUser", {
+      const res = await PostData('DeleteUser', {
         ...selectedData,
-        Username: "",
+        Username: '',
       });
 
       if (res) {
         if (res.status === 1) {
           notification.success({
-            message: "User successfully deleted!",
-            placement: "topRight",
+            message: 'User successfully deleted!',
+            placement: 'topRight',
             duration: 3,
           });
           handleGetUsers();
@@ -58,7 +58,7 @@ const Users = () => {
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -66,7 +66,7 @@ const Users = () => {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -79,7 +79,7 @@ const Users = () => {
             type="primary"
             icon={<MdOutlineDelete />}
             onClick={() => {
-              handleWithAccess(3, "Users-Delete");
+              handleWithAccess(3, 'Users-Delete');
               setSeletectedData(data);
               setShowDelete(true);
             }}
@@ -93,6 +93,26 @@ const Users = () => {
             }}
           >
             <Button type="primary" icon={<FiUserCheck />} />
+          </Link>
+        </Tooltip>
+        {/* <Tooltip title="User Departments">
+          <Link
+            to="/userdepartments/$Id"
+            params={{
+              Id: data.Id.toString(),
+            }}
+          >
+            <Button type="primary" icon={<BiBuilding />} />
+          </Link>
+        </Tooltip> */}
+        <Tooltip title="User Queue Counters">
+          <Link
+            to="/userqcounters/$Id"
+            params={{
+              Id: data.Id.toString(),
+            }}
+          >
+            <Button type="primary" icon={<MdOutlineCountertops />} />
           </Link>
         </Tooltip>
         <Tooltip title="User Branches">
@@ -133,7 +153,7 @@ const Users = () => {
   };
   const handleWithAccess = async (ModuleId: number, Description: string) => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: ModuleId,
@@ -142,19 +162,19 @@ const Users = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-" + Description,
-          placement: "topRight",
+          message: 'Access denied for module-' + Description,
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/",
+          to: '/',
         });
       }
     }
   };
   useEffect(() => {
-    store.setHideSideBar("N");
-    handleWithAccess(1, "Users");
+    store.setHideSideBar('N');
+    handleWithAccess(1, 'Users');
     handleGetUsers();
   }, []);
   return (
@@ -163,7 +183,7 @@ const Users = () => {
       <Link
         to="/userprofile/$Id"
         params={{
-          Id: "0",
+          Id: '0',
         }}
       >
         <Button type="primary">New</Button>
@@ -175,7 +195,7 @@ const Users = () => {
         ) : (
           <DataTable
             value={list}
-            tableStyle={{ minWidth: "50rem" }}
+            tableStyle={{ minWidth: '50rem' }}
             paginator
             rows={10}
             rowsPerPageOptions={[10, 25, 50]}
@@ -188,7 +208,7 @@ const Users = () => {
             expandedRows={expandedRows as any}
             onRowToggle={(e) => setExpandedRows(e.data as any)}
           >
-            <Column expander={list!.length > 0} style={{ width: "5rem" }} />
+            <Column expander={list!.length > 0} style={{ width: '5rem' }} />
             <Column
               field="action"
               header="Action"
@@ -198,12 +218,12 @@ const Users = () => {
               field="Username"
               header="Username"
               filter
-              style={{ minWidth: "12rem" }}
+              style={{ minWidth: '12rem' }}
             ></Column>
             <Column
               field="Fullname"
               header="Fullname"
-              style={{ minWidth: "12rem" }}
+              style={{ minWidth: '12rem' }}
               filter
             ></Column>
           </DataTable>

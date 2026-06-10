@@ -1,11 +1,11 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { PostData, WithAccess, isNullOrUndefinedOrBlank } from "../../helpers";
+import { createLazyFileRoute } from '@tanstack/react-router';
+import { PostData, WithAccess, isNullOrUndefinedOrBlank } from '../../helpers';
 import {
   TAppointments,
   TLaboratoryResultMain,
   TLaboratoryResultTemplates,
-} from "../../types";
-import { useEffect, useState } from "react";
+} from '../../types';
+import { useEffect, useState } from 'react';
 import {
   AutoComplete,
   Button,
@@ -19,21 +19,21 @@ import {
   Space,
   Tabs,
   notification,
-} from "antd";
-import useAppStore from "../../store";
-import { round } from "lodash";
-import LabResult from "../../components/LabResult";
-import dayjs from "dayjs";
-import axios from "axios";
-import ChargesPerPatient from "../../components/ChargesPerPatient";
-import ExistingLabResults from "../../components/ExistingLabResults";
-import FinalizeForm from "../../components/FinalizeForm";
+} from 'antd';
+import useAppStore from '../../store';
+import { round } from 'lodash';
+import LabResult from '../../components/LabResult';
+import dayjs from 'dayjs';
+import axios from 'axios';
+import ChargesPerPatient from '../../components/ChargesPerPatient';
+import ExistingLabResults from '../../components/ExistingLabResults';
+import FinalizeForm from '../../components/FinalizeForm';
 const isDev = import.meta.env.DEV;
-const prodApi = import.meta.env.VITE_PROD_API + "/api/";
-const devApi = import.meta.env.VITE_DEV_API + "/api/";
+const prodApi = import.meta.env.VITE_PROD_API + '/api/';
+const devApi = import.meta.env.VITE_DEV_API + '/api/';
 const apiUrl = isDev ? devApi : prodApi;
 export const Route = createLazyFileRoute(
-  "/_authenticated/laboratoryresults/$Id"
+  '/_authenticated/laboratoryresults/$Id',
 )({
   component: () => <LaboratoryResults />,
 });
@@ -73,7 +73,7 @@ const LaboratoryResults = () => {
   const [Pathologist, setPathologist] = useState([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
   const [IsSaving, setIsSaving] = useState(false);
-  const [ResultNo, setResultNo] = useState("");
+  const [ResultNo, setResultNo] = useState('');
   const [ResultId, setResultId] = useState(0);
   const [rowsCol1, setRowsCol1] = useState([]);
   const [form] = Form.useForm();
@@ -88,15 +88,15 @@ const LaboratoryResults = () => {
   >();
   const handleOpenResult = async (Id: number) => {
     setResultId(Id);
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetLabResultMain",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetLabResultMain',
       parameters: {
         Id: Id,
       },
     });
     if (res) {
       const x: TLaboratoryResultMain = res.parameters.lst[0];
-      form1.setFieldValue("Template", x.fk_LaboratoryResultTemplates_Id);
+      form1.setFieldValue('Template', x.fk_LaboratoryResultTemplates_Id);
       form.setFieldsValue({
         ReportDate: dayjs(x.ReportDate),
         DateReceived: dayjs(x.DateReceived),
@@ -119,15 +119,15 @@ const LaboratoryResults = () => {
         setAllowSave(true);
       }
     }
-    res = await PostData("GetRecords", {
-      sp: "udp_GetLabResultMain",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetLabResultMain',
       parameters: {
         Id: Id,
       },
     });
     if (res) {
       const x: TLaboratoryResultMain = res.parameters.lst[0];
-      form1.setFieldValue("Template", x.fk_LaboratoryResultTemplates_Id);
+      form1.setFieldValue('Template', x.fk_LaboratoryResultTemplates_Id);
       form.setFieldsValue({
         ReportDate: dayjs(x.ReportDate),
         DateReceived: dayjs(x.DateReceived),
@@ -142,8 +142,8 @@ const LaboratoryResults = () => {
         Remarks: x.Remarks,
       });
     }
-    res = await PostData("GetRecords", {
-      sp: "udp_GetLabResultDetails",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetLabResultDetails',
       parameters: {
         Id: Id,
       },
@@ -153,8 +153,8 @@ const LaboratoryResults = () => {
     }
   };
   const handleGetAppointmentDetails = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetAppointmentDetails",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetAppointmentDetails',
       parameters: {
         Id: Id,
       },
@@ -163,8 +163,8 @@ const LaboratoryResults = () => {
       setAppointmentDetails(res.parameters.lst[0]);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetLaboratoryResultTemplates2",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetLaboratoryResultTemplates2',
       parameters: {
         BranchCode: store.branchCode,
         AppointmentId: Id,
@@ -174,11 +174,11 @@ const LaboratoryResults = () => {
       setTemplates(res.parameters.lst);
     }
   };
-  const handleNew =  () => {
-    if (isNullOrUndefinedOrBlank(form1.getFieldValue("Template"))) {
+  const handleNew = () => {
+    if (isNullOrUndefinedOrBlank(form1.getFieldValue('Template'))) {
       notification.error({
-        message: "Please select a template!",
-        placement: "topRight",
+        message: 'Please select a template!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -188,9 +188,9 @@ const LaboratoryResults = () => {
     form.setFieldsValue({
       ReportDate: dayjs(),
       DateReceived: dayjs(),
-      TemplateId: form1.getFieldValue("Template"),
+      TemplateId: form1.getFieldValue('Template'),
     });
-    setResultNo("");
+    setResultNo('');
     setResultId(0);
     setIsFinalized(false);
     setAllowSave(true);
@@ -198,13 +198,13 @@ const LaboratoryResults = () => {
   const handleLoadTemplate = async () => {
     setRowsCol1([]);
 
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetLaboratoryResultTemplate",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetLaboratoryResultTemplate',
       parameters: {
-        TemplateId: form1.getFieldValue("Template"),
+        TemplateId: form1.getFieldValue('Template'),
         PatientId: appointmentDetails?.fk_PatientInformation_Id,
-        Barcode: "",
-        ChargeId: "",
+        Barcode: '',
+        ChargeId: '',
         AppointmentId: appointmentDetails?.Id,
       },
     });
@@ -215,16 +215,16 @@ const LaboratoryResults = () => {
   const handleSaveResult = async (x: any) => {
     const data: any = [...rowsCol1];
     const index = data.findIndex((obj: any) => obj.Id === x.Id);
-    data[index].Flag = "";
+    data[index].Flag = '';
     if (
       !isNullOrUndefinedOrBlank(data[index].IsFrom) &&
       !isNullOrUndefinedOrBlank(data[index].IsTo)
     ) {
-      if (data[index].ShowHighLow === "Y" && x.ResultSi > 0) {
+      if (data[index].ShowHighLow === 'Y' && x.ResultSi > 0) {
         if (x.ResultSi < data[index].IsFrom) {
-          data[index].Flag = "L";
+          data[index].Flag = 'L';
         } else if (x.ResultSi > data[index].IsTo) {
-          data[index].Flag = "H";
+          data[index].Flag = 'H';
         }
       }
     }
@@ -236,7 +236,7 @@ const LaboratoryResults = () => {
       if (Number(data[index].Conversion) > 0) {
         data[index].ResultConventional = round(
           Number(x.ResultSi) * Number(data[index].Conversion),
-          2
+          2,
         );
       }
     }
@@ -252,28 +252,27 @@ const LaboratoryResults = () => {
         Main: {
           ...values,
           BranchCode: store.branchCode,
-          ReportDate: dayjs(new Date()).format("YYYY-MM-DD"),
-          DateReceived: dayjs(values.DateReceived).format("YYYY-MM-DD"),
+          ReportDate: dayjs(new Date()).format('YYYY-MM-DD'),
+          DateReceived: dayjs(values.DateReceived).format('YYYY-MM-DD'),
           fk_tblPatientInformation_PatientId:
             appointmentDetails?.fk_PatientInformation_Id,
           Id: ResultId,
-          fk_tblChargesMain_ChargeId: "",
-          fk_LaboratoryResultTemplates_Id: form1.getFieldValue("Template"),
+          fk_tblChargesMain_ChargeId: '',
+          fk_LaboratoryResultTemplates_Id: form1.getFieldValue('Template'),
           Username: store.username,
           ResultNo: ResultNo,
           AdmissionId: appointmentDetails?.Id,
-      
         },
         Details: rowsCol1,
       };
       setIsProcessing(true);
-      const res = await PostData("SaveLaboratoryResultNew", valuesToSave);
+      const res = await PostData('SaveLaboratoryResultNew', valuesToSave);
       if (res) {
         setIsProcessing(false);
         if (res.result.status === 1) {
           notification.success({
-            message: "Successfully saved!",
-            placement: "topRight",
+            message: 'Successfully saved!',
+            placement: 'topRight',
             duration: 3,
           });
 
@@ -285,7 +284,7 @@ const LaboratoryResults = () => {
           setIsProcessing(false);
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -294,34 +293,34 @@ const LaboratoryResults = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
 
   const handleInitialize = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetDoctors",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetDoctors',
       parameters: {},
     });
     if (res) {
       setRequestingPhysician(res.parameters.lst);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetListOfMedtechs",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetListOfMedtechs',
       parameters: {
         BranchCode: store.branchCode,
-        Type: "M",
+        Type: 'M',
       },
     });
     if (res) {
       setMedtechs(res.parameters.lst);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetListOfPathologist",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetListOfPathologist',
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -330,8 +329,8 @@ const LaboratoryResults = () => {
       setPathologist(res.parameters.lst);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetBranchDetails",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetBranchDetails',
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -341,8 +340,8 @@ const LaboratoryResults = () => {
       console.log(branchDetails);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetSpecimen",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetSpecimen',
       parameters: {},
     });
     if (res) {
@@ -353,7 +352,7 @@ const LaboratoryResults = () => {
   };
   const handleDeleteResult = async () => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: 33,
@@ -362,30 +361,30 @@ const LaboratoryResults = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-Laboratory Result-Delete",
-          placement: "topRight",
+          message: 'Access denied for module-Laboratory Result-Delete',
+          placement: 'topRight',
           duration: 3,
         });
       } else {
         try {
           setIsProcessing(true);
-          const res = await PostData("DeleteResult", {
+          const res = await PostData('DeleteResult', {
             Id: ResultId,
-            Table: "LAB",
+            Table: 'LAB',
           });
           if (res) {
             setIsProcessing(false);
             if (res.status === 1) {
               notification.success({
-                message: "Result successfully deleted!",
-                placement: "topRight",
+                message: 'Result successfully deleted!',
+                placement: 'topRight',
                 duration: 3,
               });
               location.reload();
             } else {
               notification.error({
                 message: res.message,
-                placement: "topRight",
+                placement: 'topRight',
                 duration: 3,
               });
             }
@@ -394,54 +393,63 @@ const LaboratoryResults = () => {
           setIsProcessing(false);
           notification.error({
             message: error.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
       }
     }
   };
-  const handlePrint = async () => {
+  const handlePrint = async (isPrint: Boolean = false) => {
     setIsProcessing(true);
     const isDownload = false;
-    const url = apiUrl + "labresult/" + ResultId + "/clinicalchem.rdl";
-    axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
+    const Finalized = isNullOrUndefinedOrBlank(
+      form.getFieldValue('FinalizedBy'),
+    )
+      ? 'Y'
+      : 'N';
+    const url =
+      apiUrl + 'labresult/' + ResultId + '/clinicalchem.rdl/' + Finalized;
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
     try {
       await axios({
         url: url, //your url
-        method: "GET",
-        responseType: "blob",
+        method: 'GET',
+        responseType: 'blob',
       }).then((response: any) => {
         let newBlob;
         if (isDownload === false) {
           newBlob = new Blob([response.data], {
-            type: "application/pdf",
+            type: 'application/pdf',
           });
 
           const data = window.URL.createObjectURL(newBlob);
+          if (isPrint === true) {
+            const a = document.createElement('a');
 
-          const a = document.createElement("a");
+            a.setAttribute('href', data);
+            a.setAttribute('target', '_blank');
 
-          a.setAttribute("href", data);
-          a.setAttribute("target", "_blank");
+            a.click();
+          }
 
-          a.click();
           setIsProcessing(false);
         } else {
           newBlob = new Blob([response.data], {
-            type: "application/excel",
+            type: 'application/excel',
           });
-          const a = document.createElement("a");
+          const a = document.createElement('a');
           document.body.appendChild(a);
           const url = window.URL.createObjectURL(newBlob);
           a.href = url;
-          a.download = "download.xls";
+          a.download = 'download.xls';
           a.click();
           setTimeout(() => {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
           }, 0);
+
           setIsProcessing(false);
         }
       });
@@ -455,12 +463,12 @@ const LaboratoryResults = () => {
   const handleFinalizeResult = async (v: any) => {
     setShowFinalize(false);
     setIsProcessing(true);
-    const res = await PostData("FinalizeResult", {
+    const res = await PostData('FinalizeResult', {
       ResultId: ResultId,
-      Table: "LAB",
+      Table: 'LAB',
       Username: v.Username,
       Password: v.Password,
-      Mode: isFinalized ? "U" : "F",
+      Mode: isFinalized ? 'U' : 'F',
     });
 
     try {
@@ -469,16 +477,20 @@ const LaboratoryResults = () => {
         if (res.status === 1) {
           notification.success({
             message: isFinalized
-              ? "Result successfully un-finalized!"
-              : "Result successfully finalized!",
-            placement: "topRight",
+              ? 'Result successfully un-finalized!'
+              : 'Result successfully finalized!',
+            placement: 'topRight',
             duration: 3,
           });
           handleOpenResult(ResultId);
+
+          if (!isFinalized) {
+            handlePrint(false);
+          }
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -487,7 +499,7 @@ const LaboratoryResults = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -521,7 +533,7 @@ const LaboratoryResults = () => {
 
           <Form form={form1} layout="vertical">
             <Form.Item name="Template" label="Template">
-              <Select style={{ width: "100%" }}>
+              <Select style={{ width: '100%' }}>
                 {templates?.map((v: TLaboratoryResultTemplates) => (
                   <Select.Option key={v.Id} value={v.Id}>
                     {v.Description}
@@ -539,8 +551,8 @@ const LaboratoryResults = () => {
               defaultActiveKey="1"
               items={[
                 {
-                  label: "Charges",
-                  key: "1",
+                  label: 'Charges',
+                  key: '1',
                   children: (
                     <ChargesPerPatient
                       AppointmentId={appointmentDetails?.Id}
@@ -550,8 +562,8 @@ const LaboratoryResults = () => {
                   ),
                 },
                 {
-                  label: "Existing Results",
-                  key: "2",
+                  label: 'Existing Results',
+                  key: '2',
                   children: (
                     <ExistingLabResults
                       PatientId={appointmentDetails?.fk_PatientInformation_Id}
@@ -616,19 +628,19 @@ const LaboratoryResults = () => {
               <strong>{ResultId}</strong>
             </Form.Item>
             <Form.Item label="Template Id." name="TemplateId">
-              <strong>{form1.getFieldValue("Template")}</strong>
+              <strong>{form1.getFieldValue('Template')}</strong>
             </Form.Item>
             <Form.Item label="Result No." name="ResultNo">
               <strong>{ResultNo}</strong>
             </Form.Item>
-   
+
             <Form.Item
               label="Date Received"
               name="DateReceived"
               rules={[
                 {
                   required: true,
-                  message: "Date received is required!",
+                  message: 'Date received is required!',
                 },
               ]}
             >
@@ -652,7 +664,7 @@ const LaboratoryResults = () => {
               rules={[
                 {
                   max: 100,
-                  message: "Specimen must not exceed 100 characters!",
+                  message: 'Specimen must not exceed 100 characters!',
                 },
               ]}
               normalize={(v) => v.toUpperCase()}
@@ -707,12 +719,12 @@ const LaboratoryResults = () => {
             <Form.Item
               label="Medical Technologist"
               name="Medtech"
-              rules={[
-                {
-                  required: true,
-                  message: "Medical technologist is required!",
-                },
-              ]}
+              // rules={[
+              //   {
+              //     required: true,
+              //     message: "Medical technologist is required!",
+              //   },
+              // ]}
             >
               <Select
                 showSearch
@@ -734,12 +746,12 @@ const LaboratoryResults = () => {
             <Form.Item
               label="Pathologist"
               name="Pathologist"
-              rules={[
-                {
-                  required: true,
-                  message: "Pathologist is required!",
-                },
-              ]}
+              // rules={[
+              //   {
+              //     required: true,
+              //     message: "Pathologist is required!",
+              //   },
+              // ]}
             >
               <Select
                 showSearch
@@ -787,7 +799,7 @@ const LaboratoryResults = () => {
                   <Button
                     type="primary"
                     onClick={() => {
-                      handlePrint();
+                      handlePrint(true);
                     }}
                     loading={isProcessing}
                     disabled={!isFinalized}
@@ -821,7 +833,7 @@ const LaboratoryResults = () => {
                     loading={isProcessing}
                     disabled={ResultId === 0}
                   >
-                    {isFinalized ? "Un-Finalize Result" : "Finalize Result"}
+                    {isFinalized ? 'Un-Finalize Result' : 'Finalize Result'}
                   </Button>
 
                   <Popconfirm

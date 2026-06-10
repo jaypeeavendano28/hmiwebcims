@@ -1,6 +1,10 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Helmet } from "react-helmet";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router';
+import { Helmet } from 'react-helmet';
 import {
   AutoComplete,
   Avatar,
@@ -10,7 +14,6 @@ import {
   Dropdown,
   Form,
   Input,
-  MenuProps,
   Modal,
   Popconfirm,
   Popover,
@@ -19,8 +22,10 @@ import {
   Space,
   Tooltip,
   notification,
-} from "antd";
-import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
+} from 'antd';
+import { PostData } from '../../helpers';
+import { PDFDocument } from 'pdf-lib';
+import { Link } from '@tanstack/react-router';
 import {
   TAppointmentType,
   TAppointments,
@@ -29,51 +34,73 @@ import {
   TPatientInformation,
   TQNo,
   TSettings,
-} from "../../types";
-import { useCallback, useEffect, useRef, useState } from "react";
-import dayjs from "dayjs";
-import useAppStore from "../../store";
-import ListOfPatients from "../../components/ListOfPatients";
-import { BiSearch } from "react-icons/bi";
-import Loading from "../../components/loading";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { MdOutlineDelete, MdOutlineNotes } from "react-icons/md";
-import Webcam from "react-webcam";
-import axios, { AxiosError } from "axios";
-import AddCharge from "../../components/AddCharge";
-import { FaRegEdit } from "react-icons/fa";
-import { ColumnGroup } from "primereact/columngroup";
-import { Row } from "primereact/row";
-export const Route = createFileRoute("/_authenticated/appointmentdetails/$Id")({
+} from '../../types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import dayjs from 'dayjs';
+import useAppStore from '../../store';
+import ListOfPatients from '../../components/ListOfPatients';
+import { BiNote, BiSearch } from 'react-icons/bi';
+import Loading from '../../components/loading';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { MdOutlineDelete, MdOutlineNotes } from 'react-icons/md';
+import Webcam from 'react-webcam';
+import axios, { AxiosError } from 'axios';
+import AddCharge from '../../components/AddCharge';
+import { FaRegEdit } from 'react-icons/fa';
+import { ColumnGroup } from 'primereact/columngroup';
+import { Row } from 'primereact/row';
+import ResultStatus from '../../components/ResultStatus';
+export const Route = createFileRoute('/_authenticated/appointmentdetails/$Id')({
   component: () => <AppointmentDetails />,
 });
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API;
 const devApi = import.meta.env.VITE_DEV_API;
+import { isNullOrUndefinedOrBlank } from './../../helpers/index';
 
 const ApiUrl = isDev ? devApi : prodApi;
+
+const positionOnBoardOpt = [
+  {
+    value: 'deck',
+    label: 'Deck',
+  },
+  {
+    value: 'catering',
+    label: 'Catering',
+  },
+  {
+    value: 'engine',
+    label: 'Engine',
+  },
+  {
+    value: 'other',
+    label: 'Other',
+  },
+];
+
+const positionOnBord = ['engine', 'deck', 'catering'];
 
 const AppointmentDetails = () => {
   const [showPackageDetails, setShowPackageDetails] = useState(false);
   const [isMobileTph, setIsMobileTph] = useState(false);
-  const [title, setTitle] = useState("");
-  const [appType, setAppType] = useState("");
+  const [title, setTitle] = useState('');
+  const [appType, setAppType] = useState('');
   const router = useRouter();
   const [appointmentDetails, setAppointmentDetails] = useState<
     TAppointments | undefined
   >();
   const q = useQueryClient();
   const [Net, setNet] = useState<number>(0);
-  const [qCounters, setQCounters] = useState<MenuProps["items"]>([]);
-  const [showAddCharge, setShowAddCharge] = useState(false);
+  // const [qCounters, setQCounters] = useState<MenuProps['items']>([]);
   const fileInput = useRef<HTMLInputElement | null>(null);
   const [showWebCam, setShowWebCam] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const videoConstraints = {
     width: 400,
     height: 400,
-    facingMode: "user",
+    facingMode: 'user',
   };
   const [picture, setPicture] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState(null);
@@ -88,12 +115,14 @@ const AppointmentDetails = () => {
   const [charges, setCharges] = useState<TCharges[] | undefined>([]);
   const [chargesAll, setChargesAll] = useState<TCharges[] | undefined>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [gender, setGender] = useState("");
+  const [gender, setGender] = useState('');
+
+  console.log(Id);
   useQuery({
-    queryKey: ["patientDetails"],
+    queryKey: ['patientDetails'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetPatientInformationById",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPatientInformationById',
         parameters: {
           Id: PatientId,
         },
@@ -112,12 +141,65 @@ const AppointmentDetails = () => {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
+  const CountryOfDestination = useQuery({
+    queryKey: ['CountryOfDestination'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: {
+          Code: 'COUNTRYOFDESTINATION',
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const checklistDeptOpt = useQuery({
+    queryKey: ['checklistDeptOpt', Id],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetChecklistDeptOnly',
+        parameters: {
+          AppointmentId: Id,
+        },
+      });
+      const data = res.parameters.lst;
+      return data.map((d: any) => ({
+        label: d.DepartmentDescription,
+        key: d.DepartmentId,
+      }));
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+    enabled: !!Id,
+  });
+
+  // const PositionAppliedFor = useQuery({
+  //   queryKey: ['PositionAppliedFor'],
+  //   queryFn: async () => {
+  //     const res = await PostData('GetRecords', {
+  //       sp: 'udp_GetSettings',
+  //       parameters: {
+  //         Code: 'POSITIONAPPLIEDFOR',
+  //       },
+  //     });
+  //     if (res) {
+  //       return res.parameters.lst;
+  //     }
+  //   },
+  //   refetchOnWindowFocus: false,
+  //   staleTime: 0,
+  // });
 
   const appointmentType = useQuery({
-    queryKey: ["appointmentType"],
+    queryKey: ['appointmentType'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetAppointmentType",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetAppointmentType',
         parameters: {},
       });
       if (res) {
@@ -129,10 +211,10 @@ const AppointmentDetails = () => {
   });
 
   const company = useQuery({
-    queryKey: ["company"],
+    queryKey: ['company'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetCompany",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetCompany',
         parameters: {},
       });
       if (res) {
@@ -144,10 +226,10 @@ const AppointmentDetails = () => {
   });
 
   const hmo = useQuery({
-    queryKey: ["hmo"],
+    queryKey: ['hmo'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetHmo",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetHmo',
         parameters: {},
       });
       if (res) {
@@ -159,11 +241,11 @@ const AppointmentDetails = () => {
   });
 
   const referredBy = useQuery({
-    queryKey: ["referredBy"],
+    queryKey: ['referredBy'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetSettings",
-        parameters: { Code: "REFERREDBY" },
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: { Code: 'REFERREDBY' },
       });
       if (res) {
         return res.parameters.lst;
@@ -174,10 +256,10 @@ const AppointmentDetails = () => {
   });
 
   const occupation = useQuery({
-    queryKey: ["occupation"],
+    queryKey: ['occupation'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetOccupation",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetOccupation',
         parameters: {},
       });
       if (res) {
@@ -187,183 +269,189 @@ const AppointmentDetails = () => {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
+  const printBlob = (blob: Blob) => {
+    return new Promise<void>((resolve) => {
+      const url = URL.createObjectURL(blob);
 
-  const handlePrintCheckList = async (qCounter: string) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = url;
+
+      document.body.appendChild(iframe);
+
+      iframe.onload = () => {
+        let cleaned = false;
+
+        const cleanup = () => {
+          if (cleaned) return;
+          cleaned = true;
+
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+
+        iframe.contentWindow?.addEventListener('afterprint', cleanup);
+
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+
+        setTimeout(cleanup, 10000); // fallback
+      };
+    });
+  };
+
+  const handlePrintCheckList = async (dept: string) => {
+    setIsLoading(true);
     if (isMobileTph === false && charges!.length <= 0) {
       notification.error({
-        message: "Please add charges first!",
-        placement: "topRight",
+        message: 'Please add charges first!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
-    } else if (isMobileTph === false && Number(Net) > 0) {
+    }
+
+    if (isMobileTph === false && Number(Net) > 0) {
       notification.error({
-        message: "Please pay first the balance at the cashier!",
-        placement: "topRight",
+        message: 'Please pay first the balance at the cashier!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
     }
-    if (qCounter === "*ALL*") {
-      // qCounters!.forEach(async (e: any) => {
-      axios.defaults.headers.common["Authorization"] =
-        "Bearer " + store.tokenIdWebCims;
-      const url =
-        ApiUrl +
-        "/api/GenerateReport?ReportName=checklist.rdl&AppointmentId=" +
-        Id +
-        "&QCounter=" +
-        "xxxx";
 
-      try {
-        setIsLoading(true);
-        await axios({
-          url: url, //your url
-          method: "GET",
-          responseType: "blob",
-          params: {},
-        }).then((response) => {
-          setIsLoading(false);
-          let newBlob;
-          newBlob = new Blob([response.data], {
-            type: "application/pdf",
-          });
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
 
-          const data = window.URL.createObjectURL(newBlob);
-
-          const a = document.createElement("a");
-
-          a.setAttribute("href", data);
-          a.setAttribute("target", "_blank");
-
-          a.click();
-        });
-      } catch (error: any) {
-        setIsLoading(false);
-        let errorString = error.response.data;
-        errorString = JSON.parse(await error.response.data.text());
-        return { Status: 0, Message: errorString.Message };
-      }
-      // });
-    } else {
-      axios.defaults.headers.common["Authorization"] =
-        "Bearer " + store.tokenIdWebCims;
-      const url =
-        ApiUrl +
-        "/api/GenerateReport?ReportName=checklist.rdl&AppointmentId=" +
-        Id +
-        "&QCounter=" +
-        qCounter;
-      try {
-        await axios({
-          url: url, //your url
-          method: "GET",
-          responseType: "blob",
-          params: {},
-        }).then((response) => {
-          let newBlob;
-          newBlob = new Blob([response.data], {
-            type: "application/pdf",
-          });
-
-          const data = window.URL.createObjectURL(newBlob);
-
-          const a = document.createElement("a");
-
-          a.setAttribute("href", data);
-          a.setAttribute("target", "_blank");
-
-          a.click();
-        });
-      } catch (error: any) {
-        let errorString = error.response.data;
-        errorString = JSON.parse(await error.response.data.text());
-        return { Status: 0, Message: errorString.Message };
-      }
-    }
-  };
-  const handlePrintCs = async () => {
-    setIsLoading(true);
-    axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
-    const url =
-      ApiUrl + "/api/GenerateReport?ReportName=cs.rdl&AppointmentId=" + Id;
+    const url = ApiUrl + '/api/GenerateReport?ReportName=checklistdept.rdl';
 
     try {
-      await axios({
-        url: url, //your url
-        method: "GET",
-        responseType: "blob",
-        params: {},
-      }).then((response) => {
-        setIsLoading(false);
-        let newBlob;
-        newBlob = new Blob([response.data], {
-          type: "application/pdf",
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'blob',
+        params: {
+          BranchCode: store.branchCode,
+          AppointmentId: Id,
+          Dept: dept,
+        },
+      });
+
+      const pdfBytes = await response.data.arrayBuffer();
+
+      const sourcePdf = await PDFDocument.load(pdfBytes);
+      const pageCount = sourcePdf.getPageCount();
+
+      for (let i = 0; i < pageCount; i++) {
+        const singlePdf = await PDFDocument.create();
+        const [page] = await singlePdf.copyPages(sourcePdf, [i]);
+        singlePdf.addPage(page);
+
+        const singlePdfBytes = await singlePdf.save();
+
+        const blob = new Blob([singlePdfBytes.buffer as ArrayBuffer], {
+          type: 'application/pdf',
         });
 
-        const data = window.URL.createObjectURL(newBlob);
-
-        const a = document.createElement("a");
-
-        a.setAttribute("href", data);
-        a.setAttribute("target", "_blank");
-
-        a.click();
-      });
+        await printBlob(blob);
+      }
     } catch (error: any) {
-      setIsLoading(false);
       let errorString = error.response.data;
       errorString = JSON.parse(await error.response.data.text());
-      return { Status: 0, Message: errorString.Message };
+
+      return {
+        Status: 0,
+        Message: errorString.Message,
+      };
+    } finally {
+      setIsLoading(false);
     }
   };
+  // const handlePrintCs = async () => {
+  //   setIsLoading(true);
+  //   axios.defaults.headers.common['Authorization'] =
+  //     'Bearer ' + store.tokenIdWebCims;
+  //   const url = ApiUrl + '/api/GenerateReport?ReportName=cs.rdl';
+
+  //   try {
+  //     await axios({
+  //       url: url, //your url
+  //       method: 'GET',
+  //       responseType: 'blob',
+  //       params: {
+  //         AppointmentId: Id,
+  //         BranchCode: store.branchCode,
+  //       },
+  //     }).then((response) => {
+  //       setIsLoading(false);
+  //       let newBlob;
+  //       newBlob = new Blob([response.data], {
+  //         type: 'application/pdf',
+  //       });
+
+  //       const data = window.URL.createObjectURL(newBlob);
+
+  //       const a = document.createElement('a');
+
+  //       a.setAttribute('href', data);
+  //       a.setAttribute('target', '_blank');
+
+  //       a.click();
+  //     });
+  //   } catch (error: any) {
+  //     setIsLoading(false);
+  //     let errorString = error.response.data;
+  //     errorString = JSON.parse(await error.response.data.text());
+  //     return { Status: 0, Message: errorString.Message };
+  //   }
+  // };
 
   const handlePrintSoa = async () => {
     if (isMobileTph === false && charges!.length <= 0) {
       notification.error({
-        message: "Please add charges first!",
-        placement: "topRight",
+        message: 'Please add charges first!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
     } else if (isMobileTph === false && Number(Net) > 0) {
       notification.error({
-        message: "Please pay first the balance at the cashier!",
-        placement: "topRight",
+        message: 'Please pay first the balance at the cashier!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
     }
     setIsLoading(true);
-    axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
     const url =
       ApiUrl +
-      "/api/GenerateReport?ReportName=soa.rdl&AppointmentId=" +
+      '/api/GenerateReport?ReportName=soa.rdl&AppointmentId=' +
       Id +
-      "&BranchCode=" +
+      '&BranchCode=' +
       store.branchCode;
 
     try {
       await axios({
         url: url, //your url
-        method: "GET",
-        responseType: "blob",
+        method: 'GET',
+        responseType: 'blob',
         params: {},
       }).then((response) => {
         setIsLoading(false);
         let newBlob;
         newBlob = new Blob([response.data], {
-          type: "application/pdf",
+          type: 'application/pdf',
         });
 
         const data = window.URL.createObjectURL(newBlob);
 
-        const a = document.createElement("a");
+        const a = document.createElement('a');
 
-        a.setAttribute("href", data);
-        a.setAttribute("target", "_blank");
+        a.setAttribute('href', data);
+        a.setAttribute('target', '_blank');
 
         a.click();
       });
@@ -377,24 +465,26 @@ const AppointmentDetails = () => {
 
   const handleGetCharges = async () => {
     try {
-      setIsLoading(true);
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetChargesByAppointmentId",
-        parameters: {
-          AppointmentId: Id,
-        },
-      });
-      if (res) {
-        const isMobile = res.parameters.lst.filter(
-          (d: TCharges) => d.PaymentType === "MOB" || d.PaymentType === "TMP"
-        );
+      if (Id !== '0') {
+        setIsLoading(true);
+        const res = await PostData('GetRecords', {
+          sp: 'udp_GetChargesByAppointmentId',
+          parameters: {
+            AppointmentId: Id,
+          },
+        });
+        if (res) {
+          const isMobile = res.parameters.lst.filter(
+            (d: TCharges) => d.PaymentType === 'MOB' || d.PaymentType === 'TMP',
+          );
 
-        setIsMobileTph(false);
-        if (isMobile.length > 0) {
-          setIsMobileTph(true);
+          setIsMobileTph(false);
+          if (isMobile.length > 0) {
+            setIsMobileTph(true);
+          }
+          setCharges(res.parameters.lst);
+          setIsLoading(false);
         }
-        setCharges(res.parameters.lst);
-        setIsLoading(false);
       }
     } catch (error) {
       console.log(error);
@@ -404,15 +494,15 @@ const AppointmentDetails = () => {
   const handleGetChargesAll = async () => {
     try {
       setIsLoading(true);
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetChargesByAppointmentIdAll",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetChargesByAppointmentIdAll',
         parameters: {
           AppointmentId: Id,
         },
       });
       if (res) {
         const isMobile = res.parameters.lst.filter(
-          (d: TCharges) => d.PaymentType === "MOB" || d.PaymentType === "TMP"
+          (d: TCharges) => d.PaymentType === 'MOB' || d.PaymentType === 'TMP',
         );
 
         setIsMobileTph(false);
@@ -428,34 +518,36 @@ const AppointmentDetails = () => {
   };
 
   const handleGetAppointmentDetails = async () => {
-    if (Id === "0") {
-      let appointmentType = localStorage.getItem("code");
+    if (Id === '0') {
+      let appointmentType = localStorage.getItem('code');
 
-      if (appointmentType === "ape") {
-        appointmentType = "APE";
-      } else if (appointmentType === "amb") {
-        appointmentType = "AMB";
-      } else if (appointmentType === "hemo") {
-        appointmentType = "HEM";
-      } else if (appointmentType === "consultation") {
-        appointmentType = "CON";
-      } else if (appointmentType === "diag") {
-        appointmentType = "DIA";
-      } else if (appointmentType === "ofw") {
-        appointmentType = "OFW";
-      } else if (appointmentType === "ofw") {
-        appointmentType = "OFW";
+      if (appointmentType === 'ape') {
+        appointmentType = 'APE';
+      } else if (appointmentType === 'amb') {
+        appointmentType = 'AMB';
+      } else if (appointmentType === 'hemo') {
+        appointmentType = 'HEM';
+      } else if (appointmentType === 'consultation') {
+        appointmentType = 'CON';
+      } else if (appointmentType === 'diag') {
+        appointmentType = 'DIA';
+      } else if (appointmentType === 'ofw') {
+        appointmentType = 'OFW';
+      } else if (appointmentType === 'ofw') {
+        appointmentType = 'OFW';
+      } else if (appointmentType === 'sc') {
+        appointmentType = 'DIA';
       }
 
       form.setFieldsValue({
         Date: dayjs(),
-        IsSeniorOrPwd: "N",
+        IsSeniorOrPwd: 'N',
         AppointmentType: appointmentType,
       });
     } else {
-      sessionStorage.setItem("Id", Id);
-      let res = await PostData("GetRecords", {
-        sp: "udp_GetAppointmentDetails",
+      sessionStorage.setItem('Id', Id);
+      let res = await PostData('GetRecords', {
+        sp: 'udp_GetAppointmentDetails',
         parameters: {
           Id: Id,
         },
@@ -464,7 +556,7 @@ const AppointmentDetails = () => {
         const x: TAppointments = res.parameters.lst[0];
         setAppointmentDetails(x);
         setPatientId(x.fk_PatientInformation_Id!);
-        setTitle("Appointment for-" + x.Name?.toString());
+        setTitle('Appointment for-' + x.Name?.toString());
         setAppType(x.AppointmentType!);
         form.setFieldsValue({
           PatientNo: x.PatientNo,
@@ -487,11 +579,21 @@ const AppointmentDetails = () => {
           Occupation: x.Occupation,
           LoaApprovedBy: x.LoaApprovedBy,
           fk_HmoCompany_Id: x.fk_HmoCompany_Id,
+          CountryOfDestination: x.CountryOfDestination,
+          PositionAppliedFor:
+            x.PositionAppliedFor === null || x.PositionAppliedFor === undefined
+              ? undefined
+              : positionOnBord.includes(x.PositionAppliedFor!)
+                ? x.PositionAppliedFor
+                : 'other',
+          PositionAppliedForOthers: x.PositionAppliedFor,
+          Employer: x.Employer,
+          PassportNo: x.PassportNo,
         });
       }
 
-      res = await PostData("GetRecords", {
-        sp: "udp_GetAppointmentImage",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetAppointmentImage',
         parameters: {
           AppointmentId: Id,
         },
@@ -503,8 +605,8 @@ const AppointmentDetails = () => {
   };
   const handleGetLastImage = async (patientId: number) => {
     try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetLastPatientImage",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetLastPatientImage',
         parameters: {
           PatientId: patientId,
         },
@@ -526,44 +628,50 @@ const AppointmentDetails = () => {
   }
   const handleSubmitForm = async (v: TAppointments) => {
     const QNo: TQNo = !isNullOrUndefinedOrBlank(
-      sessionStorage.getItem("selectedInReception")
+      sessionStorage.getItem('selectedInReception'),
     )
-      ? JSON.parse(sessionStorage.getItem("selectedInReception")!)
+      ? JSON.parse(sessionStorage.getItem('selectedInReception')!)
       : undefined;
-    console.log(v);
-    const res = await PostData("SaveAppointment", {
+
+    const res = await PostData('SaveAppointment', {
       ...v,
       Id: Id,
-      Date: dayjs(v.Date).format("YYYY-MM-DD"),
+      Date: dayjs(v.Date).format('YYYY-MM-DD'),
       BranchCode: store.branchCode,
       fk_PatientInformation_Id: PatientId,
       fk_QNo_Id: QNo === undefined ? 0 : QNo.Id,
+      HmoCompany: v.HmoCompany ?? 0,
+      PositionAppliedFor:
+        v.PositionAppliedFor === 'other' || v.PositionAppliedFor === undefined
+          ? v.PositionAppliedForOthers
+          : v.PositionAppliedFor,
     });
     if (res) {
       if (res.status === 1) {
         notification.success({
-          message: "Appointment successfully saved!",
-          placement: "topRight",
+          message: 'Appointment successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
 
         setId(res.parameters.AppointmentId);
-        sessionStorage.setItem("Id", res.parameters.AppointmentId);
+        sessionStorage.setItem('Id', res.parameters.AppointmentId);
         form.setFieldsValue({
           AppointmentNo: res.parameters.AppointmentNo,
           QueueNo: res.parameters.QueueNo,
         });
         handleUploadPatientPicture(picture);
         router.navigate({
-          to: "/appointmentdetails/$Id",
+          to: '/appointmentdetails/$Id',
           params: {
             Id: res.parameters.AppointmentId,
           },
         });
+        handleGetAppointmentDetails();
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -573,31 +681,31 @@ const AppointmentDetails = () => {
     try {
       const fd = new FormData();
 
-      fd.append("image", image);
-      fd.append("AppointmentId", sessionStorage.getItem("Id") as string);
-      axios.defaults.headers.common["Authorization"] =
-        "Bearer " + store.tokenIdWebCims;
-      const url = ApiUrl + "/api/" + "UploadApppointmentPicture";
+      fd.append('image', image);
+      fd.append('AppointmentId', sessionStorage.getItem('Id') as string);
+      axios.defaults.headers.common['Authorization'] =
+        'Bearer ' + store.tokenIdWebCims;
+      const url = ApiUrl + '/api/' + 'UploadApppointmentPicture';
 
       await axios({
-        method: "post",
+        method: 'post',
         url: url,
         data: fd,
         headers: {
-          "Content-Type": "multipart/form-data",
+          'Content-Type': 'multipart/form-data',
         },
       })
         .then((res: any) => {
           if (res.data.status === 1) {
             notification.success({
-              message: "Image successfully uploaded!",
-              placement: "topRight",
+              message: 'Image successfully uploaded!',
+              placement: 'topRight',
               duration: 3,
             });
           } else {
             notification.error({
               message: res.data.message,
-              placement: "topRight",
+              placement: 'topRight',
               duration: 3,
             });
           }
@@ -624,10 +732,10 @@ const AppointmentDetails = () => {
     if (files[0] === undefined) return false;
 
     let filename = files[0].name;
-    if (filename.lastIndexOf(".") <= 0) {
+    if (filename.lastIndexOf('.') <= 0) {
       notification.error({
-        message: "Invalid image file!",
-        placement: "topRight",
+        message: 'Invalid image file!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -635,8 +743,8 @@ const AppointmentDetails = () => {
 
     if (files[0].size >= 2000000) {
       notification.error({
-        message: "File must not be greater than 2MB!",
-        placement: "topRight",
+        message: 'File must not be greater than 2MB!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -648,11 +756,61 @@ const AppointmentDetails = () => {
       handleUploadPatientPicture(p);
     }
   };
-  const handleSelect = async (patientId: number) => {
-    setShowPatient(false);
-    setPatientId(patientId);
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetPatientInformationById",
+
+  const GetLastAppointmentChargeFollowUp = async (
+    patientId: number,
+  ): Promise<any[]> => {
+    try {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPatientChargesFollowUp',
+        parameters: {
+          patientId,
+        },
+      });
+
+      return res?.parameters?.lst ?? [];
+    } catch (error: any) {
+      notification.error({
+        message: error.response?.data ?? 'An error occurred.',
+        placement: 'topRight',
+        duration: 3,
+      });
+
+      return [];
+    }
+  };
+
+  const navigate = useNavigate();
+
+  const [confirmationModal, setConfirmationModal] = useState(false);
+  const [followUpExam, setFollowUpExam] = useState<TCharges[]>([]);
+
+  const handleContinueAppointment = async (appointmentId: number) => {
+    const QNo: TQNo = !isNullOrUndefinedOrBlank(
+      sessionStorage.getItem('selectedInReception'),
+    )
+      ? JSON.parse(sessionStorage.getItem('selectedInReception')!)
+      : undefined;
+    await PostData('GetRecords', {
+      sp: 'udp_FollowUpAppointmwents',
+      parameters: {
+        Id: appointmentId,
+        QnoId: QNo.Id,
+      },
+    });
+
+    navigate({
+      to: '/appointmentdetails/$Id',
+      params: {
+        Id: appointmentId.toString(),
+      },
+    });
+    setId(appointmentId.toString());
+    setConfirmationModal(false);
+  };
+  const handleNewAppointment = async (patientId: number) => {
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetPatientInformationById',
       parameters: {
         Id: patientId,
       },
@@ -665,12 +823,13 @@ const AppointmentDetails = () => {
         Name: patientDetails.Name,
         HmoCompany:
           patientDetails.Company == 0 ? undefined : patientDetails.Company,
+        CivilStatus: patientDetails.CivilStatus,
       });
       handleGetLastImage(patientDetails.Id);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetLastAppointmentDetails",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetLastAppointmentDetails',
       parameters: {
         PatientId: patientId,
       },
@@ -679,17 +838,72 @@ const AppointmentDetails = () => {
       const app: TAppointments = res.parameters.lst[0];
       form.setFieldsValue({
         fk_HmoCompany_Id: app.fk_HmoCompany_Id,
-        CivilStatus: app.CivilStatus,
+        //CivilStatus: app.CivilStatus,
         // AppointmentType: app.AppointmentType,
         HmoCompany: app.HmoCompany,
         IsSeniorOrPwd: app.IsSeniorOrPwd,
       });
     }
+    setConfirmationModal(false);
+  };
+
+  const handleSelect = async (patientId: number) => {
+    setShowPatient(false);
+    setPatientId(patientId);
+
+    // check if theres a to follow charges
+    var lastAppointmentsChargeFollowUp =
+      await GetLastAppointmentChargeFollowUp(patientId);
+
+    if (lastAppointmentsChargeFollowUp.length > 0) {
+      setFollowUpExam(lastAppointmentsChargeFollowUp);
+      // modal.info({
+      //   width: 700,
+      //   title: 'Existing Follow-Up Items Found',
+      //   content: (
+      //     <div>
+      //       <p className="mb-2">
+      //         This patient has pending follow-up examinations from a previous
+      //         appointment:
+      //       </p>
+
+      //       <ul className="list-disc pl-5">
+      //         {lastAppointmentsChargeFollowUp.map((item: TCharges) => (
+      //           <li key={item.Id}>{item.Description}</li>
+      //         ))}
+      //       </ul>
+      //     </div>
+      //   ),
+      //   centered: true,
+      //   footer: (
+      //     <div className="flex justify-end gap-3">
+      //       <Button
+      //         onClick={() => {
+      //           handleNewAppointment(patientId);
+      //         }}
+      //       >
+      //         Create New Appointment
+      //       </Button>
+
+      //       <Button type="primary">Continue Previous Appointment</Button>
+      //     </div>
+      //   ),
+      // });
+      // return;
+      setConfirmationModal(true);
+    } else {
+      handleNewAppointment(patientId);
+      return;
+    }
   };
 
   const handleEdit = (data: TCharges) => {
     setSelectedRecord(data);
-    setShowAddCharge(true);
+    requestAnimationFrame(() => {
+      document
+        .getElementById('charge-editor')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   };
   const actionBodyTemplate = (data: TCharges) => {
     return (
@@ -771,7 +985,7 @@ const AppointmentDetails = () => {
     );
   };
   const handleDelete = async () => {
-    const res = await PostData("DeleteCharge", {
+    const res = await PostData('DeleteCharge', {
       Id: selectedRecord!.Id,
       fk_Appointments_Id: selectedRecord?.fk_Appointments_Id,
       Qty: selectedRecord?.Qty,
@@ -780,8 +994,8 @@ const AppointmentDetails = () => {
     if (res) {
       if (res.status === 1) {
         notification.success({
-          message: "Successfully deleted!",
-          placement: "topRight",
+          message: 'Successfully deleted!',
+          placement: 'topRight',
           duration: 3,
         });
         setShowDelete(false);
@@ -791,36 +1005,37 @@ const AppointmentDetails = () => {
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
     }
   };
   const handleGetQCounters = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_CheckListQCounters",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_CheckListQCounters',
       parameters: {
         AppointmentId: Id,
       },
     });
     if (res) {
-      // let q: MenuProps["items"] = [] as MenuProps["items"];
-      // x.forEach((e: MenuProps["items"]) => {
+      // let q: MenuProps['items'] = [] as MenuProps['items'];
+      // x.forEach((e: MenuProps['items']) => {
       //   q.push({
       //     key: e.key!,
       //     label: e.label,
       //   });
       // });
-      setQCounters(res.parameters.lst);
+      // setQCounters(res.parameters.lst);
     }
   };
 
-  const onMenuClick: MenuProps["onClick"] = ({ key }) => {
-    const f: any = qCounters?.filter((f: any) => f.key == key)[0];
+  // const onMenuClick: MenuProps['onClick'] = (data) => {
+  //   // const f: any = qCounters?.filter((f: any) => f.key == key)[0];
 
-    handlePrintCheckList(f.label);
-  };
+  //   // handlePrintCheckList(f.value);
+  //   console.log(data);
+  // };
 
   const net = () => {
     let total = 0;
@@ -846,8 +1061,8 @@ const AppointmentDetails = () => {
           footer="Totals:"
           colSpan={3}
           footerStyle={{
-            textAlign: "right",
-            fontWeight: "bold",
+            textAlign: 'right',
+            fontWeight: 'bold',
           }}
         />
         <Column footer="" />
@@ -863,26 +1078,26 @@ const AppointmentDetails = () => {
     const handleSubmitForm = async () => {
       try {
         setIsLoading(true);
-        const res = await PostData("SaveHmoCompany", {
-          Name: formCompany.getFieldValue("Name"),
-          Type: formCompany.getFieldValue("Type"),
+        const res = await PostData('SaveHmoCompany', {
+          Name: formCompany.getFieldValue('Name'),
+          Type: formCompany.getFieldValue('Type'),
           Balance: 0,
         });
         if (res) {
           if (res.status === 1) {
             notification.success({
-              message: "Successfully saved!",
-              placement: "topRight",
+              message: 'Successfully saved!',
+              placement: 'topRight',
               duration: 3,
             });
             formCompany.resetFields();
-            q.invalidateQueries({ queryKey: ["company"] });
-            q.invalidateQueries({ queryKey: ["hmo"] });
+            q.invalidateQueries({ queryKey: ['company'] });
+            q.invalidateQueries({ queryKey: ['hmo'] });
             setIsLoading(false);
           } else {
             notification.error({
               message: res.message,
-              placement: "topRight",
+              placement: 'topRight',
               duration: 3,
             });
             setIsLoading(false);
@@ -891,7 +1106,7 @@ const AppointmentDetails = () => {
       } catch (error: AxiosError | any) {
         notification.error({
           message: error.response?.data,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -903,18 +1118,31 @@ const AppointmentDetails = () => {
           layout="vertical"
           onFinish={() => handleSubmitForm()}
         >
-          <Form.Item
-            name="Name"
-            label="Company/HMO Name"
-            rules={[
-              {
-                required: true,
-                message: "Company/HMO Name is required!",
-              },
-            ]}
-          >
-            <Input />
+          <Form.Item name="Company" label="Company" className="col-span-5">
+            <Select
+              showSearch
+              allowClear
+              filterOption={(input, option) =>
+                (
+                  option!.children
+                    ?.toString()
+                    .toLocaleLowerCase() as unknown as string
+                ).includes(input.toLocaleLowerCase())
+              }
+            >
+              {company.data &&
+                company.data.map((d: THmoCompany) => (
+                  <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                    {d.Name}
+                  </Select.Option>
+                ))}
+            </Select>
           </Form.Item>
+          <div className="flex flex-col justify-center">
+            <Popover content={content} title="New Company" trigger="click">
+              <Button type="primary">New</Button>
+            </Popover>
+          </div>
 
           <Form.Item
             name="Type"
@@ -922,7 +1150,7 @@ const AppointmentDetails = () => {
             rules={[
               {
                 required: true,
-                message: "Type is required!",
+                message: 'Type is required!',
               },
             ]}
           >
@@ -950,7 +1178,9 @@ const AppointmentDetails = () => {
     handleGetQCounters();
 
     // handleGetDoctors();
-  }, []);
+  }, [Id]);
+
+  const positionOnBOardWatch = Form.useWatch('PositionAppliedFor', form);
 
   return (
     <div className="cardBackGround">
@@ -981,28 +1211,40 @@ const AppointmentDetails = () => {
                 </Button>
               </Space>
             </div>
-            <div className="grid md:grid-cols-3 gap-2">
-              <Form.Item
-                name="PatientNo"
-                label="Patient No."
-                // className="md:w-[120px]"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-              >
-                <Input readOnly />
-              </Form.Item>
-              <div className="flex justify-start items-center">
-                <Tooltip title="Search Patient">
-                  <Button
-                    type="primary"
-                    icon={<BiSearch />}
-                    onClick={() => setShowPatient(true)}
-                  />
-                </Tooltip>
+            <div className="flex gap-x-3 items-center">
+              <div className="grid md:grid-cols-2 gap-2">
+                <Form.Item
+                  name="PatientNo"
+                  label="Patient No."
+                  // className="md:w-[120px]"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}
+                >
+                  <Input readOnly />
+                </Form.Item>
+                <div className="flex justify-start items-center">
+                  <Tooltip title="Search Patient">
+                    <Button
+                      type="primary"
+                      icon={<BiSearch />}
+                      onClick={() => setShowPatient(true)}
+                    />
+                  </Tooltip>
+                </div>
               </div>
+              <Tooltip title="Mer">
+                <Link
+                  to="/mer/$AppointmentId"
+                  params={{
+                    AppointmentId: Id!.toString(),
+                  }}
+                >
+                  <Button icon={<BiNote />}>MER</Button>
+                </Link>
+              </Tooltip>
             </div>
             <div className="grid lg:grid-cols-3 gap-4">
               <Form.Item name="Name" label="Name" className="col-span-2">
@@ -1014,7 +1256,7 @@ const AppointmentDetails = () => {
                 rules={[
                   {
                     required: true,
-                    message: "This field is required!",
+                    message: 'This field is required!',
                   },
                 ]}
               >
@@ -1030,7 +1272,7 @@ const AppointmentDetails = () => {
               </Form.Item>
 
               <Form.Item name="Date" label="Date">
-                <DatePicker format="MM/DD/YYYY" style={{ width: "100%" }} />
+                <DatePicker format="MM/DD/YYYY" style={{ width: '100%' }} />
               </Form.Item>
               <Form.Item
                 label="Appointment Type"
@@ -1038,12 +1280,12 @@ const AppointmentDetails = () => {
                 rules={[
                   {
                     required: true,
-                    message: "Appointment type is required!",
+                    message: 'Appointment type is required!',
                   },
                 ]}
               >
                 <Select
-                  style={{ width: "100%" }}
+                  style={{ width: '100%' }}
                   showSearch
                   allowClear
                   filterOption={(input, option) =>
@@ -1070,7 +1312,7 @@ const AppointmentDetails = () => {
             <div className="grid md:grid-cols-3 gap-4">
               <Form.Item label="Civil Status" name="CivilStatus">
                 <Select
-                  style={{ width: "100%" }}
+                  style={{ width: '100%' }}
                   showSearch
                   allowClear
                   filterOption={(input, option) =>
@@ -1158,7 +1400,7 @@ const AppointmentDetails = () => {
                 className="col-span-2"
               >
                 <Select
-                  style={{ width: "100%" }}
+                  style={{ width: '100%' }}
                   showSearch
                   allowClear
                   filterOption={(input, option) =>
@@ -1194,7 +1436,7 @@ const AppointmentDetails = () => {
                 className="col-span-2"
               >
                 <Select
-                  style={{ width: "100%" }}
+                  style={{ width: '100%' }}
                   showSearch
                   allowClear
                   filterOption={(input, option) =>
@@ -1231,6 +1473,79 @@ const AppointmentDetails = () => {
               <Form.Item name="LoaApprovedBy" label="LOA Approved By">
                 <Input />
               </Form.Item>
+            </div>
+
+            <div className="flex items-start gap-x-3 flex-wrap">
+              {/* <Form.Item name="PassportNo" label="Passport No.">
+                <Input />
+              </Form.Item>
+              <Form.Item name="SeamanBookNo" label="Seaman's Book No.">
+                <Input />
+              </Form.Item> */}
+              <Form.Item
+                name="CountryOfDestination"
+                label="Country Of Destination"
+              >
+                <AutoComplete
+                  filterOption={(inputValue, option) =>
+                    option!
+                      .value!.toString()
+                      .toUpperCase()
+                      .indexOf(inputValue.toUpperCase()) !== -1
+                  }
+                >
+                  {CountryOfDestination.data &&
+                    CountryOfDestination.data!.map((v: TSettings) => (
+                      <AutoComplete.Option
+                        key={v.Id}
+                        value={v.Value}
+                        title={v.Value}
+                      >
+                        {v.Value}
+                      </AutoComplete.Option>
+                    ))}
+                </AutoComplete>
+              </Form.Item>
+              {/* <Form.Item name="PositionAppliedFor" label="Position Applied For">
+                <AutoComplete
+                  filterOption={(inputValue, option) =>
+                    option!
+                      .value!.toString()
+                      .toUpperCase()
+                      .indexOf(inputValue.toUpperCase()) !== -1
+                  }
+                >
+                  {PositionAppliedFor.data &&
+                    PositionAppliedFor.data!.map((v: TSettings) => (
+                      <AutoComplete.Option
+                        key={v.Id}
+                        value={v.Value}
+                        title={v.Value}
+                      >
+                        {v.Value}
+                      </AutoComplete.Option>
+                    ))}
+                </AutoComplete>
+              </Form.Item> */}
+              <Form.Item name="PositionAppliedFor" label="Position Applied For">
+                <Select
+                  options={positionOnBoardOpt.map((opt) => ({
+                    value: opt.value,
+                    label: opt.label,
+                  }))}
+                />
+              </Form.Item>
+              {positionOnBOardWatch !== undefined &&
+                !positionOnBord.includes(positionOnBOardWatch) && (
+                  <Form.Item name="PositionAppliedForOthers" label="Specify">
+                    <Input />
+                  </Form.Item>
+                )}
+              <Form.Item name="Employer" label="Employer">
+                <Input />
+              </Form.Item>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
               <div className="flex justify-start items-center">
                 <Button type="primary" htmlType="submit">
                   Submit
@@ -1240,26 +1555,46 @@ const AppointmentDetails = () => {
           </Form>
         </div>
         <div>
-          <Space>
-            <Button
-              type="primary"
-              onClick={() => {
-                setSelectedRecord(undefined);
-                setShowAddCharge(true);
-              }}
-              disabled={Id === "0"}
-            >
-              Add Charges
-            </Button>
+          <div id="charge-editor" className="mb-4 rounded-md border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="font-semibold">
+                {selectedRecord ? 'Edit Charge' : 'Add Charge'}
+              </div>
+              {selectedRecord && (
+                <Button onClick={() => setSelectedRecord(undefined)}>
+                  Cancel Edit
+                </Button>
+              )}
+            </div>
+            {Id !== '0' ? (
+              <AddCharge
+                key={selectedRecord?.Id ?? 'new-charge'}
+                Id={Id}
+                ChargeDetails={selectedRecord}
+                Gender={gender}
+                AppointmentDetails={appointmentDetails}
+                onSaved={async () => {
+                  setSelectedRecord(undefined);
+                  await handleGetCharges();
+                  q.invalidateQueries({ queryKey: ['qcounters'] });
+                }}
+              />
+            ) : (
+              <div className="text-gray-500">
+                Save the appointment before adding charges.
+              </div>
+            )}
+          </div>
 
-            {(appType === "HEM" || appType === "AMB") && (
+          <Space>
+            {(appType === 'HEM' || appType === 'AMB') && (
               <>
                 <Button
                   type="primary"
-                  disabled={Id === "0"}
+                  disabled={Id === '0'}
                   onClick={() => {
                     router.navigate({
-                      to: "/billing/$AppointmentId",
+                      to: '/billing/$AppointmentId',
                       params: {
                         AppointmentId: Id,
                       },
@@ -1292,7 +1627,7 @@ const AppointmentDetails = () => {
               >
                 <Column
                   expander={charges!.length > 0}
-                  style={{ width: "2rem" }}
+                  style={{ width: '2rem' }}
                 />
                 <Column
                   field="action"
@@ -1310,14 +1645,14 @@ const AppointmentDetails = () => {
 
             <div className="flex justify-end">
               <Space>
-                <Button
+                {/* <Button
                   disabled={charges!.length <= 0}
                   type="primary"
                   onClick={handlePrintCs}
                   loading={isLoading}
                 >
                   Print Charge Slip
-                </Button>
+                </Button> */}
                 {/* <Button
                   disabled={charges!.length <= 0}
                   type="primary"
@@ -1333,12 +1668,47 @@ const AppointmentDetails = () => {
                 >
                   Print SOA
                 </Button>
-                <Dropdown menu={{ items: qCounters, onClick: onMenuClick }}>
+                {/* <Dropdown menu={{ items: qCounters, onClick: onMenuClick }}>
+                  <Button loading={isLoading} type="primary">
+                    Print Checklist
+                  </Button>
+                </Dropdown> */}
+                <Dropdown
+                  disabled={Id === '0'}
+                  menu={{
+                    items: [
+                      {
+                        label: 'All',
+                        key: '0',
+                      },
+                      ...(checklistDeptOpt.data ?? []),
+                    ],
+                    onClick: ({ key }) => {
+                      handlePrintCheckList(key);
+                    },
+                  }}
+                >
                   <Button loading={isLoading} type="primary">
                     Print Checklist
                   </Button>
                 </Dropdown>
+                {/* <Button
+                  loading={isLoading}
+                  type="primary"
+                  onClick={() => handlePrintCheckList('*ALL*')}
+                >
+                  Print Checklist
+                </Button> */}
               </Space>
+            </div>
+            <div className="mt-2">
+              <Divider>Result Status</Divider>
+
+              <ResultStatus
+                AppointmentId={appointmentDetails?.Id}
+                AppointmentType={appointmentDetails?.AppointmentType}
+                QueueNo={appointmentDetails?.QueueNo}
+              />
             </div>
           </div>
         </div>
@@ -1380,33 +1750,12 @@ const AppointmentDetails = () => {
         </Button>
       </Modal>
       <input
-        style={{ display: "none" }}
+        style={{ display: 'none' }}
         ref={fileInput}
         type="file"
         accept=".jpg"
         onChange={(e) => onFilePicked(e.target.files)}
       />
-      <Modal
-        open={showAddCharge}
-        onCancel={() => {
-          setShowAddCharge(false);
-          handleGetCharges();
-          q.invalidateQueries({ queryKey: ["qcounters"] });
-          window.location.reload();
-        }}
-        title="Add Charges"
-        footer={false}
-        width={screen.width - 80}
-        destroyOnClose
-      >
-        <AddCharge
-          Id={Id}
-          ChargeDetails={selectedRecord}
-          Gender={gender}
-          AppointmentDetails={appointmentDetails}
-        />
-      </Modal>
-
       <Modal
         open={showPackageDetails}
         onCancel={() => {
@@ -1430,6 +1779,42 @@ const AppointmentDetails = () => {
           <Column field="Net" header="Net"></Column>
           <Column field="PaymentType" header="Payment Type"></Column>
         </DataTable>
+      </Modal>
+
+      <Modal
+        open={confirmationModal}
+        onCancel={() => setConfirmationModal(false)}
+        width={700}
+        centered
+        footer={[
+          <Button key="new" onClick={() => handleNewAppointment(PatientId)}>
+            Create New Appointment
+          </Button>,
+          <Button
+            key="continue"
+            type="primary"
+            onClick={() => {
+              if (followUpExam && followUpExam[0].fk_Appointments_Id) {
+                handleContinueAppointment(followUpExam[0].fk_Appointments_Id);
+              }
+            }}
+          >
+            Continue Previous Appointment
+          </Button>,
+        ]}
+      >
+        <div>
+          <p className="mb-2">
+            This patient has pending follow-up examinations from a previous
+            appointment:
+          </p>
+
+          <ul className="list-disc pl-5">
+            {followUpExam.map((item: TCharges) => (
+              <li key={item.Id}>{item.Description}</li>
+            ))}
+          </ul>
+        </div>
       </Modal>
     </div>
   );

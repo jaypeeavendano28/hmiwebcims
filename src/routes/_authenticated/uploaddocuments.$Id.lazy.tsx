@@ -1,17 +1,17 @@
-import { createLazyFileRoute, useRouter } from "@tanstack/react-router";
-import { Button, Form, Input, Modal, notification, Select, Space } from "antd";
-import { useEffect, useRef, useState } from "react";
-import { isNullOrUndefinedOrBlank, PostData, WithAccess } from "../../helpers";
-import { TAppointments, TDepartments, TPatientInformation } from "../../types";
-import dayjs from "dayjs";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import Loading from "../../components/loading";
-import useAppStore from "../../store";
-export const Route = createLazyFileRoute("/_authenticated/uploaddocuments/$Id")(
+import { createLazyFileRoute, useRouter } from '@tanstack/react-router';
+import { Button, Form, Input, Modal, notification, Select, Space } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { isNullOrUndefinedOrBlank, PostData, WithAccess } from '../../helpers';
+import { TAppointments, TDepartments, TPatientInformation } from '../../types';
+import dayjs from 'dayjs';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import Loading from '../../components/loading';
+import useAppStore from '../../store';
+export const Route = createLazyFileRoute('/_authenticated/uploaddocuments/$Id')(
   {
     component: () => <UploadDocuments />,
-  }
+  },
 );
 const UploadDocuments = () => {
   const store = useAppStore();
@@ -37,8 +37,9 @@ const UploadDocuments = () => {
   const handleGetPdfFile = async () => {
     try {
       setLoading(true);
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetPdfFile",
+      console.log('selectedPdf.Id', selectedPdf.Id);
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPdfFile',
         parameters: {
           Id: selectedPdf.Id,
         },
@@ -52,7 +53,7 @@ const UploadDocuments = () => {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -60,8 +61,8 @@ const UploadDocuments = () => {
 
   const handleGetPatientInformation = async () => {
     try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetPatientInformationById",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPatientInformationById',
         parameters: {
           Id,
         },
@@ -73,15 +74,15 @@ const UploadDocuments = () => {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
   const handleGetInitialized = async () => {
     try {
-      let res = await PostData("GetRecords", {
-        sp: "udp_GetAppointmentsPerPatient",
+      let res = await PostData('GetRecords', {
+        sp: 'udp_GetAppointmentsPerPatient',
         parameters: {
           Id,
         },
@@ -89,16 +90,16 @@ const UploadDocuments = () => {
       if (res) {
         setAppointments(res.parameters.lst);
       }
-      res = await PostData("GetRecords", {
-        sp: "udp_GetDepartments",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetDepartments',
         parameters: {},
       });
       if (res) {
         setDepartments(res.parameters.lst);
       }
 
-      res = await PostData("GetRecords", {
-        sp: "udp_GetPdfFiles",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetPdfFiles',
         parameters: {
           Id,
         },
@@ -109,7 +110,7 @@ const UploadDocuments = () => {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -126,21 +127,21 @@ const UploadDocuments = () => {
       const v = await form.validateFields();
       if (isNullOrUndefinedOrBlank(pdfBase64)) {
         notification.error({
-          message: "Please select a file to upload!",
-          placement: "topRight",
+          message: 'Please select a file to upload!',
+          placement: 'topRight',
           duration: 3,
         });
         return;
       }
       if (isNullOrUndefinedOrBlank(selectedRow)) {
         notification.error({
-          message: "Please select an appointment date!",
-          placement: "topRight",
+          message: 'Please select an appointment date!',
+          placement: 'topRight',
           duration: 3,
         });
         return;
       }
-      const res = await PostData("UploadPdfFile", {
+      const res = await PostData('UploadPdfFile', {
         fk_Appointments_Id: selectedRow!.Id,
         fk_Departments_Id: v.Department,
         Pdf: pdfBase64,
@@ -150,16 +151,16 @@ const UploadDocuments = () => {
       if (res) {
         if (res.status === 1) {
           notification.success({
-            message: "Successfully uploaded!",
-            placement: "topRight",
+            message: 'Successfully uploaded!',
+            placement: 'topRight',
             duration: 3,
           });
-          form.setFieldValue("Description", undefined);
+          form.setFieldValue('Description', undefined);
           setPdfBase64(undefined);
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -211,10 +212,10 @@ const UploadDocuments = () => {
     if (files[0] === undefined) return false;
 
     let filename = files[0].name;
-    if (filename.lastIndexOf(".") <= 0) {
+    if (filename.lastIndexOf('.') <= 0) {
       notification.error({
-        message: "Invalid image file!",
-        placement: "topRight",
+        message: 'Invalid image file!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -222,8 +223,8 @@ const UploadDocuments = () => {
 
     if (files[0].size >= 2000000) {
       notification.error({
-        message: "File must not be greater than 2MB!",
-        placement: "topRight",
+        message: 'File must not be greater than 2MB!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -237,7 +238,7 @@ const UploadDocuments = () => {
   };
   const handleWithAccess = async () => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: 29,
@@ -246,12 +247,12 @@ const UploadDocuments = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-Upload Files/Documents",
-          placement: "topRight",
+          message: 'Access denied for module-Upload Files/Documents',
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/",
+          to: '/',
         });
       }
     }
@@ -280,7 +281,7 @@ const UploadDocuments = () => {
         <div>
           <p>Bithdate</p>
           <p className="font-bold">
-            {dayjs(patientInfo?.DateOfBirth).format("MM/DD/YYYY")}
+            {dayjs(patientInfo?.DateOfBirth).format('MM/DD/YYYY')}
           </p>
         </div>
       </div>
@@ -330,8 +331,8 @@ const UploadDocuments = () => {
         ) : (
           <iframe
             style={{
-              width: "100%",
-              height: "600px",
+              width: '100%',
+              height: '600px',
             }}
             src={pdfBase642}
           />
@@ -436,8 +437,8 @@ const UploadDocuments = () => {
             <div className="mt-2">
               <iframe
                 style={{
-                  width: "100%",
-                  height: "600px",
+                  width: '100%',
+                  height: '600px',
                 }}
                 src={pdfBase64}
               />
@@ -446,7 +447,7 @@ const UploadDocuments = () => {
         </div>
       </Modal>
       <input
-        style={{ display: "none" }}
+        style={{ display: 'none' }}
         ref={fileInput}
         type="file"
         accept=".pdf"

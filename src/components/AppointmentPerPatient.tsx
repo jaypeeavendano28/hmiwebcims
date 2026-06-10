@@ -1,8 +1,9 @@
-import { FC, useEffect, useState } from "react";
-import { TAppointments } from "../types";
-import { PostData } from "../helpers";
-import { Button, Space } from "antd";
-import { Link } from "@tanstack/react-router";
+import { FC, useEffect, useState } from 'react';
+import { TAppointments } from '../types';
+import { PostData } from '../helpers';
+import { Button, Divider, Space } from 'antd';
+import { Link } from '@tanstack/react-router';
+import ResultStatus from './ResultStatus';
 
 type Props = {
   PatientId: number;
@@ -13,11 +14,11 @@ type AppointmentDetailsProps = {
 };
 const AppointmentPerPatient: FC<Props> = ({ PatientId }) => {
   const [appointments, setAppointments] = useState<TAppointments[] | undefined>(
-    []
+    [],
   );
   const handleGetAppointments = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetAppointmentsPerPatient",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetAppointmentsPerPatient',
       parameters: {
         Id: PatientId,
       },
@@ -54,6 +55,31 @@ const AppointmentPerPatient: FC<Props> = ({ PatientId }) => {
               </Link>
 
               <Link
+                to="/medicalexaminationlandbased/$AppointmentId"
+                params={{
+                  AppointmentId: Details.Id!.toString(),
+                }}
+              >
+                <Button type="primary">Medical Examination Landbased</Button>
+              </Link>
+              <Link
+                to="/medicalexaminationseabased/$AppointmentId"
+                params={{
+                  AppointmentId: Details.Id!.toString(),
+                }}
+              >
+                <Button type="primary">Medical Examination Seabased</Button>
+              </Link>
+              <Link
+                to="/mer/$AppointmentId"
+                params={{
+                  AppointmentId: Details.Id!.toString(),
+                }}
+              >
+                <Button type="primary">MER</Button>
+              </Link>
+
+              {/* <Link
                 to="/mer/$AppointmentId"
                 params={{
                   AppointmentId: Details.Id!.toString(),
@@ -69,8 +95,12 @@ const AppointmentPerPatient: FC<Props> = ({ PatientId }) => {
                 }}
               >
                 <Button type="primary">MER(School)</Button>
-              </Link>
+              </Link> */}
             </Space>
+            <div>
+              <Divider>Result Status</Divider>
+              <ResultStatus AppointmentId={Details.Id!} />
+            </div>
           </div>
         </div>
       </div>

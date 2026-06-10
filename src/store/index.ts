@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
-import { TItems, TPatientInformation } from "../types";
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { TItems, TPatientInformation } from '../types';
 
 type AppState = {
   withUtilities: boolean;
@@ -43,6 +43,8 @@ type AppState = {
   setApiUrlClaimsAssure: (apiUrlClaimsAssure: string) => void;
   username: string;
   setUsername: (username: string) => void;
+  // fullname: string;
+  // setFullname: (fullname: string) => void;
   tokenIdWebCims: string;
   setTokenIdWebCims: (tokenIdWebCims: string) => void;
   collapsed: boolean;
@@ -87,7 +89,7 @@ const useAppStore = create<AppState>()(
         withReceptionDiagnostics: false,
         setWithReceptionDiagnostics: (withReceptionDiagnostics) =>
           set((state) => ({ ...state, withReceptionDiagnostics })),
-        itemDetails: { Id: "" },
+        itemDetails: { Id: '' },
         setItemDetails: (itemDetails) =>
           set((state) => ({ ...state, itemDetails })),
         patientDetails: { Id: 0 },
@@ -95,28 +97,30 @@ const useAppStore = create<AppState>()(
           set((state) => ({ ...state, patientDetails })),
         patientId: 0,
         setPatientId: (patientId) => set((state) => ({ ...state, patientId })),
-        branchCode: "",
+        branchCode: '',
         setBranchCode: (branchCode) =>
           set((state) => ({ ...state, branchCode })),
-        hideSideBar: "N",
+        hideSideBar: 'N',
         setHideSideBar: (hideSideBar) =>
           set((state) => ({ ...state, hideSideBar })),
-        userId: "",
+        userId: '',
         setUserId: (userId) => set((state) => ({ ...state, userId })),
-        apiUrlClaimsAssure: "",
+        apiUrlClaimsAssure: '',
         setApiUrlClaimsAssure: (apiUrlClaimsAssure) =>
           set((state) => ({ ...state, apiUrlClaimsAssure })),
-        username: "",
+        username: '',
         setUsername: (username) => set((state) => ({ ...state, username })),
-        tokenIdWebCims: "",
+        // fullname: '',
+        // setFullname: (fullname) => set((state) => ({ ...state, fullname })),
+        tokenIdWebCims: '',
         setTokenIdWebCims: (tokenIdWebCims) =>
           set((state) => ({ ...state, tokenIdWebCims })),
         collapsed: false,
         setCollapsed: (collapsed) => set((state) => ({ ...state, collapsed })),
       }),
-      { name: "AppStore" }
-    )
-  )
+      { name: 'AppStore' },
+    ),
+  ),
 );
 
 export default useAppStore;

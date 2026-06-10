@@ -11,27 +11,27 @@ import {
   Select,
   Space,
   Tooltip,
-} from "antd";
-import { useForm } from "antd/lib/form/Form";
-import { Column } from "primereact/column";
-import { DataTable } from "primereact/datatable";
-import { useEffect, useState } from "react";
-import { BiEdit } from "react-icons/bi";
-import { createLazyFileRoute } from "@tanstack/react-router";
-import useAppStore from "../../store";
-import { PostData } from "../../helpers";
+} from 'antd';
+import { useForm } from 'antd/lib/form/Form';
+import { Column } from 'primereact/column';
+import { DataTable } from 'primereact/datatable';
+import { useEffect, useState } from 'react';
+import { BiEdit } from 'react-icons/bi';
+import { createLazyFileRoute } from '@tanstack/react-router';
+import useAppStore from '../../store';
+import { PostData } from '../../helpers';
 
-export const Route = createLazyFileRoute("/_authenticated/referencevalues/$Id")(
+export const Route = createLazyFileRoute('/_authenticated/referencevalues/$Id')(
   {
     component: () => <ReferenceValues />,
-  }
+  },
 );
 
 const ReferenceValues = () => {
   const [TestId] = useState<string>(Route.useParams().Id);
   const [Id, setId] = useState<string>(Route.useParams().Id);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mode] = useState("AgeFrom");
+  const [mode] = useState('AgeFrom');
   const [showModal, setShowModal] = useState(false);
   const [showModalAge, setShowModalAge] = useState(false);
   const [form] = useForm();
@@ -45,7 +45,7 @@ const ReferenceValues = () => {
   const handleSaveReferenceValue = async (values: any) => {
     setIsSubmitting(true);
 
-    const res = await PostData("SaveReferenceValues", {
+    const res = await PostData('SaveReferenceValues', {
       ...values,
       fk_Analytes_Id: TestId,
       Id: Id,
@@ -55,15 +55,15 @@ const ReferenceValues = () => {
       setIsSubmitting(false);
       if (res.status === 1) {
         notification.success({
-          message: "Successfully saved!",
-          placement: "topRight",
+          message: 'Successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
         handleGetReferenceValues();
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -71,8 +71,8 @@ const ReferenceValues = () => {
   };
 
   const handleGetReferenceValues = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetReferenceValues",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetReferenceValues',
       parameters: {
         Id: TestId,
       },
@@ -87,28 +87,28 @@ const ReferenceValues = () => {
 
     let days = 0;
 
-    if (data.mode === "M") {
+    if (data.mode === 'M') {
       days = Math.round(30.436875 * data.noofmonths);
 
-      if (mode === "AgeFrom") {
+      if (mode === 'AgeFrom') {
         form.setFieldsValue({
           AgeFrom: days,
         });
-      } else if (mode === "AgeTo") {
+      } else if (mode === 'AgeTo') {
         form.setFieldsValue({
           AgeTo: days,
         });
       }
     }
 
-    if (data.mode === "Y") {
+    if (data.mode === 'Y') {
       days = Math.round(365 * data.noofmonths);
 
-      if (mode === "AgeFrom") {
+      if (mode === 'AgeFrom') {
         form.setFieldsValue({
           AgeFrom: days,
         });
-      } else if (mode === "AgeTo") {
+      } else if (mode === 'AgeTo') {
         form.setFieldsValue({
           AgeTo: days,
         });
@@ -131,7 +131,7 @@ const ReferenceValues = () => {
       ConventionalTo: data.ConventionalTo,
       ConventionalReferenceValue: data.ConventionalReferenceValue,
       Conversion: data.Conversion,
-      Deleted: "N",
+      Deleted: 'N',
       AgeFromMode: data.AgeFromMode,
       AgeToMode: data.AgeToMode,
     });
@@ -162,7 +162,7 @@ const ReferenceValues = () => {
         <Button
           type="primary"
           onClick={() => {
-            setId("0");
+            setId('0');
             setShowModal(true);
             form.resetFields();
           }}
@@ -172,7 +172,7 @@ const ReferenceValues = () => {
       </div>
 
       <div className="mt-2">
-        <DataTable value={referenceValues} tableStyle={{ minWidth: "50rem" }}>
+        <DataTable value={referenceValues} tableStyle={{ minWidth: '50rem' }}>
           <Column
             field="action"
             header="Action"
@@ -232,7 +232,7 @@ const ReferenceValues = () => {
                 },
               ]}
             >
-              <InputNumber style={{ width: "100%" }} />
+              <InputNumber style={{ width: '100%' }} />
             </Form.Item>
             <div className="flex flex-col justify-center items-start">
               {/* <Button
@@ -277,7 +277,7 @@ const ReferenceValues = () => {
                 },
               ]}
             >
-              <InputNumber style={{ width: "100%" }} />
+              <InputNumber style={{ width: '100%' }} />
             </Form.Item>
 
             <div className="flex flex-col justify-center items-start">
@@ -327,10 +327,10 @@ const ReferenceValues = () => {
               />
             </Form.Item>
             <Form.Item name="IsFrom" label="Value From">
-              <InputNumber precision={2} style={{ width: "100%" }} />
+              <InputNumber precision={2} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="IsTo" label="Value To">
-              <InputNumber precision={2} style={{ width: "100%" }} />
+              <InputNumber precision={2} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item
               name="IsReferenceValue"
@@ -353,10 +353,10 @@ const ReferenceValues = () => {
               />
             </Form.Item>
             <Form.Item name="ConventionalFrom" label="Value From">
-              <InputNumber precision={2} style={{ width: "100%" }} />
+              <InputNumber precision={2} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="ConventionalTo" label="Value To">
-              <InputNumber precision={2} style={{ width: "100%" }} />
+              <InputNumber precision={2} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item
               name="ConventionalReferenceValue"
@@ -368,9 +368,9 @@ const ReferenceValues = () => {
           </div>
           <div className="grid lg:grid-cols-6 gap-4">
             <Form.Item name="Conversion" label="Conversion">
-              <InputNumber precision={4} style={{ width: "100%" }} />
+              <InputNumber precision={4} style={{ width: '100%' }} />
             </Form.Item>
-            {Id !== "0" && (
+            {Id !== '0' && (
               <Form.Item
                 name="Deleted"
                 label="Do you want to delete this reference value?"
@@ -405,11 +405,11 @@ const ReferenceValues = () => {
               rules={[
                 {
                   required: true,
-                  message: "This field is required!",
+                  message: 'This field is required!',
                 },
               ]}
             >
-              <InputNumber min={1} style={{ width: "100%" }} />
+              <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item
               name="mode"

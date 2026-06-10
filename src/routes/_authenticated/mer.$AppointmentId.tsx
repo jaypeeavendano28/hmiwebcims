@@ -1,16 +1,15 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
-import { useForm } from "antd/es/form/Form";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
+import { useForm } from 'antd/es/form/Form';
 import {
   TAppointments,
   TCharges,
   TDoctors,
-  TFamilyMedicalHistory,
   TMer,
   TMerOtherTests,
   TMerOthers,
-} from "../../types";
+} from '../../types';
 import {
   AutoComplete,
   Button,
@@ -24,22 +23,27 @@ import {
   Select,
   Space,
   notification,
-} from "antd";
-import dayjs from "dayjs";
-import { FaBars } from "react-icons/fa6";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import axios from "axios";
-import useAppStore from "../../store";
-import { useAuth } from "../../hooks/userAuth";
+} from 'antd';
+import dayjs from 'dayjs';
+import { FaBars } from 'react-icons/fa6';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import axios from 'axios';
+import useAppStore from '../../store';
+import { useAuth } from '../../hooks/userAuth';
 
-export const Route = createFileRoute("/_authenticated/mer/$AppointmentId")({
+export const Route = createFileRoute('/_authenticated/mer/$AppointmentId')({
   component: () => <Mer />,
 });
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API;
 const devApi = import.meta.env.VITE_DEV_API;
 const apiUrl = isDev ? devApi : prodApi;
+const otherMedicalHistory: TMerOthers[] = [
+  { Id: 1, Description: 'Smoker' },
+  { Id: 2, Description: 'Alcohol beverage drinker' },
+  { Id: 3, Description: 'Covid-19 Vaccinated' },
+];
 const Mer = () => {
   const [peStatus, setPeStatus] = useState([]);
   const [chestXrayStatus, setChestXrayStatus] = useState<
@@ -67,10 +71,10 @@ const Mer = () => {
   const auth = useAuth();
   const router = useRouter();
   const store = useAppStore();
-  const [selectedFamMed, setSelectedFamMed] = useState<
-    TFamilyMedicalHistory[] | null
-  >(null);
+  const [selectedFamMed, setSelectedFamMed] = useState<TMerOthers[]>([]);
+  const [selectedOthers, setSelectedOthers] = useState<TMerOthers[]>([]);
   const [showFamilyMedHistory, setShowFamilyMedHistory] = useState(false);
+  const [showOthersHistory, setShowOthersHistory] = useState(false);
   const [familyMedicalHistory, setFamilyMedicalHistory] = useState<
     TMerOthers[]
   >([]);
@@ -80,17 +84,17 @@ const Mer = () => {
   const [form] = useForm();
 
   const handleInitialize = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetFamilyMedicalHistory",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetFamilyMedicalHistory',
       parameters: {},
     });
     if (res) {
       setFamilyMedicalHistory(res.parameters.lst);
     }
-    res = await PostData("GetRecords", {
-      sp: "udp_GetSettings",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetSettings',
       parameters: {
-        Code: "PESTATUS",
+        Code: 'PESTATUS',
       },
     });
     if (res) {
@@ -98,8 +102,8 @@ const Mer = () => {
     }
   };
   const handleGetAppointmentDetails = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetAppointmentDetails",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetAppointmentDetails',
       parameters: {
         Id: AppointmentId,
       },
@@ -120,19 +124,19 @@ const Mer = () => {
       });
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetDoctors",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetDoctors',
       parameters: {},
     });
     if (res) {
       setDoctors(res.parameters.lst);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetMerDetails",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetMerDetails',
       parameters: {
         AppointmentId: AppointmentId,
-        Type: "R",
+        Type: 'R',
       },
     });
     if (res) {
@@ -176,6 +180,7 @@ const Mer = () => {
           ChestXrayDate: isNullOrUndefinedOrBlank(x.ChestXrayDate)
             ? undefined
             : dayjs(x.ChestXrayDate),
+          Lmp: isNullOrUndefinedOrBlank(x.Lmp) ? undefined : dayjs(x.Lmp),
           ChestXrayStudyNo: x.ChestXrayStudyNo,
           ChestXrayView: x.ChestXrayView,
           ChestXrayResult: x.ChestXrayResult,
@@ -236,22 +241,22 @@ const Mer = () => {
       } else {
         form.setFieldsValue({
           MerDate: dayjs(),
-          EentStatus: "NORMAL",
-          ChestStatus: "NORMAL",
-          HeartStatus: "NORMAL",
-          AbdomenStatus: "NORMAL",
-          ExtremitiesStatus: "NORMAL",
-          OthersStatus: "NORMAL",
+          EentStatus: 'NORMAL',
+          ChestStatus: 'NORMAL',
+          HeartStatus: 'NORMAL',
+          AbdomenStatus: 'NORMAL',
+          ExtremitiesStatus: 'NORMAL',
+          OthersStatus: 'NORMAL',
         });
-        if (form.getFieldValue("Sex") === "M") {
+        if (form.getFieldValue('Sex') === 'M') {
           form.setFieldsValue({
-            VaLeft: "20/20",
-            VaRight: "20/20",
+            VaLeft: '20/20',
+            VaRight: '20/20',
           });
         } else {
           form.setFieldsValue({
-            VaLeft: "20/20",
-            VaRight: "20/20",
+            VaLeft: '20/20',
+            VaRight: '20/20',
           });
         }
       }
@@ -261,17 +266,20 @@ const Mer = () => {
   const handleGetProcedureStatus = async () => {
     try {
       ///chest xray
-      let res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      let res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2197,
         },
       });
-      if (res) {
+
+      console.log(res);
+
+      if (res && res.parameters.lst > 0 && res.parameters.lst[0].ResultId) {
         setChestXrayStatus(res.parameters.lst[0]);
-        var studyno = await PostData("GetRecords", {
-          sp: "udp_GetRadiologyResult",
+        var studyno = await PostData('GetRecords', {
+          sp: 'udp_GetRadiologyResult',
           parameters: {
             Id: res.parameters.lst[0].ResultId,
           },
@@ -279,12 +287,12 @@ const Mer = () => {
         if (studyno) {
           form.setFieldsValue({
             ChestXrayStudyNo: studyno.parameters.lst[0].StudyNo,
-            ChestXrayDate: dayjs(studyno.parameters.lst[0].ResultDate),
+            ChestXrayDate: dayjs(studyno.parameters.lst[0].ReportDate),
           });
         }
       }
-      res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2019,
@@ -294,8 +302,8 @@ const Mer = () => {
         setUrinalysisStatus(res.parameters.lst[0]);
       }
 
-      res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2003,
@@ -304,8 +312,8 @@ const Mer = () => {
       if (res) {
         setCbcStatus(res.parameters.lst[0]);
       }
-      res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2043,
@@ -314,8 +322,8 @@ const Mer = () => {
       if (res) {
         setFecalysisStatus(res.parameters.lst[0]);
       }
-      res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2187,
@@ -324,8 +332,8 @@ const Mer = () => {
       if (res) {
         setDrugTestStatus(res.parameters.lst[0]);
       }
-      res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2284,
@@ -334,8 +342,8 @@ const Mer = () => {
       if (res) {
         setTreadmillStatus(res.parameters.lst[0]);
       }
-      res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2283,
@@ -345,8 +353,8 @@ const Mer = () => {
         setEcgStatus(res.parameters.lst[0]);
       }
 
-      res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2285,
@@ -355,8 +363,8 @@ const Mer = () => {
       if (res) {
         setEchoStatus(res.parameters.lst[0]);
       }
-      res = await PostData("GetRecords", {
-        sp: "udp_GetMerProcedureStatus",
+      res = await PostData('GetRecords', {
+        sp: 'udp_GetMerProcedureStatus',
         parameters: {
           AppointmentId: AppointmentId,
           ItemId: 2278,
@@ -368,38 +376,39 @@ const Mer = () => {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "bottomRight",
+        placement: 'bottomRight',
         duration: 3,
       });
     }
   };
   const handlePrint = async () => {
-    axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
 
-    const url = apiUrl + "/api/GenerateReport";
+    const url = apiUrl + '/api/GenerateReport';
     try {
       setIsSubmitting(true);
       await axios({
-        url: url, //your url
-        method: "GET",
-        responseType: "blob",
+        url: url,
+        method: 'GET',
+        responseType: 'blob',
         params: {
-          ReportName: "mer.rdl",
+          ReportName: 'mer.rdl',
           AppointmentId: AppointmentId,
+          BranchCode: store.branchCode,
         },
       }).then((response) => {
         let newBlob;
         newBlob = new Blob([response.data], {
-          type: "application/pdf",
+          type: 'application/pdf',
         });
 
         const data = window.URL.createObjectURL(newBlob);
 
-        const a = document.createElement("a");
+        const a = document.createElement('a');
 
-        a.setAttribute("href", data);
-        a.setAttribute("target", "_blank");
+        a.setAttribute('href', data);
+        a.setAttribute('target', '_blank');
 
         a.click();
         setIsSubmitting(false);
@@ -412,20 +421,79 @@ const Mer = () => {
     }
   };
 
-  const handleSetFamilyMed = () => {
-    let s: string = isNullOrUndefinedOrBlank(
-      form.getFieldValue("FamilyHistory")
-    )
-      ? ""
-      : form.getFieldValue("FamilyHistory");
-    selectedFamMed?.map((v: TFamilyMedicalHistory) => {
-      if (s === "") {
+  const handleSetFamilyMed = (
+    selectedFamilyMedicalHistory = selectedFamMed,
+  ) => {
+    let s: string = '';
+    selectedFamilyMedicalHistory.forEach((v: TMerOthers) => {
+      if (isNullOrUndefinedOrBlank(v.Description)) {
+        return;
+      }
+
+      if (s === '') {
         s = v.Description!;
       } else {
-        s = s + "," + v.Description!;
+        s = s + ',' + v.Description!;
       }
     });
-    form.setFieldValue("FamilyHistory", s);
+    form.setFieldValue('FamilyHistory', s);
+  };
+  const handleShowFamilyMedHistory = () => {
+    const familyHistory = form.getFieldValue('FamilyHistory');
+    const descriptions = isNullOrUndefinedOrBlank(familyHistory)
+      ? []
+      : familyHistory
+          .split(',')
+          .map((description: string) => description.trim())
+          .filter(Boolean);
+
+    setSelectedFamMed(
+      familyMedicalHistory.filter(
+        (v) => v.Description && descriptions.includes(v.Description),
+      ),
+    );
+    setShowFamilyMedHistory(true);
+  };
+  const handleFamMedCheckChange = (rowData: TMerOthers, checked: boolean) => {
+    const value = checked
+      ? [...selectedFamMed, rowData]
+      : selectedFamMed.filter((v) => v.Id !== rowData.Id);
+
+    setSelectedFamMed(value);
+    handleSetFamilyMed(value);
+  };
+  const handleSetOthers = (selectedOtherHistory = selectedOthers) => {
+    form.setFieldValue(
+      'Others',
+      selectedOtherHistory
+        .map((v) => v.Description)
+        .filter((description) => !isNullOrUndefinedOrBlank(description))
+        .join(', '),
+    );
+  };
+  const handleShowOthersHistory = () => {
+    const others = form.getFieldValue('Others');
+    const descriptions = isNullOrUndefinedOrBlank(others)
+      ? []
+      : others
+          .split(',')
+          .map((description: string) => description.trim())
+          .filter(Boolean);
+
+    setSelectedOthers(
+      otherMedicalHistory.filter(
+        (v) => v.Description && descriptions.includes(v.Description),
+      ),
+    );
+    setShowOthersHistory(true);
+  };
+  const handleOthersCheckChange = (rowData: TMerOthers, checked: boolean) => {
+    const value = checked
+      ? [...selectedOthers, rowData]
+      : selectedOthers.filter((v) => v.Id !== rowData.Id);
+
+    setSelectedOthers(value);
+    handleSetOthers(value);
   };
   const handleSubmitForm = async (v: TMer) => {
     setIsSubmitting(true);
@@ -435,37 +503,37 @@ const Mer = () => {
 
         MerDate: isNullOrUndefinedOrBlank(v.MerDate)
           ? undefined
-          : dayjs(v.MerDate).format("YYYY-MM-DD"),
+          : dayjs(v.MerDate).format('YYYY-MM-DD'),
         ChestXrayDate: isNullOrUndefinedOrBlank(v.ChestXrayDate)
           ? undefined
-          : dayjs(v.ChestXrayDate).format("YYYY-MM-DD"),
+          : dayjs(v.ChestXrayDate).format('YYYY-MM-DD'),
         UrinalysisDate: isNullOrUndefinedOrBlank(v.UrinalysisDate)
           ? undefined
-          : dayjs(v.UrinalysisDate).format("YYYY-MM-DD"),
+          : dayjs(v.UrinalysisDate).format('YYYY-MM-DD'),
         EcgDate: isNullOrUndefinedOrBlank(v.EcgDate)
           ? undefined
-          : dayjs(v.EcgDate).format("YYYY-MM-DD"),
+          : dayjs(v.EcgDate).format('YYYY-MM-DD'),
         CbcDate: isNullOrUndefinedOrBlank(v.CbcDate)
           ? undefined
-          : dayjs(v.CbcDate).format("YYYY-MM-DD"),
+          : dayjs(v.CbcDate).format('YYYY-MM-DD'),
         FecalysisDate: isNullOrUndefinedOrBlank(v.FecalysisDate)
           ? undefined
-          : dayjs(v.FecalysisDate).format("YYYY-MM-DD"),
+          : dayjs(v.FecalysisDate).format('YYYY-MM-DD'),
         DrugTestDate: isNullOrUndefinedOrBlank(v.DrugTestDate)
           ? undefined
-          : dayjs(v.DrugTestDate).format("YYYY-MM-DD"),
+          : dayjs(v.DrugTestDate).format('YYYY-MM-DD'),
         TreadmillDate: isNullOrUndefinedOrBlank(v.TreadmillDate)
           ? undefined
-          : dayjs(v.TreadmillDate).format("YYYY-MM-DD"),
+          : dayjs(v.TreadmillDate).format('YYYY-MM-DD'),
         EchoDate: isNullOrUndefinedOrBlank(v.EchoDate)
           ? undefined
-          : dayjs(v.EchoDate).format("YYYY-MM-DD"),
+          : dayjs(v.EchoDate).format('YYYY-MM-DD'),
         UltrasoundDate: isNullOrUndefinedOrBlank(v.UltrasoundDate)
           ? undefined
-          : dayjs(v.UltrasoundDate).format("YYYY-MM-DD"),
-        Type: "R",
+          : dayjs(v.UltrasoundDate).format('YYYY-MM-DD'),
+        Type: 'R',
       };
-      const res = await PostData("SaveMer", valuesToSave);
+      const res = await PostData('SaveMer', valuesToSave);
 
       if (res) {
         setIsSubmitting(false);
@@ -475,14 +543,14 @@ const Mer = () => {
           });
 
           notification.success({
-            message: "Successfully saved!",
-            placement: "topRight",
+            message: 'Successfully saved!',
+            placement: 'topRight',
             duration: 3,
           });
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -491,7 +559,7 @@ const Mer = () => {
       setIsSubmitting(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -500,227 +568,227 @@ const Mer = () => {
     const res = await auth.isWithAccess(24);
     if (res === false) {
       notification.error({
-        message: "Access denied-MER",
-        placement: "topRight",
+        message: 'Access denied-MER',
+        placement: 'topRight',
         duration: 3,
       });
       router.navigate({
-        to: "/",
+        to: '/',
       });
     }
   };
   const handleChangeOtherResult = () => {
     const v: TMerOtherTests = formOtherServices.getFieldsValue();
-    let otherResult: string = "";
+    let otherResult: string = '';
 
     if (v.StoolCs === true) {
-      otherResult = "Stool c/s-" + v.StoolCsValue;
+      otherResult = 'Stool c/s-' + v.StoolCsValue;
     }
 
     if (v.HbSag === true) {
-      if (otherResult === "") {
-        otherResult = "HBsAg-" + v.HbSagValue;
+      if (otherResult === '') {
+        otherResult = 'HBsAg-' + v.HbSagValue;
       } else {
-        otherResult = otherResult + "," + "HBsAg-" + v.HbSagValue;
+        otherResult = otherResult + ',' + 'HBsAg-' + v.HbSagValue;
       }
     }
     if (v.HepaAIgM === true) {
-      if (otherResult === "") {
-        otherResult = "Hepa A-IgM-" + v.HepaAIgMValue;
+      if (otherResult === '') {
+        otherResult = 'Hepa A-IgM-' + v.HepaAIgMValue;
       } else {
-        otherResult = otherResult + "," + "Hepa A-IgM-" + v.HepaAIgMValue;
+        otherResult = otherResult + ',' + 'Hepa A-IgM-' + v.HepaAIgMValue;
       }
     }
     if (v.AntiHav === true) {
-      if (otherResult === "") {
-        otherResult = "Anti-HAV-IgG-" + v.AntiHavValue;
+      if (otherResult === '') {
+        otherResult = 'Anti-HAV-IgG-' + v.AntiHavValue;
       } else {
-        otherResult = otherResult + "," + "Anti-HAV-IgG -" + v.AntiHavValue;
+        otherResult = otherResult + ',' + 'Anti-HAV-IgG -' + v.AntiHavValue;
       }
     }
 
     if (v.AntiHbs === true) {
-      if (otherResult === "") {
-        otherResult = "ANTI-HBS-" + v.AntiHbsValue;
+      if (otherResult === '') {
+        otherResult = 'ANTI-HBS-' + v.AntiHbsValue;
       } else {
-        otherResult = otherResult + "," + "ANTI-HBS-" + v.AntiHbsValue;
+        otherResult = otherResult + ',' + 'ANTI-HBS-' + v.AntiHbsValue;
       }
     }
     if (v.HepaAIgG === true) {
-      if (otherResult === "") {
-        otherResult = "Hepa A-IgG-" + v.HepaAIgGValue;
+      if (otherResult === '') {
+        otherResult = 'Hepa A-IgG-' + v.HepaAIgGValue;
       } else {
-        otherResult = otherResult + "," + "Hepa A-IgG-" + v.HepaAIgGValue;
+        otherResult = otherResult + ',' + 'Hepa A-IgG-' + v.HepaAIgGValue;
       }
     }
     if (v.Rpr === true) {
-      if (otherResult === "") {
-        otherResult = "RPR-" + v.RprValue;
+      if (otherResult === '') {
+        otherResult = 'RPR-' + v.RprValue;
       } else {
-        otherResult = otherResult + "," + "RPR-" + v.RprValue;
+        otherResult = otherResult + ',' + 'RPR-' + v.RprValue;
       }
     }
     if (v.AntiHavIgM === true) {
-      if (otherResult === "") {
-        otherResult = "Anti-Hav-IgM-" + v.AntiHavIgMValue;
+      if (otherResult === '') {
+        otherResult = 'Anti-Hav-IgM-' + v.AntiHavIgMValue;
       } else {
-        otherResult = otherResult + "," + "Anti-Hav-IgM-" + v.AntiHavIgMValue;
+        otherResult = otherResult + ',' + 'Anti-Hav-IgM-' + v.AntiHavIgMValue;
       }
     }
 
     if (v.Glucose === true) {
-      if (otherResult === "") {
-        otherResult = "Glucose-" + v.GlucoseValue2 + "-" + v.GlucoseValue;
+      if (otherResult === '') {
+        otherResult = 'Glucose-' + v.GlucoseValue2 + '-' + v.GlucoseValue;
       } else {
         otherResult =
-          otherResult + ",Glucose-" + v.GlucoseValue2 + "-" + v.GlucoseValue;
+          otherResult + ',Glucose-' + v.GlucoseValue2 + '-' + v.GlucoseValue;
       }
     }
     if (v.Creatinine === true) {
-      if (otherResult === "") {
+      if (otherResult === '') {
         otherResult =
-          "Creatinine-" + v.CreatinineValue2 + "-" + v.CreatinineValue;
+          'Creatinine-' + v.CreatinineValue2 + '-' + v.CreatinineValue;
       } else {
         otherResult =
           otherResult +
-          ",Creatinine-" +
+          ',Creatinine-' +
           v.CreatinineValue2 +
-          "-" +
+          '-' +
           v.CreatinineValue;
       }
     }
 
     if (v.Urea === true) {
-      if (otherResult === "") {
-        otherResult = "Urea-" + v.UreaValue2 + "-" + v.UreaValue;
+      if (otherResult === '') {
+        otherResult = 'Urea-' + v.UreaValue2 + '-' + v.UreaValue;
       } else {
         otherResult =
-          otherResult + ",Creatinine-" + v.UreaValue2 + "-" + v.UreaValue;
+          otherResult + ',Creatinine-' + v.UreaValue2 + '-' + v.UreaValue;
       }
     }
 
     if (v.UricAcid === true) {
-      if (otherResult === "") {
-        otherResult = "Uric Acid-" + v.UricAcidValue2 + "-" + v.UricAcidValue;
+      if (otherResult === '') {
+        otherResult = 'Uric Acid-' + v.UricAcidValue2 + '-' + v.UricAcidValue;
       } else {
         otherResult =
           otherResult +
-          ",Uric Acid-" +
+          ',Uric Acid-' +
           v.UricAcidValue2 +
-          "-" +
+          '-' +
           v.UricAcidValue;
       }
     }
     if (v.Cholesterol === true) {
-      if (otherResult === "") {
+      if (otherResult === '') {
         otherResult =
-          "Cholesterol-" + v.CholesterolValue2 + "-" + v.CholesterolValue;
+          'Cholesterol-' + v.CholesterolValue2 + '-' + v.CholesterolValue;
       } else {
         otherResult =
           otherResult +
-          ",Cholesterol-" +
+          ',Cholesterol-' +
           v.CholesterolValue2 +
-          "-" +
+          '-' +
           v.CholesterolValue;
       }
     }
     if (v.Hdl === true) {
-      if (otherResult === "") {
-        otherResult = "HDL-" + v.HdlValue2 + "-" + v.HdlValue;
+      if (otherResult === '') {
+        otherResult = 'HDL-' + v.HdlValue2 + '-' + v.HdlValue;
       } else {
-        otherResult = otherResult + ",HDL-" + v.HdlValue2 + "-" + v.HdlValue;
+        otherResult = otherResult + ',HDL-' + v.HdlValue2 + '-' + v.HdlValue;
       }
     }
 
     if (v.Sgpt === true) {
-      if (otherResult === "") {
-        otherResult = "Sgpt-" + v.SgptValue2 + "-" + v.SgptValue;
+      if (otherResult === '') {
+        otherResult = 'Sgpt-' + v.SgptValue2 + '-' + v.SgptValue;
       } else {
-        otherResult = otherResult + ",Sgpt-" + v.SgptValue2 + "-" + v.SgptValue;
+        otherResult = otherResult + ',Sgpt-' + v.SgptValue2 + '-' + v.SgptValue;
       }
     }
     if (v.Globulin === true) {
-      if (otherResult === "") {
-        otherResult = "Globulin-" + v.GlobulinValue2 + "-" + v.GlobulinValue;
+      if (otherResult === '') {
+        otherResult = 'Globulin-' + v.GlobulinValue2 + '-' + v.GlobulinValue;
       } else {
         otherResult =
-          otherResult + ",Globulin-" + v.GlobulinValue2 + "-" + v.GlobulinValue;
+          otherResult + ',Globulin-' + v.GlobulinValue2 + '-' + v.GlobulinValue;
       }
     }
     if (v.Tsh === true) {
-      if (otherResult === "") {
-        otherResult = "Tsh-" + v.TshValue2 + "-" + v.TshValue;
+      if (otherResult === '') {
+        otherResult = 'Tsh-' + v.TshValue2 + '-' + v.TshValue;
       } else {
-        otherResult = otherResult + ",Tsh-" + v.TshValue2 + "-" + v.TshValue;
+        otherResult = otherResult + ',Tsh-' + v.TshValue2 + '-' + v.TshValue;
       }
     }
 
     if (v.Ft4 === true) {
-      if (otherResult === "") {
-        otherResult = "Ft4-" + v.Ft4Value2 + "-" + v.Ft4Value;
+      if (otherResult === '') {
+        otherResult = 'Ft4-' + v.Ft4Value2 + '-' + v.Ft4Value;
       } else {
-        otherResult = otherResult + ",Ft4-" + v.Ft4Value2 + "-" + v.Ft4Value;
+        otherResult = otherResult + ',Ft4-' + v.Ft4Value2 + '-' + v.Ft4Value;
       }
     }
 
     if (v.Sodium === true) {
-      if (otherResult === "") {
-        otherResult = "Sodium-" + v.SodiumValue2 + "-" + v.SodiumValue;
+      if (otherResult === '') {
+        otherResult = 'Sodium-' + v.SodiumValue2 + '-' + v.SodiumValue;
       } else {
         otherResult =
-          otherResult + ",Sodium-" + v.SodiumValue2 + "-" + v.SodiumValue;
+          otherResult + ',Sodium-' + v.SodiumValue2 + '-' + v.SodiumValue;
       }
     }
 
     if (v.Triglycerides === true) {
-      if (otherResult === "") {
+      if (otherResult === '') {
         otherResult =
-          "Triglycerides-" + v.TriglyceridesValue2 + "-" + v.TriglyceridesValue;
+          'Triglycerides-' + v.TriglyceridesValue2 + '-' + v.TriglyceridesValue;
       } else {
         otherResult =
           otherResult +
-          ",Triglycerides-" +
+          ',Triglycerides-' +
           v.TriglyceridesValue2 +
-          "-" +
+          '-' +
           v.TriglyceridesValue;
       }
     }
 
     if (v.Ldl === true) {
-      if (otherResult === "") {
-        otherResult = "Ldl-" + v.LdlValue2 + "-" + v.LdlValue;
+      if (otherResult === '') {
+        otherResult = 'Ldl-' + v.LdlValue2 + '-' + v.LdlValue;
       } else {
-        otherResult = otherResult + ",Ldl-" + v.LdlValue2 + "-" + v.LdlValue;
+        otherResult = otherResult + ',Ldl-' + v.LdlValue2 + '-' + v.LdlValue;
       }
     }
 
     if (v.Sgot === true) {
-      if (otherResult === "") {
-        otherResult = "Sgot-" + v.SgotValue2 + "-" + v.SgotValue;
+      if (otherResult === '') {
+        otherResult = 'Sgot-' + v.SgotValue2 + '-' + v.SgotValue;
       } else {
-        otherResult = otherResult + ",Sgot-" + v.SgotValue2 + "-" + v.SgotValue;
+        otherResult = otherResult + ',Sgot-' + v.SgotValue2 + '-' + v.SgotValue;
       }
     }
 
     if (v.HbA1c === true) {
-      if (otherResult === "") {
-        otherResult = "HbA1c-" + v.HbA1cValue2 + "-" + v.HbA1cValue;
+      if (otherResult === '') {
+        otherResult = 'HbA1c-' + v.HbA1cValue2 + '-' + v.HbA1cValue;
       } else {
         otherResult =
-          otherResult + ",HbA1c-" + v.HbA1cValue2 + "-" + v.HbA1cValue;
+          otherResult + ',HbA1c-' + v.HbA1cValue2 + '-' + v.HbA1cValue;
       }
     }
 
     if (v.Ft3 === true) {
-      if (otherResult === "") {
-        otherResult = "Ft3-" + v.Ft3Value2 + "-" + v.Ft3Value;
+      if (otherResult === '') {
+        otherResult = 'Ft3-' + v.Ft3Value2 + '-' + v.Ft3Value;
       } else {
-        otherResult = otherResult + ",Ft3-" + v.Ft3Value2 + "-" + v.Ft3Value;
+        otherResult = otherResult + ',Ft3-' + v.Ft3Value2 + '-' + v.Ft3Value;
       }
     }
 
-    formOtherServices.setFieldValue("OtherResult", otherResult);
-    form.setFieldValue("OthersResult", otherResult);
+    formOtherServices.setFieldValue('OtherResult', otherResult);
+    form.setFieldValue('OthersResult', otherResult);
   };
   useEffect(() => {
     handleWithAccess();
@@ -728,9 +796,6 @@ const Mer = () => {
     handleGetAppointmentDetails();
     handleGetProcedureStatus();
   }, []);
-  useEffect(() => {
-    handleSetFamilyMed();
-  }, [selectedFamMed]);
   return (
     <div className="cardBackGround">
       <Divider>MEDICAL EVALUATION REPORT</Divider>
@@ -739,6 +804,7 @@ const Mer = () => {
         layout="vertical"
         scrollToFirstError
         onFinish={handleSubmitForm}
+        initialValues={{ DisplaySignatureIfAny: 'Y' }}
       >
         <div className="font-bold text-xl text-center">
           PATIENT'S INFORMATION
@@ -808,24 +874,32 @@ const Mer = () => {
             <Button
               icon={<FaBars />}
               type="primary"
-              onClick={() => {
-                setSelectedFamMed(null);
-                setShowFamilyMedHistory(true);
-              }}
+              onClick={handleShowFamilyMedHistory}
             />
           </div>
           <Form.Item name="Allergy" label="Allergy" className="col-span-6">
             <Input />
           </Form.Item>
         </div>
-        <div className="grid lg:grid-cols-2 gap-4">
-          <Form.Item name="PastDisease" label="Past Disease">
+        <div className="grid lg:grid-cols-12 gap-4">
+          <Form.Item
+            name="PastDisease"
+            label="Past Disease"
+            className="col-span-6"
+          >
             <Input />
           </Form.Item>
 
-          <Form.Item name="Others" label="Others">
+          <Form.Item name="Others" label="Others" className="col-span-5">
             <Input />
           </Form.Item>
+          <div className="flex justify-start items-center">
+            <Button
+              icon={<FaBars />}
+              type="primary"
+              onClick={handleShowOthersHistory}
+            />
+          </div>
         </div>
         <div className="grid lg:grid-cols-2 gap-4">
           <Form.Item name="Accidents" label="Accident’s/Operations">
@@ -856,9 +930,12 @@ const Mer = () => {
           <Form.Item name="Weight" label="Weight">
             <Input />
           </Form.Item>
+          <Form.Item name="Lmp" label="LMP">
+            <DatePicker format="MM/DD/YYYY" />
+          </Form.Item>
         </div>
         <div className="grid lg:grid-cols-6 gap-4">
-          {form.getFieldValue("Sex") === "F" && (
+          {form.getFieldValue('Sex') === 'F' && (
             <Form.Item name="Lmp" label="Last menstrual period">
               <DatePicker />
             </Form.Item>
@@ -900,7 +977,7 @@ const Mer = () => {
                   .toUpperCase()
                   .indexOf(inputValue.toUpperCase()) !== -1
               }
-              style={{ width: "100%" }}
+              style={{ width: '100%' }}
             >
               {peStatus!.map((v: any) => (
                 <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
@@ -909,7 +986,7 @@ const Mer = () => {
               ))}
             </AutoComplete>
           </Form.Item>
-          <Form.Item name="EentRemarKs" noStyle>
+          <Form.Item name="EentRemarls" noStyle>
             <Input />
           </Form.Item>
         </div>
@@ -923,7 +1000,7 @@ const Mer = () => {
                   .toUpperCase()
                   .indexOf(inputValue.toUpperCase()) !== -1
               }
-              style={{ width: "100%" }}
+              style={{ width: '100%' }}
             >
               {peStatus!.map((v: any) => (
                 <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
@@ -946,7 +1023,7 @@ const Mer = () => {
                   .toUpperCase()
                   .indexOf(inputValue.toUpperCase()) !== -1
               }
-              style={{ width: "100%" }}
+              style={{ width: '100%' }}
             >
               {peStatus!.map((v: any) => (
                 <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
@@ -969,7 +1046,7 @@ const Mer = () => {
                   .toUpperCase()
                   .indexOf(inputValue.toUpperCase()) !== -1
               }
-              style={{ width: "100%" }}
+              style={{ width: '100%' }}
             >
               {peStatus!.map((v: any) => (
                 <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
@@ -992,7 +1069,7 @@ const Mer = () => {
                   .toUpperCase()
                   .indexOf(inputValue.toUpperCase()) !== -1
               }
-              style={{ width: "100%" }}
+              style={{ width: '100%' }}
             >
               {peStatus!.map((v: any) => (
                 <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
@@ -1015,7 +1092,7 @@ const Mer = () => {
                   .toUpperCase()
                   .indexOf(inputValue.toUpperCase()) !== -1
               }
-              style={{ width: "100%" }}
+              style={{ width: '100%' }}
             >
               {peStatus!.map((v: any) => (
                 <AutoComplete.Option key={v.Id} value={v.Value} title={v.Value}>
@@ -1031,7 +1108,7 @@ const Mer = () => {
         <div className="grid lg:grid-cols-2 gap-4 mb-2">
           <Form.Item label="Attending Physician" name="AttendingPhysician">
             <Select
-              style={{ width: "100%" }}
+              style={{ width: '100%' }}
               showSearch
               allowClear
               filterOption={(input, option) =>
@@ -1393,7 +1470,7 @@ const Mer = () => {
           <Form.Item
             name="ClassALabel"
             noStyle
-            initialValue={"Class A - Medically fit for employment"}
+            initialValue={'Class A - Medically fit for employment'}
           >
             <Input />
           </Form.Item>
@@ -1411,7 +1488,7 @@ const Mer = () => {
             name="ClassBLabel"
             noStyle
             initialValue={
-              "Class B – Medically fit for employment with manageable findings:"
+              'Class B – Medically fit for employment with manageable findings:'
             }
           >
             <Input />
@@ -1429,7 +1506,7 @@ const Mer = () => {
           <Form.Item
             name="ClassCLabel"
             noStyle
-            initialValue={"Class C – Employable but requires:"}
+            initialValue={'Class C – Employable but requires:'}
           >
             <Input />
           </Form.Item>
@@ -1445,7 +1522,8 @@ const Mer = () => {
           </Form.Item>
           <Form.Item
             name="ClassC1Label"
-            initialValue={"Regular follow-up treatment/periodic evaluation."}
+            initialValue={'Regular follow-up treatment/periodic evaluation.'}
+            className="w-full"
           >
             <Input />
           </Form.Item>
@@ -1463,7 +1541,7 @@ const Mer = () => {
             name="ClassC2Label"
             noStyle
             initialValue={
-              "Special placement at work or limited duty in a special assignment"
+              'Special placement at work or limited duty in a special assignment'
             }
           >
             <Input />
@@ -1481,7 +1559,7 @@ const Mer = () => {
           <Form.Item
             name="ClassDLabel"
             noStyle
-            initialValue={"Class D- Medically unfit for employment"}
+            initialValue={'Class D- Medically unfit for employment'}
           >
             <Input />
           </Form.Item>
@@ -1498,7 +1576,7 @@ const Mer = () => {
           <Form.Item
             name="ClassOLabel"
             noStyle
-            initialValue={"Class O – Pending due to:"}
+            initialValue={'Class O – Pending due to:'}
           >
             <Input />
           </Form.Item>
@@ -1540,7 +1618,7 @@ const Mer = () => {
             ]}
           >
             <Select
-              style={{ width: "100%" }}
+              style={{ width: '100%' }}
               showSearch
               allowClear
               filterOption={(input, option) =>
@@ -1604,21 +1682,69 @@ const Mer = () => {
           emptyMessage="No Records!"
           stripedRows
           size="small"
+          selectionMode="multiple"
           selection={selectedFamMed}
           onSelectionChange={(e: any) => {
-            const value = e.value as TMer[];
+            const value = e.value as TMerOthers[];
             setSelectedFamMed(value);
+            handleSetFamilyMed(value);
           }}
-          //   selectionMode="multiple"
         >
           <Column
-            selectionMode="multiple"
-            headerStyle={{ width: "3rem" }}
+            body={(rowData: TMerOthers) => (
+              <Checkbox
+                checked={selectedFamMed.some((v) => v.Id === rowData.Id)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) =>
+                  handleFamMedCheckChange(rowData, e.target.checked)
+                }
+              />
+            )}
+            headerStyle={{ width: '3rem' }}
           ></Column>
           <Column
             field="Description"
             header="Description"
-            style={{ minWidth: "12rem" }}
+            style={{ minWidth: '12rem' }}
+          ></Column>
+        </DataTable>
+      </Modal>
+      <Modal
+        open={showOthersHistory}
+        onCancel={() => setShowOthersHistory(false)}
+        footer={false}
+        width={400}
+      >
+        <DataTable
+          dataKey="Id"
+          value={otherMedicalHistory}
+          emptyMessage="No Records!"
+          stripedRows
+          size="small"
+          selectionMode="multiple"
+          selection={selectedOthers}
+          onSelectionChange={(e: any) => {
+            const value = e.value as TMerOthers[];
+            setSelectedOthers(value);
+            handleSetOthers(value);
+          }}
+        >
+          <Column
+            body={(rowData: TMerOthers) => (
+              <Checkbox
+                checked={selectedOthers.some((v) => v.Id === rowData.Id)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) =>
+                  handleOthersCheckChange(rowData, e.target.checked)
+                }
+              />
+            )}
+            headerStyle={{ width: '3rem' }}
+          ></Column>
+          <Column
+            field="Description"
+            header="Description"
+            style={{ minWidth: '12rem' }}
           ></Column>
         </DataTable>
       </Modal>
@@ -1779,7 +1905,7 @@ const Mer = () => {
               <Form.Item
                 name="GlucoseValue2"
                 label="Value"
-                initialValue={"mmol/l"}
+                initialValue={'mmol/l'}
                 noStyle
               >
                 <Input />
@@ -1803,7 +1929,7 @@ const Mer = () => {
               <Form.Item
                 name="CreatinineValue2"
                 label="Value"
-                initialValue={"umol/l"}
+                initialValue={'umol/l'}
                 noStyle
               >
                 <Input />
@@ -1827,7 +1953,7 @@ const Mer = () => {
               <Form.Item
                 name="UreaValue2"
                 label="Value"
-                initialValue={"mmol/l"}
+                initialValue={'mmol/l'}
                 noStyle
               >
                 <Input />
@@ -1851,7 +1977,7 @@ const Mer = () => {
               <Form.Item
                 name="UricAcidValue2"
                 label="Value"
-                initialValue={"umol/l"}
+                initialValue={'umol/l'}
                 noStyle
               >
                 <Input />
@@ -1879,7 +2005,7 @@ const Mer = () => {
                 noStyle
                 name="CholesterolValue2"
                 label="Value"
-                initialValue={"mmol/l"}
+                initialValue={'mmol/l'}
               >
                 <Input />
               </Form.Item>
@@ -1897,7 +2023,7 @@ const Mer = () => {
               <Form.Item
                 name="HdlValue2"
                 label="Value"
-                initialValue={"mmol/l"}
+                initialValue={'mmol/l'}
                 noStyle
               >
                 <Input />
@@ -1916,7 +2042,7 @@ const Mer = () => {
               <Form.Item
                 name="SgptValue2"
                 label="Value"
-                initialValue={"U/L"}
+                initialValue={'U/L'}
                 noStyle
               >
                 <Input />
@@ -1935,7 +2061,7 @@ const Mer = () => {
               <Form.Item
                 name="GlobulinValue2"
                 label="Value"
-                initialValue={"g/l"}
+                initialValue={'g/l'}
                 noStyle
               >
                 <Input />
@@ -1954,7 +2080,7 @@ const Mer = () => {
               <Form.Item
                 name="TshValue2"
                 label="Value"
-                initialValue={"uIU/ml"}
+                initialValue={'uIU/ml'}
                 noStyle
               >
                 <Input />
@@ -1973,7 +2099,7 @@ const Mer = () => {
               <Form.Item
                 name="Ft4Value2"
                 label="Value"
-                initialValue={"pmol/L"}
+                initialValue={'pmol/L'}
                 noStyle
               >
                 <Input />
@@ -1994,7 +2120,7 @@ const Mer = () => {
               <Form.Item
                 name="SodiumValue2"
                 label="Value"
-                initialValue={"mmol/L"}
+                initialValue={'mmol/L'}
                 noStyle
               >
                 <Input />
@@ -2013,7 +2139,7 @@ const Mer = () => {
               <Form.Item
                 name="TriglyceridesValue2"
                 label="Value"
-                initialValue={"mmol/l"}
+                initialValue={'mmol/l'}
                 noStyle
               >
                 <Input />
@@ -2032,7 +2158,7 @@ const Mer = () => {
               <Form.Item
                 name="LdlValue2"
                 label="Value"
-                initialValue={"mmol/l"}
+                initialValue={'mmol/l'}
                 noStyle
               >
                 <Input />
@@ -2051,7 +2177,7 @@ const Mer = () => {
               <Form.Item
                 name="SgotValue2"
                 label="Value"
-                initialValue={"U/L"}
+                initialValue={'U/L'}
                 noStyle
               >
                 <Input />
@@ -2070,7 +2196,7 @@ const Mer = () => {
               <Form.Item
                 name="HbA1cValue2"
                 label="Value"
-                initialValue={"%"}
+                initialValue={'%'}
                 noStyle
               >
                 <Input />
@@ -2089,7 +2215,7 @@ const Mer = () => {
               <Form.Item
                 name="Ft3Value2"
                 label="Value"
-                initialValue={"pmol/L"}
+                initialValue={'pmol/L'}
                 noStyle
               >
                 <Input />
@@ -2110,7 +2236,7 @@ const Mer = () => {
               <Form.Item
                 name="PotassiumValue2"
                 label="Value"
-                initialValue={"pmol/L"}
+                initialValue={'pmol/L'}
                 noStyle
               >
                 <Input />

@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import {
   AutoComplete,
   Button,
@@ -10,8 +10,8 @@ import {
   Radio,
   Select,
   notification,
-} from "antd";
-import { PostData, isNullOrUndefinedOrBlank } from "../../../helpers";
+} from 'antd';
+import { PostData, isNullOrUndefinedOrBlank } from '../../../helpers';
 import {
   TDepartments,
   TItems,
@@ -20,13 +20,13 @@ import {
   TQCounters,
   TSettings,
   TSoaDescriptions,
-} from "../../../types";
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { round } from "lodash";
-import PackageDetails from "../../../components/PackageDetails";
+} from '../../../types';
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { round } from 'lodash';
+import PackageDetails from '../../../components/PackageDetails';
 
-export const Route = createFileRoute("/_authenticated/itemprofile/$Id")({
+export const Route = createFileRoute('/_authenticated/itemprofile/$Id')({
   component: () => <ItemProfile />,
 });
 
@@ -36,10 +36,10 @@ const ItemProfile = () => {
   const { Id } = Route.useParams();
   const [showPackage, setShowPackage] = useState(false);
   const departments = useQuery({
-    queryKey: ["departments"],
+    queryKey: ['departments'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetDepartments",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetDepartments',
         parameters: {},
       });
       if (res) {
@@ -51,10 +51,10 @@ const ItemProfile = () => {
   });
 
   const soaDescription = useQuery<TSoaDescriptions[]>({
-    queryKey: ["soaDescription"],
+    queryKey: ['soaDescription'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetSoaDescriptions",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSoaDescriptions',
         parameters: {},
       });
       if (res) {
@@ -66,10 +66,10 @@ const ItemProfile = () => {
   });
 
   const labTypes = useQuery({
-    queryKey: ["labTypes"],
+    queryKey: ['labTypes'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetLabTypes",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetLabTypes',
         parameters: {},
       });
       if (res) {
@@ -80,10 +80,10 @@ const ItemProfile = () => {
     staleTime: 0,
   });
   const labCategory = useQuery({
-    queryKey: ["labCategory"],
+    queryKey: ['labCategory'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetLabCategory",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetLabCategory',
         parameters: {},
       });
       if (res) {
@@ -95,12 +95,12 @@ const ItemProfile = () => {
   });
 
   const unitOfMeasure = useQuery({
-    queryKey: ["unitOfMeasure"],
+    queryKey: ['unitOfMeasure'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetSettings",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
         parameters: {
-          Code: "UOM",
+          Code: 'UOM',
         },
       });
       if (res) {
@@ -111,10 +111,10 @@ const ItemProfile = () => {
     staleTime: 0,
   });
   const qCounters = useQuery({
-    queryKey: ["qCounters"],
+    queryKey: ['qCounters'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetQCounters",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetQCounters',
         parameters: {},
       });
       if (res) {
@@ -125,12 +125,12 @@ const ItemProfile = () => {
     staleTime: 0,
   });
   const dosage = useQuery({
-    queryKey: ["dosage"],
+    queryKey: ['dosage'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetSettings",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
         parameters: {
-          Code: "DOSAGE",
+          Code: 'DOSAGE',
         },
       });
       if (res) {
@@ -141,8 +141,8 @@ const ItemProfile = () => {
     staleTime: 0,
   });
   const handleGetItemDetails = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetItemDetailsById",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetItemDetailsById',
       parameters: {
         Id: Id,
       },
@@ -164,6 +164,7 @@ const ItemProfile = () => {
         fk_SoaDescriptions_Id: x.fk_SoaDescriptions_Id,
         TestCode: x.TestCode,
         Conversion: x.Conversion,
+        Cost: x.Cost ?? 0,
         UnitCostPerPc: x.UnitCostPerPc,
         UnitCostPerBox: x.UnitCostPerBox,
         UnitOfMeasureSmall: x.UnitOfMeasureSmall,
@@ -178,6 +179,13 @@ const ItemProfile = () => {
         BeginningBalance: x.BeginningBalance,
         ForGender: x.ForGender,
         Strength: x.Strength,
+        DoctorShare: !isNullOrUndefinedOrBlank(x.DoctorShare)
+          ? x.DoctorShare
+          : 0,
+        HmiShr: x.HmiShr,
+        HmiShrType: x.HmiShrType,
+        Incentives: x.Incentives,
+        IncentivesType: x.IncentivesType,
       });
     }
   };
@@ -185,20 +193,20 @@ const ItemProfile = () => {
     if (v.fk_Departments_Id === 1040 || v.fk_Departments_Id === 1041) {
       if (isNullOrUndefinedOrBlank(v.fk_SoaDescriptions_Id)) {
         notification.error({
-          message: "SOA Description is required!",
-          placement: "topRight",
+          message: 'SOA Description is required!',
+          placement: 'topRight',
           duration: 3,
         });
         return;
       }
     }
-
-    const res = await PostData("SaveItemProfile", { ...v, Id: Id });
+    if (isNullOrUndefinedOrBlank(v.DoctorShare)) v.DoctorShare = 0;
+    const res = await PostData('SaveItemProfile', { ...v, Id: Id });
     if (res) {
       if (res.status === 1) {
         notification.success({
-          message: "Item successfully saved!",
-          placement: "topRight",
+          message: 'Item successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
         //    console.log(res);
@@ -211,9 +219,9 @@ const ItemProfile = () => {
         //     Id: data !== undefined ? data.Id : "",
         //   }}
         // >
-        if (Id === "0") {
+        if (Id === '0') {
           router.navigate({
-            to: "/itemprofile/$Id",
+            to: '/itemprofile/$Id',
             params: {
               Id: res.parameters.Id,
             },
@@ -222,7 +230,7 @@ const ItemProfile = () => {
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -230,16 +238,16 @@ const ItemProfile = () => {
   };
   const handleComputeCostPerPc = () => {
     const UnitCostPerBox: number = isNullOrUndefinedOrBlank(
-      form.getFieldValue("UnitCostPerBox")
+      form.getFieldValue('UnitCostPerBox'),
     )
       ? 0
-      : form.getFieldValue("UnitCostPerBox");
+      : form.getFieldValue('UnitCostPerBox');
 
     const Conversion: number = isNullOrUndefinedOrBlank(
-      form.getFieldValue("Conversion")
+      form.getFieldValue('Conversion'),
     )
       ? 0
-      : form.getFieldValue("Conversion");
+      : form.getFieldValue('Conversion');
     let UnitCostPerPc: number = 0;
 
     if (UnitCostPerBox + Conversion > 0) {
@@ -250,21 +258,24 @@ const ItemProfile = () => {
     });
   };
   const handleSetPackageDetails = () => {
-    if (form.getFieldValue("IsPackage") !== "Y") {
+    if (form.getFieldValue('IsPackage') !== 'Y') {
       notification.error({
-        message: "Procedure/Item is not a package!",
+        message: 'Procedure/Item is not a package!',
         duration: 3,
-        placement: "topRight",
+        placement: 'topRight',
       });
       return;
     }
     setShowPackage(true);
   };
   useEffect(() => {
-    if (Id !== "0") {
+    if (Id !== '0') {
       handleGetItemDetails();
     }
   }, []);
+
+  const getHmiShrType = Form.useWatch('HmiShrType', form);
+  const getIncentivesType = Form.useWatch('IncentivesType', form);
   return (
     <div className="cardBackGround  mx-auto">
       <Divider>Item Profile</Divider>
@@ -283,7 +294,7 @@ const ItemProfile = () => {
               rules={[
                 {
                   required: true,
-                  message: "Description/Brand name is required!",
+                  message: 'Description/Brand name is required!',
                 },
               ]}
             >
@@ -298,7 +309,7 @@ const ItemProfile = () => {
               rules={[
                 {
                   required: true,
-                  message: "Please select a department!",
+                  message: 'Please select a department!',
                 },
               ]}
             >
@@ -372,8 +383,8 @@ const ItemProfile = () => {
               rules={[
                 ({ getFieldValue }) => ({
                   validator(_, value) {
-                    if (!value && getFieldValue("fk_Departments_Id") === 1000) {
-                      return Promise.reject("Laboratory Type is required!");
+                    if (!value && getFieldValue('fk_Departments_Id') === 1000) {
+                      return Promise.reject('Laboratory Type is required!');
                     }
                     return Promise.resolve();
                   },
@@ -404,8 +415,8 @@ const ItemProfile = () => {
               rules={[
                 ({ getFieldValue }) => ({
                   validator(_, value) {
-                    if (!value && getFieldValue("fk_Departments_Id") === 1000) {
-                      return Promise.reject("Laboratory category is required!");
+                    if (!value && getFieldValue('fk_Departments_Id') === 1000) {
+                      return Promise.reject('Laboratory category is required!');
                     }
                     return Promise.resolve();
                   },
@@ -475,7 +486,7 @@ const ItemProfile = () => {
                 rules={[
                   {
                     required: true,
-                    message: "This field is required!",
+                    message: 'This field is required!',
                   },
                 ]}
               >
@@ -490,7 +501,7 @@ const ItemProfile = () => {
                 rules={[
                   {
                     required: true,
-                    message: "This field is required!",
+                    message: 'This field is required!',
                   },
                 ]}
               >
@@ -505,7 +516,7 @@ const ItemProfile = () => {
                 rules={[
                   {
                     required: true,
-                    message: "This field is required!",
+                    message: 'This field is required!',
                   },
                 ]}
               >
@@ -522,7 +533,7 @@ const ItemProfile = () => {
                 rules={[
                   {
                     required: true,
-                    message: "This field is required!",
+                    message: 'This field is required!',
                   },
                 ]}
               >
@@ -537,7 +548,7 @@ const ItemProfile = () => {
                 rules={[
                   {
                     required: true,
-                    message: "This field is required!",
+                    message: 'This field is required!',
                   },
                 ]}
               >
@@ -548,12 +559,82 @@ const ItemProfile = () => {
               </Form.Item>
               <div className="flex flex-col justify-center">
                 <Button
-                  disabled={Id === "0"}
+                  disabled={Id === '0'}
                   type="primary"
                   onClick={handleSetPackageDetails}
                 >
                   Package Details
                 </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4">
+              <div className="flex gap-x-2">
+                <Form.Item label="HMI Share Type" name="HmiShrType">
+                  <Select
+                    allowClear
+                    onChange={() =>
+                      form.setFieldsValue({
+                        HmiShr: undefined,
+                      })
+                    }
+                    options={[
+                      {
+                        label: 'Percentage',
+                        value: 'P',
+                      },
+                      {
+                        label: 'Decimal',
+                        value: 'D',
+                      },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="HMI Share"
+                  name="HmiShr"
+                  rules={[
+                    {
+                      required: getHmiShrType,
+                      message: 'HMI Share is required',
+                    },
+                  ]}
+                >
+                  <InputNumber readOnly={!getHmiShrType} />
+                </Form.Item>
+              </div>
+              <div className="flex gap-x-2">
+                <Form.Item label="Incentives Type" name="IncentivesType">
+                  <Select
+                    allowClear
+                    onChange={() =>
+                      form.setFieldsValue({
+                        Incentives: undefined,
+                      })
+                    }
+                    options={[
+                      {
+                        label: 'Percentage',
+                        value: 'P',
+                      },
+                      {
+                        label: 'Fixed',
+                        value: 'F',
+                      },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="Incentives"
+                  name="Incentives"
+                  rules={[
+                    {
+                      required: getIncentivesType,
+                      message: 'Incentives is required',
+                    },
+                  ]}
+                >
+                  <InputNumber readOnly={!getIncentivesType} />
+                </Form.Item>
               </div>
             </div>
             <div className="grid md:grid-cols-3 gap-4">
@@ -563,7 +644,7 @@ const ItemProfile = () => {
                 rules={[
                   {
                     required: true,
-                    message: "This field is required!",
+                    message: 'This field is required!',
                   },
                 ]}
               >
@@ -580,7 +661,22 @@ const ItemProfile = () => {
                 </Select>
               </Form.Item>
             </div>
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
+              <Form.Item
+                name="Cost"
+                label="Cost"
+                rules={[
+                  {
+                    required: true,
+                    message: 'Cost is required',
+                  },
+                ]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  onBlur={handleComputeCostPerPc}
+                />
+              </Form.Item>
               <Form.Item
                 name="UnitCostPerBox"
                 label="UnitCost Per Box"
@@ -596,10 +692,11 @@ const ItemProfile = () => {
                 // ]}
               >
                 <InputNumber
-                  style={{ width: "100%" }}
+                  style={{ width: '100%' }}
                   onBlur={handleComputeCostPerPc}
                 />
               </Form.Item>
+
               <Form.Item
                 name="Conversion"
                 label="Conversion"
@@ -615,7 +712,7 @@ const ItemProfile = () => {
                 // ]}
               >
                 <InputNumber
-                  style={{ width: "100%" }}
+                  style={{ width: '100%' }}
                   onBlur={handleComputeCostPerPc}
                 />
               </Form.Item>
@@ -633,7 +730,7 @@ const ItemProfile = () => {
                 //   }),
                 // ]}
               >
-                <InputNumber style={{ width: "100%" }} />
+                <InputNumber style={{ width: '100%' }} />
               </Form.Item>
             </div>
 
@@ -737,9 +834,14 @@ const ItemProfile = () => {
             <Form.Item name="Strength" label="Strength">
               <Input />
             </Form.Item>
-            <Form.Item name="BeginningBalance" label="Beginning Balance">
-              <InputNumber />
-            </Form.Item>
+            <div className="flex gap-x-4">
+              <Form.Item name="BeginningBalance" label="Beginning Balance">
+                <InputNumber />
+              </Form.Item>
+              <Form.Item name="DoctorShare" label="Doctor Share">
+                <InputNumber />
+              </Form.Item>
+            </div>
             <div className="flex justify-end">
               <Button type="primary" htmlType="submit">
                 Submit

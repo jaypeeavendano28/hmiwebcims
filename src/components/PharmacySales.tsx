@@ -1,4 +1,5 @@
 import {
+  App,
   Button,
   DatePicker,
   Form,
@@ -9,19 +10,19 @@ import {
   Select,
   Space,
   Tooltip,
-} from "antd";
-import { useEffect, useState } from "react";
-import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
-import { TItems } from "../types";
-import dayjs from "dayjs";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import useAppStore from "../store";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BsCheck2, BsTrash } from "react-icons/bs";
-import PharmacyRequestDetails from "./PharmacyRequestDetails";
-import { ColumnGroup } from "primereact/columngroup";
-import { Row } from "primereact/row";
+} from 'antd';
+import { useEffect, useState } from 'react';
+import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
+import { TPrice } from '../types';
+import dayjs from 'dayjs';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import useAppStore from '../store';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BsCheck2, BsTrash } from 'react-icons/bs';
+import PharmacyRequestDetails from './PharmacyRequestDetails';
+import { ColumnGroup } from 'primereact/columngroup';
+import { Row } from 'primereact/row';
 
 export default function PharmacySales() {
   const [showModal, setShowModal] = useState(false);
@@ -37,26 +38,28 @@ export default function PharmacySales() {
   const [NetAmount, setNetAmount] = useState(0);
   const [form] = Form.useForm();
   const [form2] = Form.useForm();
-  const [modal, setModal] = useState(false);
-  const [items, setItems] = useState([]);
+  const [modalOpen, setModal] = useState(false);
+  // const [items, setItems] = useState([]);
   const [addedItems, setAddedItems] = useState<any[]>([]);
-  const [selectedItem, setSelectedItem] = useState<any | undefined>();
+  const [selectedItem, setSelectedItem] = useState<TPrice | undefined>();
   const handleClose = () => {
     setShowModal(false);
   };
+  const { modal } = App.useApp();
+
   const sales = useQuery({
-    queryKey: ["sales"],
+    queryKey: ['sales'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetPharmacySalesMain",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPharmacySalesMain',
         parameters: {
-          DateFrom: formSearch.getFieldValue("DateFrom").format("YYYYMMDD"),
-          DateTo: formSearch.getFieldValue("DateTo").format("YYYYMMDD"),
+          DateFrom: formSearch.getFieldValue('DateFrom').format('YYYYMMDD'),
+          DateTo: formSearch.getFieldValue('DateTo').format('YYYYMMDD'),
         },
       });
       if (res) {
         setNetAmount(
-          res.parameters.lst.reduce((a: any, v: any) => (a = a + v.Net), 0)
+          res.parameters.lst.reduce((a: any, v: any) => (a = a + v.Net), 0),
         );
         return res.parameters.lst;
       }
@@ -66,10 +69,10 @@ export default function PharmacySales() {
   });
 
   const discountTypes = useQuery({
-    queryKey: ["discountTypes"],
+    queryKey: ['discountTypes'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetDiscountTypes",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetDiscountTypes',
         parameters: {},
       });
       if (res) {
@@ -79,53 +82,98 @@ export default function PharmacySales() {
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
-  const handleGetItems = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetInventoryItems",
-      parameters: {},
-    });
+  // const handleGetItems = async () => {
+  //   let res = await PostData('GetRecords', {
+  //     sp: 'udp_GetInventoryItems',
+  //     parameters: {},
+  //   });
 
-    if (res) {
-      setItems(res.parameters.lst);
-    }
-  };
-  const handleSelectItem = (e: any) => {
-    const item: any = items.filter((f: any) => f.Id === e)[0];
+  //   if (res) {
+  //     setItems(res.parameters.lst);
+  //   }
+  // };
+
+  const items = useQuery({
+    queryKey: ['items_prices2'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetItemPrices2',
+        parameters: {
+          BranchCode: store.branchCode,
+          SearchStr: '',
+          Gender: '',
+          DepartmentId: 1016,
+        },
+      });
+      if (res) {
+        return res.parameters.lst as TPrice[];
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+    enabled: modalOpen,
+  });
+
+  const handleSelectItem = (e: TPrice) => {
+    const item: any = items?.data?.filter((f: any) => f.Id === e)[0];
+
     setSelectedItem(item);
+
     form2.setFieldsValue({
       Price: item.Price,
-      QtyOnHand: item.Qty01,
+      QtyOnHand: item.Qty ?? 0,
     });
   };
   const handleNew = () => {
     setModal(true);
     form.resetFields();
     form2.resetFields();
-    form.setFieldValue("Date", dayjs());
-    form.setFieldValue("Customer", "CASH");
+    form.setFieldValue('Date', dayjs());
+    form.setFieldValue('Customer', 'CASH');
     setAddedItems([]);
   };
+
+  const allSelectedAddItemIds = addedItems.map((item) => item.Id);
 
   const handleAddItem = () => {
     if (isNullOrUndefinedOrBlank(selectedItem)) {
       notification.error({
-        message: "Please select an item!",
-        placement: "topRight",
+        message: 'Please select an item!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
     }
-    const price: number = form2.getFieldValue("Price");
-    const qty: number = form2.getFieldValue("Qty");
+    const price: number = form2.getFieldValue('Price');
+    const qty: number = form2.getFieldValue('Qty');
+
+    if (allSelectedAddItemIds.includes(selectedItem?.Id)) {
+      modal.error({
+        title: 'Pharmacy',
+        centered: true,
+        content: `${selectedItem?.Description} is already added!`,
+      });
+      return;
+    }
+
+    if (qty < 1) {
+      modal.error({
+        title: 'Pharmacy',
+        centered: true,
+        content: `Quantity cannot be zero or negative.`,
+      });
+      return;
+    }
 
     setAddedItems([
       ...addedItems,
       {
-        Description: selectedItem.Description,
+        Id: selectedItem?.Id,
+        Description: selectedItem?.Description,
         Price: price,
         Quantity: qty,
         Amount: price * qty,
-        fk_Items_Id: selectedItem.fk_Items_Id,
+        fk_Items_Id: selectedItem?.ItemId,
       },
     ]);
     form2.resetFields();
@@ -137,11 +185,11 @@ export default function PharmacySales() {
       amount = amount + v.Amount;
     });
     let d = 0;
-    if (!isNullOrUndefinedOrBlank(form.getFieldValue("DiscountType"))) {
+    if (!isNullOrUndefinedOrBlank(form.getFieldValue('DiscountType'))) {
       const discountRate = discountTypes.data?.filter(
-        (f: any) => f.Id === form.getFieldValue("DiscountType")
+        (f: any) => f.Id === form.getFieldValue('DiscountType'),
       )[0].PharmacyDiscount;
-      console.log(discountRate);
+      // console.log(discountRate);
       d = amount * discountRate;
       setDiscount(d);
     }
@@ -152,8 +200,8 @@ export default function PharmacySales() {
   const handleSubmitSales = async (v: any) => {
     if (addedItems.length <= 0) {
       notification.error({
-        message: "Please add an item to saved!",
-        placement: "topRight",
+        message: 'Please add an item to saved!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -161,8 +209,8 @@ export default function PharmacySales() {
 
     if (change < 0) {
       notification.error({
-        message: "Amount paid is not enough!",
-        placement: "topRight",
+        message: 'Amount paid is not enough!',
+        placement: 'topRight',
         duration: 3,
       });
       return;
@@ -170,11 +218,12 @@ export default function PharmacySales() {
 
     try {
       setIsProcessing(true);
-      const res = await PostData("SavePharmacySales", {
+
+      const res = await PostData('SavePharmacySales', {
         main: {
           ...v,
           Id: 0,
-          Date: dayjs(v.Date).format("YYYY-MM-DD"),
+          Date: dayjs(v.Date).format('YYYY-MM-DD'),
           BranchCode: store.branchCode,
           Amount: amount,
           AmountPaid: v.AmountPaid,
@@ -188,15 +237,16 @@ export default function PharmacySales() {
         setIsProcessing(false);
         if (res.status === 1) {
           notification.success({
-            message: "Sucessfully saved!",
-            placement: "topRight",
+            message: 'Sucessfully saved!',
+            placement: 'topRight',
             duration: 3,
           });
           setId(res.parameters.Id);
+          setModal(false);
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -204,11 +254,12 @@ export default function PharmacySales() {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
+
   const handleRemove = (data: any) => {
     const x = addedItems.filter((f: any) => f.fk_Items_Id !== data.fk_Items_Id);
     setAddedItems(x);
@@ -230,15 +281,17 @@ export default function PharmacySales() {
     return (
       <Space>
         <Tooltip title="Open">
-          <BsCheck2
-            size={24}
-            color="green"
-            className="cursor-pointer"
+          <Button
+            type="text"
+            className="!px-2"
+            disabled={data.DateRendered !== null}
             onClick={() => {
               setId(data.Id);
               setShowModal(true);
             }}
-          />
+          >
+            <BsCheck2 size={24} color="green" className="cursor-pointer" />
+          </Button>
         </Tooltip>
       </Space>
     );
@@ -255,8 +308,8 @@ export default function PharmacySales() {
           footer="Totals:"
           colSpan={4}
           footerStyle={{
-            textAlign: "right",
-            fontWeight: "bold",
+            textAlign: 'right',
+            fontWeight: 'bold',
           }}
         />
 
@@ -271,12 +324,12 @@ export default function PharmacySales() {
       DateFrom: dayjs(),
       DateTo: dayjs(),
     });
-    handleGetItems();
+    // handleGetItems();
   }, []);
   useEffect(() => {
     handleComputeTotal();
-    console.log(isProcessing);
   }, [addedItems]);
+
   return (
     <>
       <Button type="primary" onClick={() => handleNew()}>
@@ -287,14 +340,14 @@ export default function PharmacySales() {
         form={formSearch}
         layout="inline"
         onFinish={() => {
-          q.invalidateQueries({ queryKey: ["sales"] });
+          q.invalidateQueries({ queryKey: ['sales'] });
         }}
       >
         <Form.Item name="DateFrom" label="Date From">
-          <DatePicker format={"MM/DD/YYYY"} />
+          <DatePicker format={'MM/DD/YYYY'} />
         </Form.Item>
         <Form.Item name="DateTo" label="Date To">
-          <DatePicker format={"MM/DD/YYYY"} />
+          <DatePicker format={'MM/DD/YYYY'} />
         </Form.Item>
         <Form.Item>
           <Button htmlType="submit" type="primary">
@@ -325,7 +378,7 @@ export default function PharmacySales() {
         <Column field="Net" header="Net"></Column>
       </DataTable>
       <Modal
-        open={modal}
+        open={modalOpen}
         onCancel={() => setModal(false)}
         destroyOnClose
         width={window.innerWidth - 100}
@@ -348,7 +401,7 @@ export default function PharmacySales() {
                 rules={[
                   {
                     required: true,
-                    message: "Transaction Date and Time is required!",
+                    message: 'Transaction Date and Time is required!',
                   },
                 ]}
               >
@@ -360,7 +413,7 @@ export default function PharmacySales() {
                 rules={[
                   {
                     required: true,
-                    message: "Customer is required!",
+                    message: 'Customer is required!',
                   },
                 ]}
                 normalize={(v) => v.toUpperCase()}
@@ -378,8 +431,17 @@ export default function PharmacySales() {
                 </Select>
               </Form.Item>
 
-              <Form.Item name="OrNo" label="Or No.">
-                <Input readOnly />
+              <Form.Item
+                name="OrNo"
+                label="Or No."
+                rules={[
+                  {
+                    required: true,
+                    message: 'Or No. is required!',
+                  },
+                ]}
+              >
+                <Input />
               </Form.Item>
               <Form.Item name="Amount" label="Gross Amount">
                 <p className="text-lg font-bold"> {amount}</p>
@@ -396,12 +458,12 @@ export default function PharmacySales() {
                 rules={[
                   {
                     required: true,
-                    message: "Amount Paid is required!",
+                    message: 'Amount Paid is required!',
                   },
                 ]}
               >
                 <InputNumber
-                  style={{ width: "100%" }}
+                  style={{ width: '100%' }}
                   onChange={handleChangeAmountPaid}
                 />
               </Form.Item>
@@ -414,7 +476,11 @@ export default function PharmacySales() {
               </Form.Item>
               <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
                 <Space>
-                  <Button type="primary" htmlType="submit">
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={isProcessing}
+                  >
                     Submit
                   </Button>
                 </Space>
@@ -430,18 +496,24 @@ export default function PharmacySales() {
             >
               <Form.Item name="Items" label="Items">
                 <Select
-                  onSelect={(e) => handleSelectItem(e)}
+                  onSelect={(e: TPrice) => handleSelectItem(e)}
                   showSearch
                   allowClear
-                  filterOption={(input, option) =>
-                    (
-                      option!.children
-                        ?.toString()
-                        .toLocaleLowerCase() as unknown as string
-                    ).includes(input.toLocaleLowerCase())
-                  }
+                  options={items.data?.map((d) => ({
+                    value: d.Id,
+                    // label: d.Description,
+                    label: `${d.Description} - ${d.Price}`,
+                  }))}
+                  optionFilterProp="label"
+                  // filterOption={(input, option) =>
+                  //   (
+                  //     option!.children
+                  //       ?.toString()
+                  //       .toLocaleLowerCase() as unknown as string
+                  //   ).includes(input.toLocaleLowerCase())
+                  // }
                 >
-                  {items.map((d: TItems) => (
+                  {/* {items.data.map((d: TItems) => (
                     <Select.Option
                       key={d.Id}
                       value={d.Id}
@@ -449,7 +521,7 @@ export default function PharmacySales() {
                     >
                       {d.Description}
                     </Select.Option>
-                  ))}
+                  ))} */}
                 </Select>
               </Form.Item>
               <Form.Item name="QtyOnHand" label="Quantity On Hand">
@@ -461,7 +533,7 @@ export default function PharmacySales() {
                 rules={[
                   {
                     required: true,
-                    message: "Price is required!",
+                    message: 'Price is required!',
                   },
                 ]}
               >
@@ -473,12 +545,13 @@ export default function PharmacySales() {
                 rules={[
                   {
                     required: true,
-                    message: "Quantity is required!",
+                    message: 'Quantity is required!',
                   },
                 ]}
               >
-                <InputNumber />
+                <InputNumber max={selectedItem?.Qty ? selectedItem?.Qty : 0} />
               </Form.Item>
+
               <Form.Item wrapperCol={{ offset: 4, span: 20 }}>
                 <Button type="primary" htmlType="submit">
                   Add
@@ -487,7 +560,7 @@ export default function PharmacySales() {
             </Form>
             <DataTable
               value={addedItems}
-              tableStyle={{ minWidth: "50rem" }}
+              tableStyle={{ minWidth: '50rem' }}
               rowsPerPageOptions={[10, 25, 50]}
               emptyMessage="No Records!"
               stripedRows
@@ -517,7 +590,7 @@ export default function PharmacySales() {
           Id={Id}
           handleClose={handleClose}
           AppointmentId={0}
-          RenderedBy="comlogik"
+          // RenderedBy="comlogik"
         />
       </Modal>
     </>

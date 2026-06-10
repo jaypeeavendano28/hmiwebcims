@@ -1,7 +1,7 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
-import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
-import { TAppointments, TRadiologyResult } from "../../types";
-import { useEffect, useState } from "react";
+import { createLazyFileRoute, Link } from '@tanstack/react-router';
+import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
+import { TAppointments, TRadiologyResult } from '../../types';
+import { useEffect, useState } from 'react';
 import {
   Button,
   DatePicker,
@@ -12,21 +12,23 @@ import {
   Popconfirm,
   Select,
   Space,
+  Tabs,
   Tooltip,
   notification,
-} from "antd";
-import useAppStore from "../../store";
-import dayjs from "dayjs";
-import axios from "axios";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { BiEdit, BiNotepad } from "react-icons/bi";
-import FinalizeForm from "../../components/FinalizeForm";
+} from 'antd';
+import useAppStore from '../../store';
+import dayjs from 'dayjs';
+import axios from 'axios';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { BiEdit, BiNotepad } from 'react-icons/bi';
+import FinalizeForm from '../../components/FinalizeForm';
+import { ExistingRadiologyResults } from '../../components/ExistingRadiologyResult';
 const isDev = import.meta.env.DEV;
-const prodApi = import.meta.env.VITE_PROD_API + "/api/";
-const devApi = import.meta.env.VITE_DEV_API + "/api/";
+const prodApi = import.meta.env.VITE_PROD_API + '/api/';
+const devApi = import.meta.env.VITE_DEV_API + '/api/';
 const apiUrl = isDev ? devApi : prodApi;
-export const Route = createLazyFileRoute("/_authenticated/ultrasound/$Id")({
+export const Route = createLazyFileRoute('/_authenticated/ultrasound/$Id')({
   component: () => <UltrasoundResult />,
 });
 const tailFormItemLayout = {
@@ -61,14 +63,14 @@ const UltrasoundResult = () => {
   const [showModal, setShowModal] = useState(false);
   const [charges, setCharges] = useState([]);
   const [allowSave, setAllowSave] = useState(false);
-  const [chargeDescription, setChargeDescription] = useState("");
+  const [chargeDescription, setChargeDescription] = useState('');
   const [chargeId, setChargeId] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [Radiologist, setRadiologist] = useState([]);
   const [radtechs, setRadTechs] = useState([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
   const [IsSaving, setIsSaving] = useState(false);
-  const [ResultNo, setResultNo] = useState("");
+  const [ResultNo, setResultNo] = useState('');
   const [ResultId, setResultId] = useState(0);
   const store = useAppStore();
   const [templates, setTemplates] = useState([]);
@@ -78,8 +80,8 @@ const UltrasoundResult = () => {
   >();
   const handleGetCharges = async () => {
     try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetChargesByAppointmentIdForResult",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetChargesByAppointmentIdForResult',
         parameters: {
           AppointmentId: Id,
         },
@@ -93,8 +95,8 @@ const UltrasoundResult = () => {
     }
   };
   const handleGetAppointmentDetails = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetAppointmentDetails",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetAppointmentDetails',
       parameters: {
         Id: Id,
       },
@@ -105,7 +107,7 @@ const UltrasoundResult = () => {
   };
   const handleSetStatus = async (v: any) => {
     try {
-      const res = await PostData("SaveSetStatus", {
+      const res = await PostData('SaveSetStatus', {
         Id: selectedRow.Id,
         Status: v.Status,
         StatusRemarks: v.StatusRemarks,
@@ -114,8 +116,8 @@ const UltrasoundResult = () => {
       if (res) {
         if (res.status === 1) {
           notification.success({
-            message: "Successfully Saved!",
-            placement: "topRight",
+            message: 'Successfully Saved!',
+            placement: 'topRight',
             duration: 3,
           });
           handleGetCharges();
@@ -123,7 +125,7 @@ const UltrasoundResult = () => {
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -131,7 +133,7 @@ const UltrasoundResult = () => {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -149,18 +151,18 @@ const UltrasoundResult = () => {
         Id: ResultId,
         fk_Appointments_Id: appointmentDetails?.Id,
         fk_Charges_Id: chargeId,
-        Department: "XR",
+        Department: 'XR',
         ChargeDescription: chargeDescription,
       };
 
-      const res = await PostData("SaveRadiologyResult", valuesToSave);
+      const res = await PostData('SaveRadiologyResult', valuesToSave);
       if (res) {
         console.log(res);
         setIsProcessing(false);
         if (res.status === 1) {
           notification.success({
-            message: "Successfully saved!",
-            placement: "topRight",
+            message: 'Successfully saved!',
+            placement: 'topRight',
             duration: 3,
           });
 
@@ -171,7 +173,7 @@ const UltrasoundResult = () => {
           setIsProcessing(false);
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -180,23 +182,23 @@ const UltrasoundResult = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
 
   const handleInitialize = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetDoctors",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetDoctors',
       parameters: {},
     });
     if (res) {
       setRequestingPhysician(res.parameters.lst);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetListOfRadiologist",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetListOfRadiologist',
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -205,10 +207,10 @@ const UltrasoundResult = () => {
       setRadiologist(res.parameters.lst);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetListOfMedtechs",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetListOfMedtechs',
       parameters: {
-        Type: "U",
+        Type: 'U',
       },
     });
     if (res) {
@@ -218,39 +220,44 @@ const UltrasoundResult = () => {
   const handlePrint = async () => {
     setIsProcessing(true);
     const isDownload = false;
-    const url = apiUrl + "radiologyresult/" + ResultId + "/us.rdl";
-    axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
+    const Finalized = isNullOrUndefinedOrBlank(
+      form.getFieldValue('FinalizedBy'),
+    )
+      ? 'Y'
+      : 'N';
+    const url = apiUrl + 'radiologyresult/' + ResultId + '/us.rdl/' + Finalized;
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
     try {
       await axios({
         url: url, //your url
-        method: "GET",
-        responseType: "blob",
+        method: 'GET',
+        responseType: 'blob',
       }).then((response: any) => {
         let newBlob;
         if (isDownload === false) {
           newBlob = new Blob([response.data], {
-            type: "application/pdf",
+            type: 'application/pdf',
           });
 
           const data = window.URL.createObjectURL(newBlob);
 
-          const a = document.createElement("a");
+          const a = document.createElement('a');
 
-          a.setAttribute("href", data);
-          a.setAttribute("target", "_blank");
+          a.setAttribute('href', data);
+          a.setAttribute('target', '_blank');
 
           a.click();
           setIsProcessing(false);
         } else {
           newBlob = new Blob([response.data], {
-            type: "application/excel",
+            type: 'application/excel',
           });
-          const a = document.createElement("a");
+          const a = document.createElement('a');
           document.body.appendChild(a);
           const url = window.URL.createObjectURL(newBlob);
           a.href = url;
-          a.download = "download.xls";
+          a.download = 'download.xls';
           a.click();
           setTimeout(() => {
             window.URL.revokeObjectURL(url);
@@ -268,10 +275,10 @@ const UltrasoundResult = () => {
   };
   const handleGetTemplate = async (e: any) => {
     try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetTemplateByDoctor",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetTemplateByDoctor',
         parameters: {
-          Department: "US",
+          Department: 'US',
           DoctorId: e,
         },
       });
@@ -281,7 +288,7 @@ const UltrasoundResult = () => {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -308,15 +315,15 @@ const UltrasoundResult = () => {
         DateRead: dayjs(),
         ReportDate: dayjs(),
       });
-      setResultNo("");
+      setResultNo('');
       setResultId(0);
     } else {
       handleOpenResult(v.ResultId);
     }
   };
   const handleOpenResult = async (Id: number) => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetRadiologyResult",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetRadiologyResult',
       parameters: {
         Id: Id,
       },
@@ -346,7 +353,7 @@ const UltrasoundResult = () => {
       });
 
       handleGetTemplate(r.Rad1);
-      form.setFieldValue("Template", r.Template);
+      form.setFieldValue('Template', r.Template);
       setAllowSave(true);
       if (!isNullOrUndefinedOrBlank(r.FinalizedBy)) {
         setIsFinalized(true);
@@ -358,12 +365,12 @@ const UltrasoundResult = () => {
   const handleFinalizeResult = async (v: any) => {
     setShowFinalize(false);
     setIsProcessing(true);
-    const res = await PostData("FinalizeResult", {
+    const res = await PostData('FinalizeResult', {
       ResultId: ResultId,
-      Table: "RAD",
+      Table: 'RAD',
       Username: v.Username,
       Password: v.Password,
-      Mode: isFinalized ? "U" : "F",
+      Mode: isFinalized ? 'U' : 'F',
     });
 
     try {
@@ -372,16 +379,16 @@ const UltrasoundResult = () => {
         if (res.status === 1) {
           notification.success({
             message: isFinalized
-              ? "Result successfully un-finalized!"
-              : "Result successfully finalized!",
-            placement: "topRight",
+              ? 'Result successfully un-finalized!'
+              : 'Result successfully finalized!',
+            placement: 'topRight',
             duration: 3,
           });
           handleOpenResult(ResultId);
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -390,7 +397,7 @@ const UltrasoundResult = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -462,32 +469,72 @@ const UltrasoundResult = () => {
         <div className="col-span-3">
           <div className="mt-2">
             <Divider>Charges</Divider>
-            <DataTable
-              value={charges}
-              // paginator
-              // rows={10}
-              // rowsPerPageOptions={[10, 25, 50]}
-              emptyMessage="No Records!"
-              stripedRows
-              size="small"
-            >
-              <Column
-                field="action"
-                header="Action"
-                body={(data: any) => actionBodyTemplate(data)}
-              ></Column>
-              <Column field="Description" header="Description"></Column>
-              <Column field="Status" header="Status"></Column>
-              <Column field="StatusDate" header="Status set Date"></Column>
-              <Column field="StatusSetBy" header="Status Set By"></Column>
-              <Column field="StatusRemarks" header="Status Remarks"></Column>
-              <Column field="Gross" header="Gross"></Column>
-              <Column field="HmoAmount" header="Hmo"></Column>
-              <Column field="CashPayment" header="Cash Payment"></Column>
-              <Column field="Net" header="Net"></Column>
-              <Column field="PaymentType" header="Payment Type"></Column>
-              <Column field="ResultId" header="ResultId"></Column>
-            </DataTable>
+            <Tabs
+              defaultActiveKey="1"
+              items={[
+                {
+                  label: 'Charges',
+                  key: '1',
+                  children: (
+                    <DataTable
+                      value={charges.filter(
+                        (c: any) => c.fk_Departments_Id === 1002,
+                      )}
+                      // paginator
+                      // rows={10}
+                      // rowsPerPageOptions={[10, 25, 50]}
+                      emptyMessage="No Records!"
+                      stripedRows
+                      size="small"
+                    >
+                      <Column
+                        field="action"
+                        header="Action"
+                        body={(data: any) => actionBodyTemplate(data)}
+                      ></Column>
+                      <Column field="Description" header="Description"></Column>
+                      <Column field="Status" header="Status"></Column>
+                      <Column
+                        field="StatusDate"
+                        header="Status set Date"
+                      ></Column>
+                      <Column
+                        field="StatusSetBy"
+                        header="Status Set By"
+                      ></Column>
+                      <Column
+                        field="StatusRemarks"
+                        header="Status Remarks"
+                      ></Column>
+                      <Column field="Gross" header="Gross"></Column>
+                      <Column field="HmoAmount" header="Hmo"></Column>
+                      <Column
+                        field="CashPayment"
+                        header="Cash Payment"
+                      ></Column>
+                      <Column field="Net" header="Net"></Column>
+                      <Column
+                        field="PaymentType"
+                        header="Payment Type"
+                      ></Column>
+                      <Column field="ResultId" header="ResultId"></Column>
+                    </DataTable>
+                  ),
+                },
+                {
+                  label: 'Existing Results',
+                  key: '2',
+                  children: (
+                    <ExistingRadiologyResults
+                      PatientId={appointmentDetails?.fk_PatientInformation_Id}
+                      AppointmentId={appointmentDetails?.Id}
+                      handleOpen={(data) => handleOpenResult(data.Id)}
+                      counter="ULT"
+                    />
+                  ),
+                },
+              ]}
+            />
           </div>
         </div>
         <div className="col-span-9">
@@ -514,7 +561,7 @@ const UltrasoundResult = () => {
               rules={[
                 {
                   required: true,
-                  message: "Report date is required!",
+                  message: 'Report date is required!',
                 },
               ]}
             >
@@ -526,7 +573,7 @@ const UltrasoundResult = () => {
               rules={[
                 {
                   required: true,
-                  message: "Date x-rayed is required!",
+                  message: 'Date x-rayed is required!',
                 },
               ]}
             >
@@ -538,7 +585,7 @@ const UltrasoundResult = () => {
               rules={[
                 {
                   required: true,
-                  message: "Date read is required!",
+                  message: 'Date read is required!',
                 },
               ]}
             >
@@ -564,6 +611,7 @@ const UltrasoundResult = () => {
               <Select
                 showSearch
                 allowClear
+                onChange={handleGetTemplate}
                 filterOption={(inputValue, option: any) =>
                   option.title
                     .toUpperCase()
@@ -580,12 +628,12 @@ const UltrasoundResult = () => {
             <Form.Item
               label="Rad. Technologist"
               name="RadTech"
-              rules={[
-                {
-                  required: true,
-                  message: "Rad. Technologist is required!",
-                },
-              ]}
+              // rules={[
+              //   {
+              //     required: true,
+              //     message: 'Rad. Technologist is required!',
+              //   },
+              // ]}
             >
               <Select
                 showSearch
@@ -606,12 +654,12 @@ const UltrasoundResult = () => {
             <Form.Item
               label="Radiologist 1"
               name="Rad1"
-              rules={[
-                {
-                  required: true,
-                  message: "Radiologist 1 is required!",
-                },
-              ]}
+              // rules={[
+              //   {
+              //     required: true,
+              //     message: 'Radiologist 1 is required!',
+              //   },
+              // ]}
             >
               <Select
                 showSearch
@@ -702,7 +750,7 @@ const UltrasoundResult = () => {
                     htmlType="submit"
                     // disabled={IsSaving || ReportStatus === "F"}
 
-                    disabled={!allowSave}
+                    disabled={!allowSave || isFinalized}
                     loading={isProcessing || IsSaving}
                   >
                     Submit
@@ -727,9 +775,9 @@ const UltrasoundResult = () => {
                     onConfirm={() => {
                       setAllowSave(false);
                       setChargeId(0);
-                      setChargeDescription("");
+                      setChargeDescription('');
                       setResultId(0);
-                      setResultNo("");
+                      setResultNo('');
                       form.resetFields();
                     }}
                   >
@@ -746,7 +794,7 @@ const UltrasoundResult = () => {
                     loading={isProcessing}
                     disabled={ResultId === 0}
                   >
-                    {isFinalized ? "Un-Finalize Result" : "Finalize Result"}
+                    {isFinalized ? 'Un-Finalize Result' : 'Finalize Result'}
                   </Button>
 
                   <Button
@@ -777,7 +825,7 @@ const UltrasoundResult = () => {
             rules={[
               {
                 required: true,
-                message: "Status is required!",
+                message: 'Status is required!',
               },
             ]}
           >
@@ -801,10 +849,10 @@ const UltrasoundResult = () => {
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (
-                    getFieldValue("Status") === "DEFERRED" &&
+                    getFieldValue('Status') === 'DEFERRED' &&
                     isNullOrUndefinedOrBlank(value)
                   ) {
-                    return Promise.reject("Remarks is required!");
+                    return Promise.reject('Remarks is required!');
                   }
                   return Promise.resolve();
                 },

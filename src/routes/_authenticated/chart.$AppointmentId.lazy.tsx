@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Button,
   DatePicker,
@@ -8,18 +8,18 @@ import {
   notification,
   Select,
   Space,
-} from "antd";
-import { TAppointments, TChart, TDoctors, TICd10 } from "../../types";
-import { useQuery } from "@tanstack/react-query";
-import { isNullOrUndefinedOrBlank, PostData } from "../../helpers";
-import { useEffect, useState } from "react";
-import dayjs from "dayjs";
-import useAppStore from "../../store";
-import axios from "axios";
-import SearchICD from "../../components/SearchICD";
+} from 'antd';
+import { TAppointments, TChart, TDoctors, TICd10 } from '../../types';
+import { useQuery } from '@tanstack/react-query';
+import { isNullOrUndefinedOrBlank, PostData } from '../../helpers';
+import { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
+import useAppStore from '../../store';
+import axios from 'axios';
+import SearchICD from '../../components/SearchICD';
 
 export const Route = createLazyFileRoute(
-  "/_authenticated/chart/$AppointmentId"
+  '/_authenticated/chart/$AppointmentId',
 )({
   component: () => <Chart />,
 });
@@ -46,13 +46,13 @@ const Chart = () => {
 
     try {
       setIsProcessing(true);
-      const res = await PostData("SaveChart", valuesToSave);
+      const res = await PostData('SaveChart', valuesToSave);
       if (res) {
         setIsProcessing(false);
         if (res.status === 1) {
           notification.success({
-            message: "Successfully saved!",
-            placement: "topRight",
+            message: 'Successfully saved!',
+            placement: 'topRight',
             duration: 3,
           });
           setId(res.parameters.Id);
@@ -65,7 +65,7 @@ const Chart = () => {
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -86,10 +86,10 @@ const Chart = () => {
   };
 
   const patientInformaation = useQuery<TAppointments>({
-    queryKey: ["patientInformaation"],
+    queryKey: ['patientInformaation'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetAppointmentDetails",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetAppointmentDetails',
         parameters: { Id: AppointmentId },
       });
       if (res) {
@@ -101,10 +101,10 @@ const Chart = () => {
   });
 
   const specialists = useQuery<TDoctors[]>({
-    queryKey: ["specialists"],
+    queryKey: ['specialists'],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetDoctors",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetDoctors',
         parameters: {},
       });
       if (res) {
@@ -116,8 +116,8 @@ const Chart = () => {
   });
 
   const handleGetDetails = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetChart",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetChart',
       parameters: { AppointmentId },
     });
     if (res) {
@@ -135,9 +135,9 @@ const Chart = () => {
           Ruv: x.Ruv,
           Planx: x.Planx,
           AddedBy: x.AddedBy,
-          DateAdded: dayjs(x.DateAdded).format("MM/DD/YYYY hh:mm A"),
+          DateAdded: dayjs(x.DateAdded).format('MM/DD/YYYY hh:mm A'),
           UpdatedBy: x.UpdatedBy,
-          DateUpdated: dayjs(x.DateAdded).format("MM/DD/YYYY hh:mm A"),
+          DateUpdated: dayjs(x.DateAdded).format('MM/DD/YYYY hh:mm A'),
         });
       } else {
         setId(0);
@@ -149,32 +149,33 @@ const Chart = () => {
   };
 
   const handlePrint = async () => {
-    axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
 
-    const url = apiUrl + "/api/GenerateReport";
+    const url = apiUrl + '/api/GenerateReport';
     try {
       setIsProcessing(true);
       await axios({
         url: url, //your url
-        method: "GET",
-        responseType: "blob",
+        method: 'GET',
+        responseType: 'blob',
         params: {
-          ReportName: "chart.rdl",
+          ReportName: 'chart.rdl',
           AppointmentId: AppointmentId,
+          BranchCode: store.branchCode,
         },
       }).then((response) => {
         let newBlob;
         newBlob = new Blob([response.data], {
-          type: "application/pdf",
+          type: 'application/pdf',
         });
 
         const data = window.URL.createObjectURL(newBlob);
 
-        const a = document.createElement("a");
+        const a = document.createElement('a');
 
-        a.setAttribute("href", data);
-        a.setAttribute("target", "_blank");
+        a.setAttribute('href', data);
+        a.setAttribute('target', '_blank');
 
         a.click();
         setIsProcessing(false);
@@ -220,7 +221,7 @@ const Chart = () => {
             rules={[
               {
                 required: true,
-                message: "Specialist is required!",
+                message: 'Specialist is required!',
               },
             ]}
           >
@@ -253,7 +254,7 @@ const Chart = () => {
             rules={[
               {
                 required: true,
-                message: "Started is required!",
+                message: 'Started is required!',
               },
             ]}
           >
@@ -265,7 +266,7 @@ const Chart = () => {
             rules={[
               {
                 required: true,
-                message: "Ended is required!",
+                message: 'Ended is required!',
               },
             ]}
           >
@@ -304,7 +305,7 @@ const Chart = () => {
           rules={[
             {
               required: true,
-              message: "Assessment/Diagnosis is required!",
+              message: 'Assessment/Diagnosis is required!',
             },
           ]}
         >
@@ -350,7 +351,7 @@ const Chart = () => {
           <div>
             <p>Date Added</p>
             <p className="font-bold">
-              {dayjs(selected?.DateAdded).format("MM/DD/YYYY hh:mm A")}
+              {dayjs(selected?.DateAdded).format('MM/DD/YYYY hh:mm A')}
             </p>
           </div>
 
@@ -361,7 +362,7 @@ const Chart = () => {
           <div>
             <p>Date Updated</p>
             <p className="font-bold">
-              {dayjs(selected?.DateUpdated).format("MM/DD/YYYY hh:mm A")}
+              {dayjs(selected?.DateUpdated).format('MM/DD/YYYY hh:mm A')}
             </p>
           </div>
         </div>

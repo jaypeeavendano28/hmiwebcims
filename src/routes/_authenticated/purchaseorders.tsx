@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Divider } from "antd";
+import { createFileRoute } from '@tanstack/react-router';
+import { Divider } from 'antd';
 
-export const Route = createFileRoute("/_authenticated/purchaseorders")({
+export const Route = createFileRoute('/_authenticated/purchaseorders')({
   component: () => <PurchaseOrders />,
 });
 
