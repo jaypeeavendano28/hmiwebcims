@@ -297,6 +297,8 @@ export type TAppointments = {
   DateOfBirthStr?: string;
   Address?: string;
   CurrentQStatus?: string;
+  CounterCode?: string;
+  CounterName?: string;
   Sex?: string;
   WithMer?: string;
   Status?: string;
@@ -314,7 +316,18 @@ export type TAppointments = {
   PositionAppliedFor?: string;
   Employer?: string;
   cantCall?: boolean;
-  DateAssignedQueueNo?: string
+  DateAssignedQueueNo?: string;
+  CurrentQueueDetailId?: number;
+};
+
+export type TQueueDetail = {
+  Id: number;
+  QueueDetailId: number;
+  fk_Queue_Id: number;
+  fk_Charges_Id: number;
+  ChargeId: number;
+  Description?: string;
+  Status: string;
 };
 
 export type TAppointmentType = {
@@ -1539,7 +1552,7 @@ export type TVendors = {
   EmailAddress: string;
   Id: number;
   Name: string;
-  Position: ' ';
+  Position: " ";
   Tax: number;
   Tin: string;
   UpdatedBy: string | null;

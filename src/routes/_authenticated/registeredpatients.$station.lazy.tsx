@@ -1,16 +1,25 @@
-import { createLazyFileRoute, useRouter } from '@tanstack/react-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, DatePicker, Divider, Form, Input, Radio, Switch } from 'antd';
-import { PostData } from '../../helpers';
-import useAppStore from '../../store';
-import { useEffect, useState } from 'react';
-import dayjs from 'dayjs';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import Loading from '../../components/loading';
-import PatientsPerCounter from '../../components/PatientsPerCounter';
+import { createLazyFileRoute, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Button,
+  DatePicker,
+  Divider,
+  Form,
+  Input,
+  Radio,
+  Select,
+  Switch,
+} from "antd";
+import { PostData } from "../../helpers";
+import useAppStore from "../../store";
+import { useEffect, useState } from "react";
+import dayjs from "dayjs";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import Loading from "../../components/loading";
+import PatientsPerCounter from "../../components/PatientsPerCounter";
 export const Route = createLazyFileRoute(
-  '/_authenticated/registeredpatients/$station',
+  "/_authenticated/registeredpatients/$station",
 )({
   component: () => <RegisteredPatients />,
 });
@@ -22,34 +31,48 @@ type FilterType = {
   isDone: boolean;
   Name: string;
   MemberNo: string;
+  DepartmentId?: number;
 };
 
 const RegisteredPatients = () => {
   // const [IsSubmitting, setIsSubmitting] = useState(false);
 
   const [station] = Route.useParams().station;
-  const [header, setHeader] = useState('');
+  const [header, setHeader] = useState("");
   const [expandedRows, setExpandedRows] = useState(null);
   const store = useAppStore();
   const router = useRouter();
   const search = Route.useSearch() as { IsMobile?: boolean | string };
-  const IsMobile = search.IsMobile === true || search.IsMobile === 'true';
+  const IsMobile = search.IsMobile === true || search.IsMobile === "true";
 
   const queryClient = useQueryClient();
 
   const [filterData, setFilterData] = useState<FilterType>({
-    DateFrom: dayjs().format('YYYYMMDD'),
-    DateTo: dayjs().format('YYYYMMDD'),
+    DateFrom: dayjs().format("YYYYMMDD"),
+    DateTo: dayjs().format("YYYYMMDD"),
 
     isDone: false,
-    Name: '',
-    MemberNo: '',
+    Name: "",
+    MemberNo: "",
+    DepartmentId: undefined,
   });
 
-  const { DateFrom, DateTo, isDone, Name, MemberNo } = filterData;
+  const { DateFrom, DateTo, isDone, Name, MemberNo, DepartmentId } = filterData;
 
   const [form] = Form.useForm();
   const q = useQueryClient();
+
+  const departments = useQuery({
+    queryKey: ["queueDepartments"],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetDepartments",
+        parameters: {},
+      });
+      return res?.parameters.lst ?? [];
+    },
+    refetchOnWindowFocus: false,
+  });
 
   // const dateFrom = form.getFieldValue('date')
   //   ? dayjs(form.getFieldValue('date')[0]).format('YYYYMMDD')
@@ -59,20 +82,21 @@ const RegisteredPatients = () => {
   //   : '';
 
   const patientPerCounter = useQuery({
-    queryKey: ['patientPerCounter', filterData, IsMobile],
+    queryKey: ["patientPerCounter", filterData, IsMobile],
     queryFn: async () => {
-      let res = await PostData('GetRecords', {
-        sp: 'udp_GetPatientPerCounter',
+      let res = await PostData("GetRecords", {
+        sp: "udp_GetQueueDepartments",
         parameters: {
           BranchCode: store.branchCode,
-          DateFrom: DateFrom ?? '',
-          DateTo: DateTo ?? '',
+          DateFrom: DateFrom ?? "",
+          DateTo: DateTo ?? "",
           Station: station,
           UserId: store.userId,
           isDone: isDone,
           Name: Name,
           MemberNo: MemberNo,
           IsMobile: IsMobile,
+          DepartmentId: DepartmentId ?? 0,
         },
       });
       if (res) {
@@ -86,7 +110,7 @@ const RegisteredPatients = () => {
   const rowExpansionTemplate = (data: any) => {
     return (
       <PatientsPerCounter
-        CounterCode={data.CounterCode}
+        DepartmentId={data.DepartmentId}
         // DateFrom={
         //   form.getFieldValue('DateFrom')
         //     ? dayjs(form.getFieldValue('DateFrom')[0]).format('YYYYMMDD')
@@ -97,8 +121,8 @@ const RegisteredPatients = () => {
         //     ? dayjs(form.getFieldValue('DateTo')[1]).format('YYYYMMDD')
         //     : ''
         // }
-        DateFrom={DateFrom ?? ''}
-        DateTo={DateTo ?? ''}
+        DateFrom={DateFrom ?? ""}
+        DateTo={DateTo ?? ""}
         Station={station}
         isDone={isDone}
         Name={Name}
@@ -112,14 +136,14 @@ const RegisteredPatients = () => {
   //   form.setFieldsValue({});
   // }, []);
   useEffect(() => {
-    if (station === '1') {
-      setHeader('Registered Patients');
-    } else if (station === '2') {
-      setHeader('Consultations');
-    } else if (station === '0') {
-      setHeader('Hemodialysis/Ambulatory Patients');
+    if (station === "1") {
+      setHeader("Department List");
+    } else if (station === "2") {
+      setHeader("Consultations");
+    } else if (station === "0") {
+      setHeader("Hemodialysis/Ambulatory Patients");
     }
-    queryClient.invalidateQueries({ queryKey: ['patientPerCounter'] });
+    queryClient.invalidateQueries({ queryKey: ["patientPerCounter"] });
   }, [station]);
   return (
     <div className="cardBackGround">
@@ -148,9 +172,9 @@ const RegisteredPatients = () => {
                 setFilterData((prev) => ({
                   ...prev,
                   DateFrom: days
-                    ? dayjs(days[0]).format('YYYYMMDD')
+                    ? dayjs(days[0]).format("YYYYMMDD")
                     : undefined,
-                  DateTo: days ? dayjs(days[1]).format('YYYYMMDD') : undefined,
+                  DateTo: days ? dayjs(days[1]).format("YYYYMMDD") : undefined,
                 }))
               }
             />
@@ -165,7 +189,7 @@ const RegisteredPatients = () => {
               onChange={(e) =>
                 setFilterData((prev) => ({
                   ...prev,
-                  Name: e.target.value ?? '',
+                  Name: e.target.value ?? "",
                 }))
               }
             />
@@ -177,7 +201,26 @@ const RegisteredPatients = () => {
               onChange={(e) =>
                 setFilterData((prev) => ({
                   ...prev,
-                  MemberNo: e.target.value ?? '',
+                  MemberNo: e.target.value ?? "",
+                }))
+              }
+            />
+          </Form.Item>
+          <Form.Item label="Department" className="min-w-64">
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              placeholder="All departments"
+              value={DepartmentId}
+              options={(departments.data ?? []).map((department: any) => ({
+                value: department.Id,
+                label: department.Description,
+              }))}
+              onChange={(value) =>
+                setFilterData((prev) => ({
+                  ...prev,
+                  DepartmentId: value,
                 }))
               }
             />
@@ -185,11 +228,11 @@ const RegisteredPatients = () => {
           <Form.Item label="Queue Status">
             <Radio.Group
               disabled={IsMobile}
-              value={isDone ? 'done' : 'not-done'}
+              value={isDone ? "done" : "not-done"}
               onChange={(e) =>
                 setFilterData((prev) => ({
                   ...prev,
-                  isDone: e.target.value === 'done' ? true : false,
+                  isDone: e.target.value === "done" ? true : false,
                 }))
               }
             >
@@ -204,7 +247,7 @@ const RegisteredPatients = () => {
               unCheckedChildren="No"
               onChange={(checked) => {
                 router.navigate({
-                  to: '.',
+                  to: ".",
                   search: (prev) => ({
                     ...prev,
                     IsMobile: checked,
@@ -217,7 +260,7 @@ const RegisteredPatients = () => {
             <Button
               type="primary"
               onClick={() => {
-                q.invalidateQueries({ queryKey: ['patientPerCounter'] });
+                q.invalidateQueries({ queryKey: ["patientPerCounter"] });
               }}
               loading={patientPerCounter.isLoading}
             >
@@ -232,7 +275,7 @@ const RegisteredPatients = () => {
         ) : (
           <DataTable
             value={patientPerCounter.data}
-            dataKey="CounterCode"
+            dataKey="DepartmentId"
             rows={10}
             rowsPerPageOptions={[10, 25, 50]}
             filterDisplay="row"
@@ -242,13 +285,14 @@ const RegisteredPatients = () => {
             rowExpansionTemplate={rowExpansionTemplate}
             expandedRows={expandedRows as any}
             onRowToggle={(e) => setExpandedRows(e.data as any)}
-            tableStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+            tableStyle={{ fontSize: "12px", fontWeight: "bold" }}
           >
             <Column
               expander={patientPerCounter.data.length > 0}
-              style={{ width: '5rem' }}
+              style={{ width: "5rem" }}
             />
-            <Column field="CounterName" header="Counter Name" filter></Column>
+            <Column field="DepartmentName" header="Department" filter></Column>
+            <Column field="Count" header="Patients/Procedures"></Column>
           </DataTable>
         )}
       </div>

@@ -1,31 +1,33 @@
-import { FC, useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PostData } from '../helpers';
-import useAppStore from '../store';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { TAppointments } from '../types';
+import { FC, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PostData } from "../helpers";
+import useAppStore from "../store";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { TAppointments, TQueueDetail } from "../types";
 import {
   Button,
   Dropdown,
   MenuProps,
   Modal,
+  Radio,
   Space,
   Tag,
   Tooltip,
   notification,
-} from 'antd';
-import { BsCheckLg, BsClipboardCheck, BsMegaphoneFill } from 'react-icons/bs';
-import Calling from './calling';
-import { BiNotepad } from 'react-icons/bi';
-import { useRouter } from '@tanstack/react-router';
-import dayjs from 'dayjs';
-import { FaUpload } from 'react-icons/fa6';
-import { GiMedicines } from 'react-icons/gi';
-import RequestForMedicines from './RequestForMedicines';
+} from "antd";
+import { BsCheckLg, BsClipboardCheck, BsMegaphoneFill } from "react-icons/bs";
+import Calling from "./calling";
+import { BiNotepad } from "react-icons/bi";
+import { useRouter } from "@tanstack/react-router";
+import dayjs from "dayjs";
+import { FaUpload } from "react-icons/fa6";
+import { GiMedicines } from "react-icons/gi";
+import RequestForMedicines from "./RequestForMedicines";
 
 type Props = {
-  CounterCode: string;
+  CounterCode?: string;
+  DepartmentId?: number;
   DateFrom: string;
   DateTo: string;
   Station: string;
@@ -36,16 +38,17 @@ type Props = {
 };
 
 const statusTagColors: Record<string, string> = {
-  A: 'processing',
-  C: 'blue',
-  D: 'success',
-  E: 'warning',
-  O: 'error',
-  W: 'default',
+  A: "processing",
+  C: "blue",
+  D: "success",
+  E: "warning",
+  O: "error",
+  W: "default",
 };
 
 const PatientsPerCounter: FC<Props> = ({
   CounterCode,
+  DepartmentId,
   DateFrom,
   DateTo,
   Station,
@@ -58,6 +61,13 @@ const PatientsPerCounter: FC<Props> = ({
   const router = useRouter();
   const [selectedRecord, setSelectedRecord] = useState<any | undefined>();
   const [showModal, setShowModal] = useState(false);
+  const [showProcedureModal, setShowProcedureModal] = useState(false);
+  const [pendingQueueDetails, setPendingQueueDetails] = useState<
+    TQueueDetail[]
+  >([]);
+  const [selectedQueueDetailId, setSelectedQueueDetailId] = useState<
+    number | undefined
+  >();
   const [IsSubmitting, setIsSubmitting] = useState(false);
   const [now, setNow] = useState(dayjs());
   const store = useAppStore();
@@ -65,9 +75,10 @@ const PatientsPerCounter: FC<Props> = ({
   const effectiveIsDone = IsMobile || isDone;
 
   const patientsQueryKey = [
-    'patientsPerCounter',
+    "patientsPerCounter",
     store.branchCode,
     CounterCode,
+    DepartmentId,
     DateFrom,
     DateTo,
     effectiveIsDone,
@@ -79,18 +90,41 @@ const PatientsPerCounter: FC<Props> = ({
   const patients = useQuery({
     queryKey: patientsQueryKey,
     queryFn: async () => {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetPatientsPerCounter',
-        parameters: {
-          BranchCode: store.branchCode,
-          CounterCode,
-          DateFrom,
-          DateTo,
-          IsDone: effectiveIsDone,
-          Name,
-          MemberNo,
-          IsMobile,
-        },
+      const useDepartmentView = DepartmentId !== undefined;
+      const useProcedureCompletedList = isDone && !IsMobile && Station !== "0";
+      const sp = useDepartmentView
+        ? useProcedureCompletedList
+          ? "udp_GetCompletedProceduresByDepartment"
+          : "udp_GetPatientsPerDepartment"
+        : useProcedureCompletedList
+          ? "udp_GetCompletedProcedures"
+          : "udp_GetPatientsPerCounter";
+      const parameters = useDepartmentView
+        ? {
+            BranchCode: store.branchCode,
+            DepartmentId,
+            DateFrom,
+            DateTo,
+            Station,
+            UserId: store.userId,
+            IsDone: effectiveIsDone,
+            Name,
+            MemberNo,
+            IsMobile,
+          }
+        : {
+            BranchCode: store.branchCode,
+            CounterCode,
+            DateFrom,
+            DateTo,
+            IsDone: effectiveIsDone,
+            Name,
+            MemberNo,
+            IsMobile,
+          };
+      const res = await PostData("GetRecords", {
+        sp,
+        parameters,
       });
 
       return res?.parameters.lst ?? [];
@@ -107,7 +141,7 @@ const PatientsPerCounter: FC<Props> = ({
         exact: true,
       }),
       queryClient.invalidateQueries({
-        queryKey: ['patientPerCounter'],
+        queryKey: ["patientPerCounter"],
       }),
     ]);
   };
@@ -115,78 +149,147 @@ const PatientsPerCounter: FC<Props> = ({
   const handleCall = async (data: any) => {
     setIsSubmitting(true);
 
-    const valuesToSave = {
-      ...data,
-      Username: store.username,
-      Counter: data.CounterName,
-      QNo: data.QueueNo,
-      Code: data.CounterCode,
-      fk_Appointments_Id: data.fk_Appointments_Id,
-      ElapseTime: '',
-      Station,
-    };
+    try {
+      const valuesToSave = {
+        ...data,
+        Username: store.username,
+        Counter: data.CounterName,
+        QNo: data.QueueNo,
+        Code: data.CounterCode,
+        fk_Appointments_Id: data.fk_Appointments_Id,
+        ElapseTime: "",
+        Station,
+      };
 
-    const res = await PostData('CallCounter', valuesToSave);
-    if (res) {
-      setIsSubmitting(false);
+      const res = await PostData("CallCounter", valuesToSave);
+      if (!res) return;
+
+      if (res.status === 2) {
+        setSelectedRecord({ ...data, Status: "C" });
+        setPendingQueueDetails(res.parameters ?? []);
+        setSelectedQueueDetailId(undefined);
+        setShowProcedureModal(true);
+        return;
+      }
+
       if (res.status === 1) {
-        if (data.Status === 'C') {
+        const responseDetailId =
+          res.parameters?.QueueDetailId ??
+          res.parameters?.queueDetailId ??
+          data.QueueDetailId;
+        const activeRecord = {
+          ...data,
+          QueueDetailId: responseDetailId,
+          CurrentQueueDetailId: responseDetailId,
+        };
+
+        if (data.Status === "C") {
+          setSelectedRecord(activeRecord);
           setShowModal(true);
-        } else if (data.Status === 'O') {
+        } else if (data.Status === "O") {
           setSelectedRecord({});
           setShowModal(false);
-        } else if (data.Status === 'A') {
-          setSelectedRecord(data);
+        } else if (data.Status === "A") {
+          setSelectedRecord(activeRecord);
           setShowModal(false);
-          if (CounterCode === 'LAB') {
-            handleLabResult(data);
-          }
+          openProcedureWorkspace(activeRecord);
         }
         await refreshPatientQueries();
         queryClient.invalidateQueries({
-          queryKey: ['patientsPerCounter'],
+          queryKey: ["patientsPerCounter"],
         });
       } else {
         notification.error({
           message: res.message,
-          placement: 'topRight',
+          placement: "topRight",
           duration: 5,
         });
       }
+    } catch (error: any) {
+      notification.error({
+        message: error?.message ?? "Unable to update the queue.",
+        placement: "topRight",
+        duration: 5,
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  const items: MenuProps['items'] = [
+
+  const beginCall = async (data: any) => {
+    setIsSubmitting(true);
+    try {
+      const res = await PostData("GetPendingQueueDetails", {
+        QueueId: data.Id,
+      });
+
+      if (!res || res.status !== 1) {
+        notification.error({
+          message: res?.message ?? "Unable to load pending procedures.",
+          placement: "topRight",
+          duration: 5,
+        });
+        return;
+      }
+
+      const details: TQueueDetail[] = res.parameters ?? [];
+      if (details.length > 1) {
+        setSelectedRecord({ ...data, Status: "C" });
+        setPendingQueueDetails(details);
+        setSelectedQueueDetailId(undefined);
+        setShowProcedureModal(true);
+        return;
+      }
+
+      const queueDetailId =
+        details[0]?.QueueDetailId ?? (details[0] as any)?.queueDetailId;
+      await handleCall({
+        ...data,
+        Status: "C",
+        QueueDetailId: queueDetailId,
+      });
+    } catch (error: any) {
+      notification.error({
+        message: error?.message ?? "Unable to load pending procedures.",
+        placement: "topRight",
+        duration: 5,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  const items: MenuProps["items"] = [
     {
-      key: 'A',
-      label: 'Attending',
+      key: "A",
+      label: "Attending",
       onClick: () => {
-        void handleCall({ ...selectedRecord, Status: 'A' });
+        void handleCall({ ...selectedRecord, Status: "A" });
       },
     },
     {
-      key: 'D',
-      label: 'Done',
+      key: "D",
+      label: "Done",
       onClick: (e) => {
         void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: 'E',
-      label: 'Deferred',
+      key: "E",
+      label: "Deferred",
       onClick: (e) => {
         void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: 'O',
-      label: 'Out When Called',
+      key: "O",
+      label: "Out When Called",
       onClick: (e) => {
         void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: 'W',
-      label: 'Waiting',
+      key: "W",
+      label: "Waiting",
       onClick: (e) => {
         void handleCall({ ...selectedRecord, Status: e.key });
       },
@@ -194,7 +297,7 @@ const PatientsPerCounter: FC<Props> = ({
   ];
   const handleLabResult = (data: any) => {
     router.navigate({
-      to: '/laboratoryresults/$Id',
+      to: "/laboratoryresults/$Id",
       params: {
         Id: data.fk_Appointments_Id,
       },
@@ -203,7 +306,7 @@ const PatientsPerCounter: FC<Props> = ({
 
   const handleXrayResult = (data: any) => {
     router.navigate({
-      to: '/xrayresult/$Id',
+      to: "/xrayresult/$Id",
       params: {
         Id: data.fk_Appointments_Id,
       },
@@ -219,7 +322,7 @@ const PatientsPerCounter: FC<Props> = ({
     // });
 
     router.navigate({
-      to: '/cardiologyresult/$Id',
+      to: "/cardiologyresult/$Id",
       params: {
         Id: data.fk_Appointments_Id.toString(),
       },
@@ -228,41 +331,58 @@ const PatientsPerCounter: FC<Props> = ({
 
   const handleUltrasoundResult = (data: any) => {
     router.navigate({
-      to: '/ultrasound/$Id',
+      to: "/ultrasound/$Id",
       params: {
         Id: data.fk_Appointments_Id,
       },
     });
   };
+
+  const openProcedureWorkspace = (data: any) => {
+    switch (data.CounterCode ?? CounterCode) {
+      case "LAB":
+        handleLabResult(data);
+        break;
+      case "XRAY":
+        handleXrayResult(data);
+        break;
+      case "CARDIO":
+        handleCardioResult(data);
+        break;
+      case "ULT":
+        handleUltrasoundResult(data);
+        break;
+    }
+  };
   const actionBodyElapseTime = (data: TAppointments) => {
-    if (data.Status === 'D') return data.ElapseTime ?? '-';
-    if (!data.DateAdded) return '-';
+    if (data.Status === "D") return data.ElapseTime ?? "-";
+    if (!data.DateAdded) return "-";
 
     const dateAdded = dayjs(data.DateAdded);
-    if (!dateAdded.isValid()) return '-';
+    if (!dateAdded.isValid()) return "-";
 
-    const elapsedSeconds = Math.max(now.diff(dateAdded, 'second'), 0);
+    const elapsedSeconds = Math.max(now.diff(dateAdded, "second"), 0);
     const days = Math.floor(elapsedSeconds / 86400);
     const hours = Math.floor((elapsedSeconds % 86400) / 3600);
     const minutes = Math.floor((elapsedSeconds % 3600) / 60);
     const seconds = elapsedSeconds % 60;
 
     if (days > 0) {
-      return `${days} day${days > 1 ? 's' : ''} ${hours
+      return `${days} day${days > 1 ? "s" : ""} ${hours
         .toString()
-        .padStart(2, '0')} hr`;
+        .padStart(2, "0")} hr`;
     }
 
     if (hours > 0) {
-      return `${hours} hr ${minutes.toString().padStart(2, '0')} min`;
+      return `${hours} hr ${minutes.toString().padStart(2, "0")} min`;
     }
 
-    return `${minutes} min ${seconds.toString().padStart(2, '0')} sec`;
+    return `${minutes} min ${seconds.toString().padStart(2, "0")} sec`;
   };
   const handleUploadDocument = async (data: any) => {
     try {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetPatientInformationByAppointmentId',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetPatientInformationByAppointmentId",
         parameters: {
           AppointmentId: data.fk_Appointments_Id,
         },
@@ -270,7 +390,7 @@ const PatientsPerCounter: FC<Props> = ({
 
       if (res) {
         router.navigate({
-          to: '/uploaddocuments/$Id',
+          to: "/uploaddocuments/$Id",
           params: {
             Id: res.parameters.lst[0].Id,
           },
@@ -279,12 +399,13 @@ const PatientsPerCounter: FC<Props> = ({
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
     }
   };
   const actionBodyTemplate = (data: TAppointments) => {
+    const rowCounterCode = data.CounterCode ?? CounterCode;
     return (
       <Space>
         {!IsMobile && !effectiveIsDone && (
@@ -293,18 +414,17 @@ const PatientsPerCounter: FC<Props> = ({
               type="primary"
               icon={<BsMegaphoneFill />}
               onClick={() => {
-                setSelectedRecord({ ...data, Status: 'C' });
-                handleCall({ ...data, Status: 'C' });
+                void beginCall(data);
               }}
               className="text-center"
               loading={IsSubmitting}
-              disabled={data.CurrentQStatus === 'A' || data.cantCall}
+              disabled={data.CurrentQStatus === "A" || data.cantCall}
             />
           </Tooltip>
         )}
         {!IsMobile && !effectiveIsDone && (
           <Tooltip title="Change Status">
-            <Dropdown menu={{ items }} placement="top" trigger={['click']}>
+            <Dropdown menu={{ items }} placement="top" trigger={["click"]}>
               <Button
                 type="primary"
                 icon={<BsClipboardCheck />}
@@ -315,7 +435,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Dropdown>
           </Tooltip>
         )}
-        {CounterCode === 'LAB' && effectiveIsDone && (
+        {rowCounterCode === "LAB" && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -326,7 +446,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {CounterCode === 'XRAY' && effectiveIsDone && (
+        {rowCounterCode === "XRAY" && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -338,7 +458,7 @@ const PatientsPerCounter: FC<Props> = ({
           </>
         )}
 
-        {CounterCode === 'ULT' && effectiveIsDone && (
+        {rowCounterCode === "ULT" && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -349,7 +469,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {CounterCode === 'CARDIO' && effectiveIsDone && (
+        {rowCounterCode === "CARDIO" && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -360,7 +480,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {(CounterCode === 'DIA' || CounterCode === 'AMB') && (
+        {(rowCounterCode === "DIA" || rowCounterCode === "AMB") && (
           <>
             <Tooltip title="Request for Medicines">
               <Button
@@ -379,9 +499,9 @@ const PatientsPerCounter: FC<Props> = ({
           />
         </Tooltip>
 
-        {data.Status === 'D' && <BsCheckLg size={32} color="green" />}
+        {data.Status === "D" && <BsCheckLg size={32} color="green" />}
 
-        {data.WithMer === 'Y' && (
+        {data.WithMer === "Y" && (
           <Tooltip title="MER is available">
             <BsCheckLg size={32} color="green" />
           </Tooltip>
@@ -397,8 +517,8 @@ const PatientsPerCounter: FC<Props> = ({
     );
   };
   const statusBodyTemplate = (data: any) => {
-    const statusDescription = data.StatusDesc ?? data.StatusDescription ?? '-';
-    const color = statusTagColors[data.Status] ?? 'default';
+    const statusDescription = data.StatusDesc ?? data.StatusDescription ?? "-";
+    const color = statusTagColors[data.Status] ?? "default";
 
     return (
       <Tag color={color} className="m-0 font-semibold">
@@ -439,7 +559,7 @@ const PatientsPerCounter: FC<Props> = ({
         // onRowToggle={(e) => setExpandedRows(e.data as any)}
         rowExpansionTemplate={descriptionsRowTemplate}
         expandedRows={expandedDescriptionRows as any}
-        tableStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+        tableStyle={{ fontSize: "12px", fontWeight: "bold" }}
       >
         <Column
           field="action"
@@ -453,8 +573,8 @@ const PatientsPerCounter: FC<Props> = ({
           filter
           body={(data) =>
             data.AppointmentDate
-              ? dayjs(data.AppointmentDate).format('MMM D, YYYY')
-              : '-'
+              ? dayjs(data.AppointmentDate).format("MMM D, YYYY")
+              : "-"
           }
         ></Column>
         <Column field="Name" header="Name" filter></Column>
@@ -482,8 +602,8 @@ const PatientsPerCounter: FC<Props> = ({
           header="Date Completed"
           body={(data) =>
             data.DateCompleted
-              ? dayjs(data.DateCompleted).format('MMM D, YYYY')
-              : '-'
+              ? dayjs(data.DateCompleted).format("MMM D, YYYY")
+              : "-"
           }
         ></Column>
 
@@ -494,6 +614,46 @@ const PatientsPerCounter: FC<Props> = ({
           body={(data) => actionBodyElapseTime(data)}
         ></Column>
       </DataTable>
+      <Modal
+        open={showProcedureModal}
+        title={`Select procedure for ${selectedRecord?.QueueNo ?? "queue"}`}
+        okText="Call selected procedure"
+        confirmLoading={IsSubmitting}
+        okButtonProps={{ disabled: selectedQueueDetailId === undefined }}
+        onCancel={() => {
+          setShowProcedureModal(false);
+          setSelectedQueueDetailId(undefined);
+        }}
+        onOk={() => {
+          if (selectedQueueDetailId === undefined) return;
+          setShowProcedureModal(false);
+          void handleCall({
+            ...selectedRecord,
+            Status: "C",
+            QueueDetailId: selectedQueueDetailId,
+          });
+        }}
+      >
+        <Radio.Group
+          className="w-full"
+          value={selectedQueueDetailId}
+          onChange={(event) => setSelectedQueueDetailId(event.target.value)}
+        >
+          <Space direction="vertical" className="w-full">
+            {pendingQueueDetails.map((detail) => {
+              const detailId =
+                detail.QueueDetailId ?? (detail as any).queueDetailId;
+              return (
+                <Radio key={detailId} value={detailId}>
+                  {detail.Description ??
+                    (detail as any).description ??
+                    `Charge ${detail.ChargeId ?? (detail as any).chargeId}`}
+                </Radio>
+              );
+            })}
+          </Space>
+        </Radio.Group>
+      </Modal>
       <Modal
         open={showModal}
         destroyOnClose
@@ -513,7 +673,7 @@ const PatientsPerCounter: FC<Props> = ({
             type="primary"
             danger
             onClick={() => {
-              handleCall({ ...selectedRecord, Status: 'O' });
+              handleCall({ ...selectedRecord, Status: "O" });
               setShowModal(false);
             }}
           >
@@ -522,8 +682,8 @@ const PatientsPerCounter: FC<Props> = ({
           <Button
             type="primary"
             onClick={() => {
-              if (Station === '1') {
-                handleCall({ ...selectedRecord, Status: 'A' });
+              if (Station === "1") {
+                handleCall({ ...selectedRecord, Status: "A" });
               }
 
               setShowModal(false);

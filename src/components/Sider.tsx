@@ -1,21 +1,21 @@
-import { BiHome, BiUser } from 'react-icons/bi';
-import { GoTools } from 'react-icons/go';
-import { Layout, Menu, MenuProps, Modal } from 'antd';
-import { useState } from 'react';
-import { Link, useRouter } from '@tanstack/react-router';
-import { useAuth } from '../hooks/userAuth';
-import useAppStore from '../store';
-import { isNullOrUndefinedOrBlank } from './../helpers/index';
-import Cookies from 'js-cookie';
-import { MdAddToQueue, MdFolderShared, MdOutlineNoteAlt } from 'react-icons/md';
-import { FaRegCalendarPlus } from 'react-icons/fa';
-import { BsJournalMedical } from 'react-icons/bs';
-import logo from '../assets/webcimslogo.png';
-import { FaMoneyBill } from 'react-icons/fa6';
-import { GiMedicines } from 'react-icons/gi';
-import { TbReportMoney } from 'react-icons/tb';
-import { FiArchive } from 'react-icons/fi';
-import { GrTransaction } from 'react-icons/gr';
+import { BiHome, BiUser } from "react-icons/bi";
+import { GoTools } from "react-icons/go";
+import { Layout, Menu, MenuProps, Modal } from "antd";
+import { useState } from "react";
+import { Link, useRouter } from "@tanstack/react-router";
+import { useAuth } from "../hooks/userAuth";
+import useAppStore from "../store";
+import { isNullOrUndefinedOrBlank } from "./../helpers/index";
+import Cookies from "js-cookie";
+import { MdAddToQueue, MdFolderShared, MdOutlineNoteAlt } from "react-icons/md";
+import { FaRegCalendarPlus } from "react-icons/fa";
+import { BsJournalMedical } from "react-icons/bs";
+import logo from "../assets/webcimslogo.png";
+import { FaMoneyBill } from "react-icons/fa6";
+import { GiMedicines } from "react-icons/gi";
+import { TbReportMoney } from "react-icons/tb";
+import { FiArchive } from "react-icons/fi";
+import { GrTransaction } from "react-icons/gr";
 
 const Sider = () => {
   const store = useAppStore();
@@ -23,30 +23,30 @@ const Sider = () => {
   const router = useRouter();
   const [showLogOut, setShowLogOut] = useState(false);
 
-  const items: MenuProps['items'] = [
+  const items: MenuProps["items"] = [
     {
       label: store.username,
-      key: 'mnuUserInfo',
+      key: "mnuUserInfo",
       icon: <BiUser />,
       children: [
         {
           label: <Link to="/updateuserprofile">User Profile</Link>,
-          key: 'mnuUserProfile',
+          key: "mnuUserProfile",
         },
         {
           label: <Link to="/changepassword">Change Password</Link>,
-          key: 'mnuChangePassword',
+          key: "mnuChangePassword",
         },
         {
-          label: 'Logout',
-          key: 'mnuLogOut',
+          label: "Logout",
+          key: "mnuLogOut",
           onClick: () => setShowLogOut(true),
         },
       ],
     },
     {
       label: <Link to="/dashboard">Home</Link>,
-      key: 'mnuHome',
+      key: "mnuHome",
       icon: <BiHome />,
     },
     store.withReceptionDiagnostics
@@ -55,13 +55,13 @@ const Sider = () => {
             <Link
               to="/reception/$Code"
               params={{
-                Code: '1',
+                Code: "1",
               }}
             >
               Reception (Diagnostics)
             </Link>
           ),
-          key: 'mnuReception1',
+          key: "mnuReception1",
           icon: <MdOutlineNoteAlt />,
         }
       : null,
@@ -71,27 +71,27 @@ const Sider = () => {
             <Link
               to="/reception/$Code"
               params={{
-                Code: '2',
+                Code: "2",
               }}
             >
               Reception (Hemo/Amb.)
             </Link>
           ),
-          key: 'mnuReception2',
+          key: "mnuReception2",
           icon: <MdOutlineNoteAlt />,
         }
       : null,
     store.withCashier
       ? {
           label: <Link to="/cashier">Cashier</Link>,
-          key: 'mnuCashier',
+          key: "mnuCashier",
           icon: <FaMoneyBill />,
         }
       : null,
     store.withApppointments
       ? {
           label: <Link to="/appointments">Appointments</Link>,
-          key: 'mnuAppointments',
+          key: "mnuAppointments",
           icon: <FaRegCalendarPlus />,
         }
       : null,
@@ -101,13 +101,13 @@ const Sider = () => {
             <Link
               to="/registeredpatients/$station"
               params={{
-                station: '1',
+                station: "1",
               }}
             >
-              Registered Patients
+              Department List
             </Link>
           ),
-          key: 'mnuRegisteredPatients',
+          key: "mnuRegisteredPatients",
           icon: <FaRegCalendarPlus />,
         }
       : null,
@@ -117,13 +117,13 @@ const Sider = () => {
             <Link
               to="/registeredpatients/$station"
               params={{
-                station: '0',
+                station: "0",
               }}
             >
               Hemodialyis/Ambulatory Patients
             </Link>
           ),
-          key: 'mnuHemoPatients',
+          key: "mnuHemoPatients",
           icon: <FaRegCalendarPlus />,
         }
       : null,
@@ -133,19 +133,19 @@ const Sider = () => {
             <Link
               to="/registeredpatients/$station"
               params={{
-                station: '2',
+                station: "2",
               }}
             >
               Consultations
             </Link>
           ),
-          key: 'mnuConsultations',
+          key: "mnuConsultations",
           icon: <FaRegCalendarPlus />,
         }
       : null,
     {
-      label: 'Material Management',
-      key: 'mm',
+      label: "Material Management",
+      key: "mm",
       icon: <FiArchive />,
       children: [
         {
@@ -154,85 +154,85 @@ const Sider = () => {
               Purchase Orders
             </Link>
           ),
-          key: 'mmPO',
+          key: "mmPO",
         },
         {
           label: <Link to="/material-management/receiving/">Receiving</Link>,
-          key: 'mmRR',
+          key: "mmRR",
         },
         {
           label: (
             <Link to="/material-management/stock-issuance">Stock Issuance</Link>
           ),
-          key: 'mmSI',
+          key: "mmSI",
         },
         {
           label: (
             <Link to="/material-management/quantity-on-hand/">Qty on Hand</Link>
           ),
-          key: 'mmQOH',
+          key: "mmQOH",
         },
       ],
     },
     store.withPatientMasterList
       ? {
           label: <Link to="/listofpatients">Patient Master List</Link>,
-          key: 'mnuListOfPatients',
+          key: "mnuListOfPatients",
           icon: <BsJournalMedical />,
         }
       : null,
     store.withPharmacy
       ? {
           label: <Link to="/pharmacy">Pharmacy</Link>,
-          key: 'mnuPharmacy',
+          key: "mnuPharmacy",
           icon: <GiMedicines />,
         }
       : null,
     store.withAR
       ? {
           label: <Link to="/ar">Accounts Receivable</Link>,
-          key: 'mnuAr',
+          key: "mnuAr",
           icon: <TbReportMoney />,
         }
       : null,
     {
       label: <Link to="/reports">Reports</Link>,
-      key: 'reports',
+      key: "reports",
       icon: <MdFolderShared />,
     },
     {
       label: <Link to="/transaction-summary">Transaction Summary</Link>,
-      key: 'transaction-summary',
+      key: "transaction-summary",
       icon: <GrTransaction />,
     },
     store.withQueuing
       ? {
-          label: 'Queuing',
-          key: 'mnuQueuing',
+          label: "Queuing",
+          key: "mnuQueuing",
           icon: <MdAddToQueue />,
           children: [
             {
               label: <Link to="/getqno">Get Queue No.</Link>,
-              key: 'mnuGetQ',
+              key: "mnuGetQ",
             },
             {
               label: (
                 <Link to="/getqnohemo">Get Queue No. (Hemo/Ambulatory)</Link>
               ),
-              key: 'mnuGetQHemo',
+              key: "mnuGetQHemo",
             },
             {
               label: (
                 <Link
                   to="/queuing/$Code"
                   params={{
-                    Code: '1',
+                    Code: "1",
                   }}
                 >
                   Queuing Diagnostics
                 </Link>
               ),
-              key: 'mnuQueuingDiag',
+              key: "mnuQueuingDiag",
             },
             // {
             //   label: (
@@ -252,13 +252,13 @@ const Sider = () => {
                 <Link
                   to="/queuing/$Code"
                   params={{
-                    Code: '0',
+                    Code: "0",
                   }}
                 >
                   Queuing Hemodialysis/Ambulatory
                 </Link>
               ),
-              key: 'mnuQueuing0',
+              key: "mnuQueuing0",
             },
 
             // {
@@ -270,72 +270,72 @@ const Sider = () => {
       : null,
     store.withUtilities
       ? {
-          label: 'Utilities',
-          key: 'mnuUtilities',
+          label: "Utilities",
+          key: "mnuUtilities",
           icon: <GoTools />,
           children: [
             {
               label: <Link to="/analytes">Analytes</Link>,
-              key: 'mnuAnalytes',
+              key: "mnuAnalytes",
             },
             {
               label: <Link to="/branches">Branches</Link>,
-              key: 'mnuBranches',
+              key: "mnuBranches",
             },
             {
               label: <Link to="/doctors">Doctors</Link>,
-              key: 'mnuDoctors',
+              key: "mnuDoctors",
             },
             {
               label: <Link to="/utilities/hmocompany">Hmo/Companies</Link>,
-              key: 'mnuHmoCompanies',
+              key: "mnuHmoCompanies",
             },
             {
               label: <Link to="/items">Items</Link>,
-              key: 'mnuItems',
+              key: "mnuItems",
             },
             {
               label: (
                 <Link to="/laboratorytemplates">Laboratory Templates</Link>
               ),
-              key: 'mnuLaboratoryTemplates',
+              key: "mnuLaboratoryTemplates",
             },
             {
               label: <Link to="/medtechs">Medical Technologist</Link>,
-              key: 'mnuMedTechs',
+              key: "mnuMedTechs",
             },
             {
               label: <Link to="/utilities/paymenttype">Payment Type</Link>,
-              key: 'mnuPaymentType',
+              key: "mnuPaymentType",
             },
             {
               label: <Link to="/utilities/pricecategory">Price Category</Link>,
-              key: 'mnuPriceCategory',
+              key: "mnuPriceCategory",
             },
             {
               label: <Link to="/qcounters">Queue Counters</Link>,
-              key: 'mnuQueueCounters',
+              key: "mnuQueueCounters",
             },
             {
               label: <Link to="/radtechs">Rad Techs.</Link>,
-              key: 'mnuRadTechs',
+              key: "mnuRadTechs",
             },
 
             {
               label: <Link to="/users">Users</Link>,
-              key: 'mnuUsers',
+              key: "mnuUsers",
             },
             {
               label: <Link to="/utilities/vendors">Vendors</Link>,
-              key: 'mnuVendors',
+              key: "mnuVendors",
             },
             {
               label: <Link to="/xraytemplates">X-Ray Templates</Link>,
-              key: 'mnuXrayTemplates',
+              key: "mnuXrayTemplates",
             },
             {
               label: <Link to="/utilities/portal">Portal</Link>,
-              key: 'portal',
+              key: "portal",
             },
           ],
         }
@@ -343,12 +343,12 @@ const Sider = () => {
   ];
   function handleLogOut() {
     setShowLogOut(false);
-    Cookies.remove('WebCimsTokenId');
-    store.setTokenIdWebCims('');
-    store.setUsername('');
+    Cookies.remove("WebCimsTokenId");
+    store.setTokenIdWebCims("");
+    store.setUsername("");
     auth.signOut();
     router.navigate({
-      to: '/login',
+      to: "/login",
     });
   }
   if (isNullOrUndefinedOrBlank(store.tokenIdWebCims)) {
@@ -387,8 +387,8 @@ const Sider = () => {
             className="min-h-screen"
             theme="dark"
             mode="inline"
-            defaultSelectedKeys={['mnuHome']}
-            defaultOpenKeys={['sub1']}
+            defaultSelectedKeys={["mnuHome"]}
+            defaultOpenKeys={["sub1"]}
             items={items}
             //   onClick={handleMenuClick}
           />
