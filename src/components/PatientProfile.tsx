@@ -19,16 +19,45 @@ import useAppStore from '../store';
 import dayjs from 'dayjs';
 import Webcam from 'react-webcam';
 import { AxiosError } from 'axios';
+
+const sexLabels: Record<string, string> = {
+  M: 'Male',
+  F: 'Female',
+};
+
+const civilStatusLabels: Record<string, string> = {
+  D: 'Divorced',
+  L: 'Legally Separated',
+  M: 'Married',
+  S: 'Single',
+  W: 'Widowed',
+};
+
+const positionAppliedForOptions = [
+  { value: 'Deck' },
+  { value: 'Catering' },
+  { value: 'Engine' },
+];
+
 type Props = {
   Id: number;
-  handleCloseModal: (PatientNo: string) => void;
+  handleCloseModal: (PatientNo: string, PatientId: number) => void;
+  embedded?: boolean;
+  submitText?: string;
+  onSubmit?: (values: TPatientInformation) => void | Promise<void>;
 };
 // const isDev = import.meta.env.DEV;
 // const prodApi = import.meta.env.VITE_PROD_API;
 // const devApi = import.meta.env.VITE_DEV_API;
 
 // const ApiUrl = isDev ? devApi : prodApi;
-const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
+const PatientProfile: FC<Props> = ({
+  Id,
+  handleCloseModal,
+  embedded = false,
+  submitText = 'Submit',
+  onSubmit,
+}) => {
   // const [patientId, setPatientId] = useState(Id);
   // const [picture, setPicture] = useState<string | null>(null);
   const q = useQueryClient();
@@ -110,6 +139,24 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
+
+  const CountryOfDestination = useQuery({
+    queryKey: ['CountryOfDestination'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: {
+          Code: 'COUNTRYOFDESTINATION',
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
   const Religion = useQuery({
     queryKey: ['Religion'],
     queryFn: async () => {
@@ -173,6 +220,16 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
   });
 
   const handleSubmitForm = async (v: TPatientInformation) => {
+    if (onSubmit) {
+      setIsSubmitting(true);
+      try {
+        await onSubmit(v);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     setIsSubmitting(true);
     const res = await PostData('SavePatientProfile', {
       ...v,
@@ -195,7 +252,7 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
         sessionStorage.setItem('PatientId', res.parameters.Id);
         // setPatientId(res.parameters.Id);
 
-        handleCloseModal(res.parameters.PatientNo);
+        handleCloseModal(res.parameters.PatientNo, Number(res.parameters.Id));
       } else {
         notification.error({
           message: res.message,
@@ -226,17 +283,21 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
           City: x.City,
           Barangay: x.Barangay,
           DateOfBirth: dayjs(x.DateOfBirth),
-          Sex: x.Sex,
+          Sex: x.Sex ? (sexLabels[x.Sex] ?? x.Sex) : x.Sex,
           MemberNo: x.MemberNo,
           ContactNos: x.ContactNos,
           Occupation: x.Occupation,
           Company: x.Company,
           PlaceOfBirth: x.PlaceOfBirth,
           Nationality: x.Nationality,
-          CivilStatus: x.CivilStatus,
+          CivilStatus: x.CivilStatus
+            ? (civilStatusLabels[x.CivilStatus] ?? x.CivilStatus)
+            : x.CivilStatus,
           Religion: x.Religion,
           PassportNo: x.PassportNo,
           SeamanBookNo: x.SeamanBookNo,
+          CountryOfDestination: x.CountryOfDestination,
+          PositionAppliedFor: x.PositionAppliedFor,
           HMO: x.HMO,
         });
       }
@@ -326,7 +387,11 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
               duration: 3,
             });
             formCompany.resetFields();
-            q.invalidateQueries({ queryKey: ['company'] });
+            if (type === 'C') {
+              q.invalidateQueries({ queryKey: ['company'] });
+            } else {
+              q.invalidateQueries({ queryKey: ['hmo'] });
+            }
             setIsSubmitting(false);
           } else {
             notification.error({
@@ -375,8 +440,8 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
     handleGetDetails();
   }, []);
   return (
-    <div className="cardBackGround">
-      <Divider>Patient Profile</Divider>
+    <div className={embedded ? '' : 'cardBackGround'}>
+      {!embedded && <Divider>Patient Profile</Divider>}
       <Form form={form} layout="vertical" onFinish={handleSubmitForm}>
         <div className="col-span-2">
           <div className="grid md:grid-cols-2 gap-4">
@@ -453,8 +518,8 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
               ]}
             >
               <Radio.Group>
-                <Radio value="M">Male</Radio>
-                <Radio value="F">Female</Radio>
+                <Radio value="Male">Male</Radio>
+                <Radio value="Female">Female</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item name="MemberNo" label="Member No.">
@@ -690,19 +755,27 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
                   ).includes(input.toLocaleLowerCase())
                 }
               >
-                <Select.Option key="D" value="D" title="Divorced">
+                <Select.Option
+                  key="Divorced"
+                  value="Divorced"
+                  title="Divorced"
+                >
                   Divorced
                 </Select.Option>
-                <Select.Option key="L" value="L" title="Legally Separated">
+                <Select.Option
+                  key="Legally Separated"
+                  value="Legally Separated"
+                  title="Legally Separated"
+                >
                   Legally Separated
                 </Select.Option>
-                <Select.Option key="M" value="M" title="Married">
+                <Select.Option key="Married" value="Married" title="Married">
                   Married
                 </Select.Option>
-                <Select.Option key="S" value="S" title="Single">
+                <Select.Option key="Single" value="Single" title="Single">
                   Single
                 </Select.Option>
-                <Select.Option key="W" value="W" title="Widowed">
+                <Select.Option key="Widowed" value="Widowed" title="Widowed">
                   Widowed
                 </Select.Option>
               </Select>
@@ -765,14 +838,55 @@ const PatientProfile: FC<Props> = ({ Id, handleCloseModal }) => {
                     >
                       {v.Value}
                     </AutoComplete.Option>
+                ))}
+              </AutoComplete>
+            </Form.Item>
+            <Form.Item
+              name="CountryOfDestination"
+              label="Country Of Destination"
+              className="col-span-3"
+            >
+              <AutoComplete
+                filterOption={(inputValue, option) =>
+                  option!
+                    .value!.toString()
+                    .toUpperCase()
+                    .indexOf(inputValue.toUpperCase()) !== -1
+                }
+              >
+                {CountryOfDestination.data &&
+                  CountryOfDestination.data!.map((v: TSettings) => (
+                    <AutoComplete.Option
+                      key={v.Id}
+                      value={v.Value}
+                      title={v.Value}
+                    >
+                      {v.Value}
+                    </AutoComplete.Option>
                   ))}
               </AutoComplete>
+            </Form.Item>
+            <Form.Item
+              name="PositionAppliedFor"
+              label="Position Applied For"
+              className="col-span-3"
+              normalize={(v) => v.toUpperCase()}
+            >
+              <AutoComplete
+                options={positionAppliedForOptions}
+                filterOption={(inputValue, option) =>
+                  option!
+                    .value!.toString()
+                    .toUpperCase()
+                    .indexOf(inputValue.toUpperCase()) !== -1
+                }
+              />
             </Form.Item>
           </div>
 
           <div className="flex justify-end">
             <Button type="primary" htmlType="submit" loading={isSubmitting}>
-              Submit
+              {submitText}
             </Button>
           </div>
         </div>

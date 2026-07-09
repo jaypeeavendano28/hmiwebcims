@@ -253,6 +253,8 @@ export type TPatientInformation = {
   Religion?: string;
   PassportNo?: string;
   SeamanBookNo?: string;
+  CountryOfDestination?: string;
+  PositionAppliedFor?: string;
   HMO?: number;
 };
 
@@ -264,6 +266,7 @@ export type TAppointments = {
   fk_HmoCompany_Id?: number;
   Date?: Date;
   DateStr?: string;
+  DateOnly?: string;
   CivilStatus?: string;
   ReferredBy?: string;
   AgeYears?: string;
@@ -311,6 +314,7 @@ export type TAppointments = {
   PositionAppliedFor?: string;
   Employer?: string;
   cantCall?: boolean;
+  DateAssignedQueueNo?: string
 };
 
 export type TAppointmentType = {
@@ -433,6 +437,8 @@ export type TCharges = {
   Diagnosis?: string;
   Vat?: number;
   PhicAmount?: number;
+  Editable?: boolean;
+  IsPackage?: string;
 };
 
 export type TQCounters = {
@@ -563,6 +569,7 @@ export type TMer = {
   Temp?: string;
   Height?: string;
   Lmp?: string;
+  LmpRemarks?: string;
   Rr?: string;
   Weight?: string;
   VaLeft?: string;
@@ -628,6 +635,14 @@ export type TMer = {
   Appointment?: string;
   AppointmentRemarks?: string;
   DisplaySignatureIfAny?: string;
+  ChestXrayResultStatus?: string;
+  UrinalysisResultStatus?: string;
+  ECGResultStatus?: string;
+  FecalysisResultStatus?: string;
+  DrugTestResultStatus?: string;
+  TreadmillResultStatus?: string;
+  TwodEchoResultStatus?: string;
+  UltrasoundResultStatus?: string;
 };
 
 export type TMerOthers = {
@@ -1210,8 +1225,11 @@ export type TMedicalExamLandBased = {
   VACorrectedNearVisonOU?: string;
   NearVision?: string;
   Ishihara?: string;
+  IshiharaRem?: string;
   EarRight?: string;
+  EarRightInadequateRemarks?: string;
   EarLeft?: string;
+  EarLeftInadequateRemarks?: string;
   ClartityOfSpeech?: string;
   Skin?: string;
   SkinRem?: string;

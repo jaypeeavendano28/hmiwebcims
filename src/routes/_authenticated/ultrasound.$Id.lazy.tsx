@@ -565,19 +565,19 @@ const UltrasoundResult = () => {
                 },
               ]}
             >
-              <DatePicker showTime format="MM/DD/YYYY hh:mm A" />
+              <DatePicker format="MM/DD/YYYY" />
             </Form.Item>
             <Form.Item
-              label="Date X-rayed"
+              label="Date Ultrasound"
               name="DateXrayed"
               rules={[
                 {
                   required: true,
-                  message: 'Date x-rayed is required!',
+                  message: 'Date ultrasound is required!',
                 },
               ]}
             >
-              <DatePicker showTime format="MM/DD/YYYY hh:mm A" />
+              <DatePicker format="MM/DD/YYYY" />
             </Form.Item>
             <Form.Item
               label="Date Read"
@@ -589,7 +589,7 @@ const UltrasoundResult = () => {
                 },
               ]}
             >
-              <DatePicker showTime format="MM/DD/YYYY hh:mm A" />
+              <DatePicker format="MM/DD/YYYY" />
             </Form.Item>
 
             {/* <Form.Item
@@ -611,7 +611,6 @@ const UltrasoundResult = () => {
               <Select
                 showSearch
                 allowClear
-                onChange={handleGetTemplate}
                 filterOption={(inputValue, option: any) =>
                   option.title
                     .toUpperCase()
@@ -695,7 +694,7 @@ const UltrasoundResult = () => {
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item label="Radiologist 3" name="Rad3">
+            {/* <Form.Item label="Radiologist 3" name="Rad3">
               <Select
                 showSearch
                 allowClear
@@ -711,7 +710,7 @@ const UltrasoundResult = () => {
                   </Select.Option>
                 ))}
               </Select>
-            </Form.Item>
+            </Form.Item> */}
 
             <Form.Item label="Template" name="Template">
               <Select onChange={handleChangeTemplate}>
@@ -724,13 +723,13 @@ const UltrasoundResult = () => {
             </Form.Item>
 
             <Form.Item label="Findings" name="Findings">
-              <Input.TextArea rows={4} />
+              <Input.TextArea rows={20} />
             </Form.Item>
             <Form.Item label="Impression" name="Impression">
-              <Input.TextArea rows={4} />
+              <Input.TextArea rows={20} />
             </Form.Item>
             <Form.Item label="Note" name="Note">
-              <Input.TextArea rows={4} />
+              <Input.TextArea rows={10} />
             </Form.Item>
             {isFinalized && (
               <>

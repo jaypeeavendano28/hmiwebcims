@@ -277,6 +277,65 @@ export default function PharmacySales() {
       </Space>
     );
   };
+  const handleDeleteSale = (data: any) => {
+    let deleteReason = '';
+
+    modal.confirm({
+      title: `Delete pharmacy sale ${data.Id}?`,
+      content: (
+        <Input.TextArea
+          placeholder="Enter delete reason"
+          autoSize={{ minRows: 2, maxRows: 4 }}
+          onChange={(e) => {
+            deleteReason = e.target.value;
+          }}
+        />
+      ),
+      okText: 'Delete',
+      okButtonProps: { danger: true },
+      centered: true,
+      onOk: async () => {
+        if (isNullOrUndefinedOrBlank(deleteReason.trim())) {
+          notification.error({
+            message: 'Please enter a delete reason!',
+            placement: 'topRight',
+            duration: 3,
+          });
+          return Promise.reject();
+        }
+
+        try {
+          const res = await PostData('DeletePharmacySales', {
+            PharmacySalesId: data.Id,
+            DeleteReason: deleteReason.trim(),
+          });
+
+          if (res?.status !== 1) {
+            notification.error({
+              message: res?.message ?? 'Unable to delete pharmacy sale.',
+              placement: 'topRight',
+              duration: 3,
+            });
+            return Promise.reject();
+          }
+
+          notification.success({
+            message: 'Pharmacy sale successfully deleted!',
+            placement: 'topRight',
+            duration: 3,
+          });
+          await q.invalidateQueries({ queryKey: ['sales'] });
+        } catch (error: any) {
+          notification.error({
+            message: error.message,
+            placement: 'topRight',
+            duration: 3,
+          });
+          return Promise.reject();
+        }
+      },
+    });
+  };
   const actionBodyTemplate2 = (data: any) => {
     return (
       <Space>
@@ -291,6 +350,16 @@ export default function PharmacySales() {
             }}
           >
             <BsCheck2 size={24} color="green" className="cursor-pointer" />
+          </Button>
+        </Tooltip>
+        <Tooltip title="Delete">
+          <Button
+            type="text"
+            danger
+            className="!px-2"
+            onClick={() => handleDeleteSale(data)}
+          >
+            <BsTrash size={20} />
           </Button>
         </Tooltip>
       </Space>

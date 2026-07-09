@@ -3,7 +3,6 @@ import { useAuth } from '../../hooks/userAuth';
 import { useEffect, useState } from 'react';
 import {
   Button,
-  DatePicker,
   Divider,
   Form,
   Input,
@@ -34,6 +33,56 @@ export const Route = createFileRoute('/_authenticated/appointments')({
   component: () => <Appointments />,
 });
 
+type DateRangePreset =
+  | 'today'
+  | '1-week'
+  | '2-weeks'
+  | '1-month'
+  | '3-months';
+
+const DEFAULT_DATE_RANGE: DateRangePreset = 'today';
+
+const dateRangeOptions: { value: DateRangePreset; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: '1-week', label: 'Last 1 Week' },
+  { value: '2-weeks', label: 'Last 2 Weeks' },
+  { value: '1-month', label: 'Last 1 Month' },
+  { value: '3-months', label: 'Last 3 Months' },
+];
+
+const getDateRange = (preset?: DateRangePreset) => {
+  const today = dayjs();
+
+  switch (preset) {
+    case '1-week':
+      return {
+        DateFrom: today.subtract(1, 'week').format('YYYYMMDD'),
+        DateTo: today.format('YYYYMMDD'),
+      };
+    case '2-weeks':
+      return {
+        DateFrom: today.subtract(2, 'week').format('YYYYMMDD'),
+        DateTo: today.format('YYYYMMDD'),
+      };
+    case '1-month':
+      return {
+        DateFrom: today.subtract(1, 'month').format('YYYYMMDD'),
+        DateTo: today.format('YYYYMMDD'),
+      };
+    case '3-months':
+      return {
+        DateFrom: today.subtract(3, 'month').format('YYYYMMDD'),
+        DateTo: today.format('YYYYMMDD'),
+      };
+    case 'today':
+    default:
+      return {
+        DateFrom: today.format('YYYYMMDD'),
+        DateTo: today.format('YYYYMMDD'),
+      };
+  }
+};
+
 const Appointments = () => {
   const [appointments, setAppointments] = useState<
     TAppointments[] | undefined
@@ -49,6 +98,9 @@ const Appointments = () => {
   const auth = useAuth();
   const router = useRouter();
   const TypeOfAppointment = form.getFieldValue('TypeOfAppointment');
+  const patientNameFilter = Form.useWatch('PatientName', form);
+  const hasPatientNameFilter =
+    !isNullOrUndefinedOrBlank(patientNameFilter);
 
   const handleWithAccess = async () => {
     const res = await auth.isWithAccess(15);
@@ -276,11 +328,15 @@ const Appointments = () => {
     handleSearch();
   };
 
+  const handleDateRangeChange = (value: DateRangePreset) => {
+    form.setFieldValue('DateRange', value);
+    handleSearch();
+  };
+
   useEffect(() => {
     handleWithAccess();
     form.setFieldsValue({
-      DateFrom: dayjs(),
-      DateTo: dayjs(),
+      DateRange: DEFAULT_DATE_RANGE,
       TypeOfAppointment: Cookies.get('TypeOfAppointment'),
     });
     q.invalidateQueries({
@@ -290,22 +346,20 @@ const Appointments = () => {
   const handleSearch = async () => {
     try {
       const TypeOfAppointment = form.getFieldValue('TypeOfAppointment');
+      const PatientName = form.getFieldValue('PatientName');
+      const hasPatientName =
+        !isNullOrUndefinedOrBlank(PatientName);
+      const dateRange = getDateRange(form.getFieldValue('DateRange'));
 
       const res = await PostData('GetRecords', {
         sp: 'udp_GetAppointments',
         parameters: {
           BranchCode: store.branchCode,
-          DateFrom: isNullOrUndefinedOrBlank(form.getFieldValue('DateFrom'))
-            ? dayjs().format('YYYYMMDD')
-            : dayjs(form.getFieldValue('DateFrom')).format('YYYYMMDD'),
-          DateTo: isNullOrUndefinedOrBlank(form.getFieldValue('DateTo'))
-            ? dayjs().format('YYYYMMDD')
-            : dayjs(form.getFieldValue('DateTo')).format('YYYYMMDD'),
-          PatientName: isNullOrUndefinedOrBlank(
-            form.getFieldValue('PatientName'),
-          )
+          DateFrom: hasPatientName ? null : dateRange.DateFrom,
+          DateTo: hasPatientName ? null : dateRange.DateTo,
+          PatientName: isNullOrUndefinedOrBlank(PatientName)
             ? ''
-            : form.getFieldValue('PatientName'),
+            : PatientName,
           TypeOfAppointment,
         },
       });
@@ -342,20 +396,15 @@ const Appointments = () => {
               <Select.Option value="H">Hemodialysis/ASC</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="DateFrom" label="Date From">
-            <DatePicker
-              format="MM/DD/YYYY"
-              onChange={() => {
-                handleSearch();
-              }}
-            />
-          </Form.Item>
-          <Form.Item name="DateTo" label="Date To">
-            <DatePicker
-              format="MM/DD/YYYY"
-              onChange={() => {
-                handleSearch();
-              }}
+          <Form.Item
+            name="DateRange"
+            label="Date Range"
+            className="col-span-2"
+          >
+            <Select
+              disabled={hasPatientNameFilter}
+              options={dateRangeOptions}
+              onChange={handleDateRangeChange}
             />
           </Form.Item>
           <Form.Item
@@ -364,7 +413,15 @@ const Appointments = () => {
             className="col-span-2"
           >
             <Input
-              onChange={() => {
+              onChange={(event) => {
+                const hasValue = !isNullOrUndefinedOrBlank(
+                  event.target.value,
+                );
+
+                form.setFieldValue(
+                  'DateRange',
+                  hasValue ? undefined : DEFAULT_DATE_RANGE,
+                );
                 q.invalidateQueries({
                   queryKey: ['appointments'],
                 });
@@ -377,12 +434,7 @@ const Appointments = () => {
                 <Button type="primary" htmlType="submit">
                   Search
                 </Button>
-                <Link
-                  to="/appointmentdetails/$Id"
-                  params={{
-                    Id: '0',
-                  }}
-                >
+                <Link to="/appointmentdetails/new">
                   <Button type="primary">New</Button>
                 </Link>
               </Space>
@@ -421,7 +473,7 @@ const Appointments = () => {
             // style={{ minWidth: "12rem" }}
           ></Column>
           <Column
-            field="AppointmentType"
+            field="AppointmentTypeDesc"
             header="Appointment Type"
             filter
             // style={{ minWidth: "12rem" }}
@@ -438,12 +490,12 @@ const Appointments = () => {
             // style={{ minWidth: "12rem" }}
             filter
           ></Column>
-          <Column
+          {/* <Column
             field="QueueNo"
             header="Queue No."
             // style={{ minWidth: "12rem" }}
             filter
-          ></Column>
+          ></Column> */}
         </DataTable>
       </div>
       <Modal

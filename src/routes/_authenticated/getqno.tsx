@@ -83,7 +83,7 @@ const GetQNo = () => {
 
       let cleaned = false;
 
-      const cleanup = () => {
+      const cleanupSuccessfulPrintFrame = () => {
         if (cleaned) return;
         cleaned = true;
 
@@ -105,22 +105,20 @@ const GetQNo = () => {
           const win = iframe.contentWindow;
 
           if (!win) {
-            cleanup();
+            setIsProcessing(false);
             return;
           }
 
-          win.addEventListener('afterprint', cleanup, {
+          win.addEventListener('afterprint', cleanupSuccessfulPrintFrame, {
             once: true,
           });
 
           win.focus();
           win.print();
-
-          // Fallback for browsers that don't fire afterprint
-          setTimeout(cleanup, 10000);
+          setIsProcessing(false);
         } catch (err) {
           console.error(err);
-          cleanup();
+          setIsProcessing(false);
         }
       };
 

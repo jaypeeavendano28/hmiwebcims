@@ -162,10 +162,7 @@ const Reception = () => {
 
           localStorage.setItem('code', data?.Code!);
           navigate({
-            to: '/appointmentdetails/$Id',
-            params: {
-              Id: '0',
-            },
+            to: '/appointmentdetails/new',
           });
         }
       } else {
@@ -262,14 +259,18 @@ const Reception = () => {
                 'selectedInReception',
                 JSON.stringify(data),
               );
-              navigate({
-                to: '/appointmentdetails/$Id',
-                params: {
-                  Id: isNullOrUndefinedOrBlank(data.AppointmentId)
-                    ? '0'
-                    : data.AppointmentId!.toString(),
-                },
-              });
+              if (isNullOrUndefinedOrBlank(data.AppointmentId)) {
+                navigate({
+                  to: '/appointmentdetails/new',
+                });
+              } else {
+                navigate({
+                  to: '/appointmentdetails/$Id',
+                  params: {
+                    Id: data.AppointmentId!.toString(),
+                  },
+                });
+              }
             }}
             className="text-center"
             loading={IsSubmitting}

@@ -21,6 +21,68 @@ const GetQNoHemo = () => {
   const [IsProcessing, setIsProcessing] = useState(false);
   const store = useAppStore();
 
+  const printBlob = (blob: Blob) => {
+    return new Promise<void>((resolve) => {
+      const pdfUrl = URL.createObjectURL(blob);
+
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+
+      document.body.appendChild(iframe);
+
+      let cleaned = false;
+      let finished = false;
+
+      const finishPrintAttempt = () => {
+        if (finished) return;
+        finished = true;
+        resolve();
+      };
+
+      const cleanupSuccessfulPrintFrame = () => {
+        if (cleaned) return;
+        cleaned = true;
+
+        URL.revokeObjectURL(pdfUrl);
+
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+
+        finishPrintAttempt();
+      };
+
+      iframe.onload = () => {
+        try {
+          const win = iframe.contentWindow;
+
+          if (!win) {
+            finishPrintAttempt();
+            return;
+          }
+
+          win.addEventListener('afterprint', cleanupSuccessfulPrintFrame, {
+            once: true,
+          });
+
+          win.focus();
+          win.print();
+          finishPrintAttempt();
+        } catch (err) {
+          console.error(err);
+          finishPrintAttempt();
+        }
+      };
+
+      iframe.src = pdfUrl;
+    });
+  };
+
   const handlePrintQ = async (code: string) => {
     const url = apiUrl + '/api/GenerateReport';
 
@@ -44,49 +106,8 @@ const GetQNoHemo = () => {
         type: 'application/pdf',
       });
 
-      const pdfUrl = URL.createObjectURL(blob);
-
-      const printWindow = window.open(pdfUrl, '_blank', 'width=800,height=600');
-
-      if (printWindow) {
-        const timer = setInterval(() => {
-          try {
-            if (printWindow.document.readyState === 'complete') {
-              clearInterval(timer);
-
-              printWindow.focus();
-
-              setTimeout(() => {
-                printWindow.print();
-
-                setTimeout(() => {
-                  printWindow.close();
-                  URL.revokeObjectURL(pdfUrl);
-                  setIsProcessing(false);
-                }, 3000);
-              }, 1000);
-            }
-          } catch {
-            // PDF viewer may block access; fallback
-            clearInterval(timer);
-
-            setTimeout(() => {
-              printWindow.print();
-
-              setTimeout(() => {
-                printWindow.close();
-                URL.revokeObjectURL(pdfUrl);
-                setIsProcessing(false);
-              }, 3000);
-            }, 2000);
-          }
-        }, 500);
-      } else {
-        setIsProcessing(false);
-      }
+      await printBlob(blob);
     } catch (error: any) {
-      setIsProcessing(false);
-
       let errorString = error.response.data;
       errorString = JSON.parse(await error.response.data.text());
 
@@ -94,6 +115,8 @@ const GetQNoHemo = () => {
         Status: 0,
         Message: errorString.Message,
       };
+    } finally {
+      setIsProcessing(false);
     }
   };
   const handleWithAccess = async () => {

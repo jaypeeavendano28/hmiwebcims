@@ -15,6 +15,8 @@ import { FaMoneyBill } from 'react-icons/fa6';
 import { GiMedicines } from 'react-icons/gi';
 import { TbReportMoney } from 'react-icons/tb';
 import { FiArchive } from 'react-icons/fi';
+import { GrTransaction } from 'react-icons/gr';
+
 const Sider = () => {
   const store = useAppStore();
   const auth = useAuth();
@@ -197,6 +199,11 @@ const Sider = () => {
       label: <Link to="/reports">Reports</Link>,
       key: 'reports',
       icon: <MdFolderShared />,
+    },
+    {
+      label: <Link to="/transaction-summary">Transaction Summary</Link>,
+      key: 'transaction-summary',
+      icon: <GrTransaction />,
     },
     store.withQueuing
       ? {

@@ -14,7 +14,7 @@ import {
 import { PostData } from '../helpers';
 import { TDoctors, TMedicalExamLandBased } from '../types';
 import { FaPrint, FaRegSave } from 'react-icons/fa';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import useAppStore from '../store';
 import dayjs from 'dayjs';
@@ -64,7 +64,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
 
   const queryClient = useQueryClient();
 
-  useQuery({
+  const examData = useQuery({
     queryKey: ['medicalExaminationLandBased', AppointmentId],
     queryFn: async () => {
       const res = await PostData('GetRecords', {
@@ -73,6 +73,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
       });
       if (res) {
         const x = res.parameters.lst[0];
+        console.log();
         if (x) {
           setHasSavedData(true);
         }
@@ -86,11 +87,67 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
             ? dayjs(x.DateOfExamination)
             : undefined,
         });
+        return x;
       }
     },
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
+
+  const ishiharaWatch = Form.useWatch('Ishihara', form);
+  const earRightWatch = Form.useWatch('EarRight', form);
+  const earLeftWatch = Form.useWatch('EarLeft', form);
+
+  useEffect(() => {
+    if (!examData.isFetched) return;
+
+    if (ishiharaWatch === 'D') {
+      if (
+        examData.data?.IshiharaRem == null ||
+        examData.data?.IshiharaRem == ''
+      ) {
+        form.setFieldValue('IshiharaRem', 'CLEARED');
+      } else {
+        form.setFieldValue('IshiharaRem', examData.data.IshiharaRem);
+      }
+      return;
+    }
+    form.setFieldValue('IshiharaRem', undefined);
+  }, [examData.data, examData.isFetched, form, ishiharaWatch]);
+
+  useEffect(() => {
+    if (!examData.isFetched) return;
+
+    if (earRightWatch === 'I') {
+      if (
+        examData.data?.EarRightRemarks == null ||
+        examData.data?.EarRightRemarks == ''
+      ) {
+        form.setFieldValue('EarRightRemarks', 'CLEARED');
+      } else {
+        form.setFieldValue('EarRightRemarks', examData.data.EarRightRemarks);
+      }
+      return;
+    }
+    form.setFieldValue('EarRightRemarks', undefined);
+  }, [earRightWatch, examData.data, examData.isFetched, form]);
+
+  useEffect(() => {
+    if (!examData.isFetched) return;
+
+    if (earLeftWatch === 'I') {
+      if (
+        examData.data?.EarLeftRemarks == null ||
+        examData.data?.EarLeftRemarks == ''
+      ) {
+        form.setFieldValue('EarLeftRemarks', 'CLEARED');
+      } else {
+        form.setFieldValue('EarLeftRemarks', examData.data.EarLeftRemarks);
+      }
+      return;
+    }
+    form.setFieldValue('EarLeftRemarks', undefined);
+  }, [earLeftWatch, examData.data, examData.isFetched, form]);
 
   async function handleSubmit(data: TMedicalExamLandBased) {
     try {
@@ -239,8 +296,11 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
           AllergicToAnyMedication: 'N',
           NonPrescription: 'N',
           Ishihara: 'A',
+          IshiharaRem: undefined,
           EarRight: 'A',
+          EarRightRemarks: undefined,
           EarLeft: 'A',
+          EarLeftRemarks: undefined,
           ClartityOfSpeech: 'A',
           Skin: 'Y',
           HeadNeckScalp: 'Y',
@@ -255,9 +315,9 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
           Heart: 'Y',
           Abdomen: 'Y',
           Back: 'Y',
-          Anus: 'N',
-          Genito: 'N',
-          Inguinals: 'N',
+          Anus: 'Y',
+          Genito: 'Y',
+          Inguinals: 'Y',
           Extremities: 'Y',
           Reflexes: 'Y',
           Dental: 'Y',
@@ -519,6 +579,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
                 <Radio.Group>
                   <Radio value="Y">Yes</Radio>
                   <Radio value="N">No</Radio>
+                  <Radio value="F">N/A</Radio>
                 </Radio.Group>
               </Form.Item>
               <Form.Item name="GyneRem" label="Remarks">
@@ -532,6 +593,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
                 <Radio.Group>
                   <Radio value="Y">Yes</Radio>
                   <Radio value="N">No</Radio>
+                  <Radio value="F">N/A</Radio>
                 </Radio.Group>
               </Form.Item>
               <Form.Item name="LastMenstrualRem" label="Remarks">
@@ -785,62 +847,118 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
           </div>
           <div className="grid grid-cols-4 gap-4">
             <Form.Item
-              name="VAUncorrectedFarVisionOU"
-              label="VA Uncorrected OU"
+              name="VAUncorrectedFarVisIonOU"
+              label="FAR VISION UNCORRECTED OD"
             >
               <Input />
             </Form.Item>
-            <Form.Item name="VACorrectedFarVisionOU" label="VA Corrected OU">
+            <Form.Item
+              name="VACorrectedFarVisionOU"
+              label="FAR VISION CORRECTED OS"
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="VAUncorrectedFarVisionOS"
+              label="FAR VISION UNCORRECTED OS"
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="VACorrectedFarVisionOD"
+              label="FAR VISION CORRECTED OD"
+            >
               <Input />
             </Form.Item>
             {/* <Form.Item name="NearVision" label="Near Vision">
               <Input />
             </Form.Item> */}
-
-            <Form.Item
-              name="NearVisionCorrectedODJ"
-              label="Near Vision Corrected ODJ"
-            >
-              <Input />
-            </Form.Item>
             <Form.Item
               name="NearVisionUncorrectedODJ"
-              label="Near Vision Uncorrected ODJ"
+              label="NEAR VISION UNCORRECTED OD"
             >
               <Input />
             </Form.Item>
             <Form.Item
+              name="NearVisionCorrectedODJ"
+              label="NEAR VISION CORRECTED OS"
+            >
+              <Input />
+            </Form.Item>
+
+            <Form.Item
               name="NearVisionCorrectedOSJ"
-              label="Near Vision Corrected OSJ"
+              label="NEAR VISION UNCORRECTED OS
+"
             >
               <Input />
             </Form.Item>
             <Form.Item
               name="NearVisionUncorrectedOSJ"
-              label="Near Vision Uncorrected OSJ"
+              label="NEAR VISION CORRECTED OD
+"
             >
               <Input />
             </Form.Item>
-            <Form.Item name="Ishihara" label="Ishihara Color Vision">
-              <Radio.Group>
-                <Radio value="A">Adequuate</Radio>
-                <Radio value="D">Defective</Radio>
-              </Radio.Group>
-            </Form.Item>
+            <div>
+              <Form.Item name="Ishihara" label="Ishihara Color Vision">
+                <Radio.Group>
+                  <Radio value="A">Adequuate</Radio>
+                  <Radio value="D">Defective</Radio>
+                </Radio.Group>
+              </Form.Item>
+              <Form.Item
+                name="IshiharaRem"
+                label="Ishihara Remarks"
+                rules={[
+                  {
+                    required: ishiharaWatch === 'D',
+                  },
+                ]}
+              >
+                <Input disabled={ishiharaWatch !== 'D'} />
+              </Form.Item>
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-4">
-            <Form.Item name="EarRight" label="Ear Right">
-              <Radio.Group>
-                <Radio value="A">Adequuate</Radio>
-                <Radio value="I">Inadequate</Radio>
-              </Radio.Group>
-            </Form.Item>
-            <Form.Item name="EarLeft" label="Ear Left">
-              <Radio.Group>
-                <Radio value="A">Adequuate</Radio>
-                <Radio value="I">Inadequate</Radio>
-              </Radio.Group>
-            </Form.Item>
+            <div>
+              <Form.Item name="EarRight" label="Ear Right">
+                <Radio.Group>
+                  <Radio value="A">Adequuate</Radio>
+                  <Radio value="I">Inadequate</Radio>
+                </Radio.Group>
+              </Form.Item>
+              <Form.Item
+                name="EarRightRemarks"
+                label="Ear Right Inadequate Remarks"
+                rules={[
+                  {
+                    required: earRightWatch === 'I',
+                  },
+                ]}
+              >
+                <Input disabled={earRightWatch !== 'I'} />
+              </Form.Item>
+            </div>
+            <div>
+              <Form.Item name="EarLeft" label="Ear Left">
+                <Radio.Group>
+                  <Radio value="A">Adequuate</Radio>
+                  <Radio value="I">Inadequate</Radio>
+                </Radio.Group>
+              </Form.Item>
+              <Form.Item
+                name="EarLeftRemarks"
+                label="Ear Left Inadequate Remarks"
+                rules={[
+                  {
+                    required: earLeftWatch === 'I',
+                  },
+                ]}
+              >
+                <Input disabled={earLeftWatch !== 'I'} />
+              </Form.Item>
+            </div>
             <Form.Item name="ClartityOfSpeech" label="Clarity of speech">
               <Radio.Group>
                 <Radio value="A">Adequuate</Radio>
@@ -1056,6 +1174,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
               <Radio.Group>
                 <Radio value="N">Normal</Radio>
                 <Radio value="W">With Findings</Radio>
+                <Radio value="F">N/A</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item name="EcgRem" label="Result">
@@ -1087,6 +1206,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
               <Radio.Group>
                 <Radio value="N">Normal</Radio>
                 <Radio value="W">With Findings</Radio>
+                <Radio value="F">N/A</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item name="StoolRem" label="Result">
@@ -1096,6 +1216,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
               <Radio.Group>
                 <Radio value="N">Normal</Radio>
                 <Radio value="W">With Findings</Radio>
+                <Radio value="F">N/A</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item name="HepaRem" label="Result">
@@ -1107,6 +1228,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
               <Radio.Group>
                 <Radio value="N">Normal</Radio>
                 <Radio value="W">With Findings</Radio>
+                <Radio value="F">N/A</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item name="HivRem" label="Result">
@@ -1244,7 +1366,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
             <Form.Item
               label="Examining/Authorized Physician"
               name="Doctor"
-              className="col-span-2"
+              className="col-span-1"
               rules={[
                 {
                   required: true,

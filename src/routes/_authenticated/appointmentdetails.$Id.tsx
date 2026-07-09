@@ -10,7 +10,6 @@ import {
   Avatar,
   Button,
   DatePicker,
-  Divider,
   Dropdown,
   Form,
   Input,
@@ -39,7 +38,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import useAppStore from '../../store';
 import ListOfPatients from '../../components/ListOfPatients';
-import { BiNote, BiSearch } from 'react-icons/bi';
 import Loading from '../../components/loading';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -52,14 +50,53 @@ import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
 import ResultStatus from '../../components/ResultStatus';
 export const Route = createFileRoute('/_authenticated/appointmentdetails/$Id')({
-  component: () => <AppointmentDetails />,
+  component: AppointmentDetailsRoute,
 });
+
+function AppointmentDetailsRoute() {
+  const { Id } = Route.useParams();
+
+  return <AppointmentDetails initialAppointmentId={Id} />;
+}
+
+type AppointmentDetailsProps = {
+  initialAppointmentId: string;
+  initialPatientId?: number;
+  createOnly?: boolean;
+};
+
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API;
 const devApi = import.meta.env.VITE_DEV_API;
 import { isNullOrUndefinedOrBlank } from './../../helpers/index';
 
 const ApiUrl = isDev ? devApi : prodApi;
+
+type SaveAppointmentArgs = {
+  values: TAppointments;
+  appointmentId: string | number;
+  patientId: number;
+  branchCode?: string;
+  qNoId?: number;
+};
+
+export const saveAppointment = ({
+  values,
+  appointmentId,
+  patientId,
+  branchCode,
+  qNoId = 0,
+}: SaveAppointmentArgs) =>
+  PostData('SaveAppointment', {
+    ...values,
+    Id: appointmentId,
+    Date: dayjs(values.Date).format('YYYY-MM-DD'),
+    BranchCode: branchCode,
+    fk_PatientInformation_Id: patientId,
+    fk_QNo_Id: qNoId,
+    HmoCompany: values.HmoCompany ?? 0,
+    PositionAppliedFor: values.PositionAppliedFor,
+  });
 
 const positionOnBoardOpt = [
   {
@@ -74,16 +111,15 @@ const positionOnBoardOpt = [
     value: 'engine',
     label: 'Engine',
   },
-  {
-    value: 'other',
-    label: 'Other',
-  },
 ];
 
-const positionOnBord = ['engine', 'deck', 'catering'];
-
-const AppointmentDetails = () => {
+export const AppointmentDetails = ({
+  initialAppointmentId,
+  initialPatientId = 0,
+  createOnly = false,
+}: AppointmentDetailsProps) => {
   const [showPackageDetails, setShowPackageDetails] = useState(false);
+  const [packageId, setPackageId] = useState<number | undefined>(undefined);
   const [isMobileTph, setIsMobileTph] = useState(false);
   const [title, setTitle] = useState('');
   const [appType, setAppType] = useState('');
@@ -108,16 +144,34 @@ const AppointmentDetails = () => {
   const [form] = Form.useForm();
   const [form2] = Form.useForm();
   const [showPatients, setShowPatient] = useState(false);
-  const [Id, setId] = useState(Route.useParams().Id);
-  const [PatientId, setPatientId] = useState<number>(0);
+  const [Id, setId] = useState(initialAppointmentId);
+  const [PatientId, setPatientId] = useState<number>(initialPatientId);
   const [selectedRecord, setSelectedRecord] = useState<TCharges | undefined>();
-  const [showDelete, setShowDelete] = useState(false);
+  // const [showDelete, setShowDelete] = useState(false);
   const [charges, setCharges] = useState<TCharges[] | undefined>([]);
-  const [chargesAll, setChargesAll] = useState<TCharges[] | undefined>([]);
+  // const [chargesAll, setChargesAll] = useState<TCharges[] | undefined>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [gender, setGender] = useState('');
+  const [showStickyAppointment, setShowStickyAppointment] = useState(false);
+  const [showFullAppointmentForm, setShowFullAppointmentForm] = useState(false);
+  const appointmentInformationRef = useRef<HTMLElement | null>(null);
 
-  console.log(Id);
+  // clear old Queueno in appointments if the DateAssignedQueueNo is not equal today
+  useEffect(() => {
+    const clearOldQueueNo = async () => {
+      if (Id !== '0') {
+        await PostData('GetRecords', {
+          sp: 'udp_ClearOldQueueNo',
+          parameters: {
+            AppointmentId: Id,
+          },
+        });
+      }
+    };
+
+    void clearOldQueueNo();
+  }, [Id]);
+
   useQuery({
     queryKey: ['patientDetails'],
     queryFn: async () => {
@@ -141,21 +195,20 @@ const AppointmentDetails = () => {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
-  const CountryOfDestination = useQuery({
-    queryKey: ['CountryOfDestination'],
+
+  const packageDetails = useQuery({
+    queryKey: ['packageDetails', packageId],
     queryFn: async () => {
       const res = await PostData('GetRecords', {
-        sp: 'udp_GetSettings',
+        sp: 'udp_GetPackageDetails',
         parameters: {
-          Code: 'COUNTRYOFDESTINATION',
+          Id: packageId,
         },
       });
-      if (res) {
-        return res.parameters.lst;
-      }
+      const data = res.parameters.lst;
+      return data;
     },
-    refetchOnWindowFocus: false,
-    staleTime: 0,
+    enabled: !!packageId,
   });
 
   const checklistDeptOpt = useQuery({
@@ -269,40 +322,113 @@ const AppointmentDetails = () => {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
+
+  const CountryOfDestination = useQuery({
+    queryKey: ['CountryOfDestination'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: {
+          Code: 'COUNTRYOFDESTINATION',
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
   const printBlob = (blob: Blob) => {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       const url = URL.createObjectURL(blob);
 
       const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = url;
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.setAttribute('aria-hidden', 'true');
 
       document.body.appendChild(iframe);
 
-      iframe.onload = () => {
-        let cleaned = false;
+      let finished = false;
+      let sawPrintDialogBlur = false;
+      let printWindowForCleanup: Window | null = null;
 
-        const cleanup = () => {
-          if (cleaned) return;
-          cleaned = true;
+      const cleanup = () => {
+        window.removeEventListener('blur', handleParentBlur, true);
+        window.removeEventListener('focus', handleParentFocus, true);
+        printWindowForCleanup?.removeEventListener('afterprint', finish);
 
+        URL.revokeObjectURL(url);
+
+        if (document.body.contains(iframe)) {
           document.body.removeChild(iframe);
-          URL.revokeObjectURL(url);
-          resolve();
-        };
-
-        iframe.contentWindow?.addEventListener('afterprint', cleanup);
-
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-
-        setTimeout(cleanup, 10000); // fallback
+        }
       };
+
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve();
+      };
+
+      const fail = (message: string, error?: unknown) => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        console.error(error ?? message);
+        reject(error instanceof Error ? error : new Error(message));
+      };
+
+      function handleParentBlur() {
+        sawPrintDialogBlur = true;
+      }
+
+      function handleParentFocus() {
+        if (!sawPrintDialogBlur) return;
+
+        finish();
+      }
+
+      iframe.onerror = () => {
+        fail('Unable to load checklist PDF for printing.');
+      };
+
+      iframe.onload = () => {
+        try {
+          const printWindow = iframe.contentWindow;
+
+          if (!printWindow) {
+            fail('Unable to open checklist print frame.');
+            return;
+          }
+
+          printWindow.addEventListener('afterprint', finish, {
+            once: true,
+          });
+          printWindowForCleanup = printWindow;
+          window.addEventListener('blur', handleParentBlur, true);
+          window.addEventListener('focus', handleParentFocus, true);
+
+          printWindow.focus();
+          printWindow.print();
+        } catch (error) {
+          fail('Unable to open checklist print dialog.', error);
+        }
+      };
+
+      iframe.src = url;
     });
   };
 
   const handlePrintCheckList = async (dept: string) => {
-    setIsLoading(true);
     if (isMobileTph === false && charges!.length <= 0) {
       notification.error({
         message: 'Please add charges first!',
@@ -321,6 +447,7 @@ const AppointmentDetails = () => {
       return;
     }
 
+    setIsLoading(true);
     axios.defaults.headers.common['Authorization'] =
       'Bearer ' + store.tokenIdWebCims;
 
@@ -343,26 +470,57 @@ const AppointmentDetails = () => {
       const sourcePdf = await PDFDocument.load(pdfBytes);
       const pageCount = sourcePdf.getPageCount();
 
-      for (let i = 0; i < pageCount; i++) {
-        const singlePdf = await PDFDocument.create();
-        const [page] = await singlePdf.copyPages(sourcePdf, [i]);
-        singlePdf.addPage(page);
+      const pageBlobs = await Promise.all(
+        Array.from({ length: pageCount }, async (_, index) => {
+          const singlePdf = await PDFDocument.create();
+          const [page] = await singlePdf.copyPages(sourcePdf, [index]);
+          singlePdf.addPage(page);
 
-        const singlePdfBytes = await singlePdf.save();
+          const singlePdfBytes = await singlePdf.save();
+          const singlePdfBuffer = singlePdfBytes.buffer.slice(
+            singlePdfBytes.byteOffset,
+            singlePdfBytes.byteOffset + singlePdfBytes.byteLength,
+          ) as ArrayBuffer;
 
-        const blob = new Blob([singlePdfBytes.buffer as ArrayBuffer], {
-          type: 'application/pdf',
-        });
+          return new Blob([singlePdfBuffer], {
+            type: 'application/pdf',
+          });
+        }),
+      );
 
+      for (const blob of pageBlobs) {
         await printBlob(blob);
       }
     } catch (error: any) {
-      let errorString = error.response.data;
-      errorString = JSON.parse(await error.response.data.text());
+      let message = 'Unable to print checklist.';
+
+      if (axios.isAxiosError(error) && error.response?.data) {
+        try {
+          const responseData = error.response.data;
+          const responseText =
+            responseData instanceof Blob
+              ? await responseData.text()
+              : typeof responseData === 'string'
+                ? responseData
+                : JSON.stringify(responseData);
+
+          message = JSON.parse(responseText).Message ?? responseText;
+        } catch {
+          message = error.message || message;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+
+      notification.error({
+        message,
+        placement: 'topRight',
+        duration: 3,
+      });
 
       return {
         Status: 0,
-        Message: errorString.Message,
+        Message: message,
       };
     } finally {
       setIsLoading(false);
@@ -491,31 +649,31 @@ const AppointmentDetails = () => {
     }
   };
 
-  const handleGetChargesAll = async () => {
-    try {
-      setIsLoading(true);
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetChargesByAppointmentIdAll',
-        parameters: {
-          AppointmentId: Id,
-        },
-      });
-      if (res) {
-        const isMobile = res.parameters.lst.filter(
-          (d: TCharges) => d.PaymentType === 'MOB' || d.PaymentType === 'TMP',
-        );
+  // const handleGetChargesAll = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     const res = await PostData('GetRecords', {
+  //       sp: 'udp_GetChargesByAppointmentIdAll',
+  //       parameters: {
+  //         AppointmentId: Id,
+  //       },
+  //     });
+  //     if (res) {
+  //       const isMobile = res.parameters.lst.filter(
+  //         (d: TCharges) => d.PaymentType === 'MOB' || d.PaymentType === 'TMP',
+  //       );
 
-        setIsMobileTph(false);
-        if (isMobile.length > 0) {
-          setIsMobileTph(true);
-        }
-        setChargesAll(res.parameters.lst);
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  //       setIsMobileTph(false);
+  //       if (isMobile.length > 0) {
+  //         setIsMobileTph(true);
+  //       }
+  //       setChargesAll(res.parameters.lst);
+  //       setIsLoading(false);
+  //     }
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // };
 
   const handleGetAppointmentDetails = async () => {
     if (Id === '0') {
@@ -580,13 +738,7 @@ const AppointmentDetails = () => {
           LoaApprovedBy: x.LoaApprovedBy,
           fk_HmoCompany_Id: x.fk_HmoCompany_Id,
           CountryOfDestination: x.CountryOfDestination,
-          PositionAppliedFor:
-            x.PositionAppliedFor === null || x.PositionAppliedFor === undefined
-              ? undefined
-              : positionOnBord.includes(x.PositionAppliedFor!)
-                ? x.PositionAppliedFor
-                : 'other',
-          PositionAppliedForOthers: x.PositionAppliedFor,
+          PositionAppliedFor: x.PositionAppliedFor,
           Employer: x.Employer,
           PassportNo: x.PassportNo,
         });
@@ -633,18 +785,12 @@ const AppointmentDetails = () => {
       ? JSON.parse(sessionStorage.getItem('selectedInReception')!)
       : undefined;
 
-    const res = await PostData('SaveAppointment', {
-      ...v,
-      Id: Id,
-      Date: dayjs(v.Date).format('YYYY-MM-DD'),
-      BranchCode: store.branchCode,
-      fk_PatientInformation_Id: PatientId,
-      fk_QNo_Id: QNo === undefined ? 0 : QNo.Id,
-      HmoCompany: v.HmoCompany ?? 0,
-      PositionAppliedFor:
-        v.PositionAppliedFor === 'other' || v.PositionAppliedFor === undefined
-          ? v.PositionAppliedForOthers
-          : v.PositionAppliedFor,
+    const res = await saveAppointment({
+      values: v,
+      appointmentId: Id,
+      patientId: PatientId,
+      branchCode: store.branchCode,
+      qNoId: QNo?.Id,
     });
     if (res) {
       if (res.status === 1) {
@@ -897,8 +1043,17 @@ const AppointmentDetails = () => {
     }
   };
 
+  const normalizeChargeItemId = (data: TCharges): TCharges => {
+    const charge = data as TCharges & { ItemId?: number };
+
+    return {
+      ...data,
+      fk_Items_Id: charge.fk_Items_Id ?? charge.ItemId,
+    };
+  };
+
   const handleEdit = (data: TCharges) => {
-    setSelectedRecord(data);
+    setSelectedRecord(normalizeChargeItemId(data));
     requestAnimationFrame(() => {
       document
         .getElementById('charge-editor')
@@ -908,25 +1063,33 @@ const AppointmentDetails = () => {
   const actionBodyTemplate = (data: TCharges) => {
     return (
       <Space>
-        <Tooltip title="Edit">
-          <FaRegEdit
-            onClick={() => {
-              handleEdit(data);
-              // setShowDelete(true);
-            }}
-            color="green"
-            size="20"
-            className="cursor-pointer"
-          />
-        </Tooltip>
-        <Tooltip title="Delete">
-          <Popconfirm
-            title="Delete this record?"
-            okText="Yes"
-            cancelText="No"
-            onConfirm={handleDelete}
-          >
-            {/* <Button
+        {data.Editable && (
+          <Tooltip title="Edit">
+            <FaRegEdit
+              onClick={(event) => {
+                event.stopPropagation();
+                handleEdit(data);
+                // setShowDelete(true);
+              }}
+              color="green"
+              size="20"
+              className="cursor-pointer"
+            />
+          </Tooltip>
+        )}
+        {data.Editable && (
+          <Tooltip title="Delete">
+            <Popconfirm
+              title="Delete this record?"
+              okText="Yes"
+              cancelText="No"
+              onConfirm={(event) => {
+                event?.stopPropagation();
+                handleDelete(data);
+              }}
+              onCancel={(event) => event?.stopPropagation()}
+            >
+              {/* <Button
               type="primary"
               icon={<MdOutlineDelete />}
               onClick={() => {
@@ -935,28 +1098,32 @@ const AppointmentDetails = () => {
               }}
               danger
             /> */}
-            <MdOutlineDelete
-              onClick={() => {
-                setSelectedRecord(data);
-                // setShowDelete(true);
+              <MdOutlineDelete
+                onClick={(event) => {
+                  event.stopPropagation();
+                  // setShowDelete(true);
+                }}
+                color="red"
+                size="20"
+                className="cursor-pointer"
+              />
+            </Popconfirm>
+          </Tooltip>
+        )}
+
+        {data.IsPackage === 'Y' && (
+          <Tooltip title="Details">
+            <MdOutlineNotes
+              onClick={(event) => {
+                event.stopPropagation();
+                setPackageId(data.fk_Items_Id);
+                setShowPackageDetails(true);
               }}
-              color="red"
               size="20"
               className="cursor-pointer"
             />
-          </Popconfirm>
-        </Tooltip>
-
-        <Tooltip title="Details">
-          <MdOutlineNotes
-            onClick={() => {
-              handleGetChargesAll();
-              setShowPackageDetails(true);
-            }}
-            size="20"
-            className="cursor-pointer"
-          />
-        </Tooltip>
+          </Tooltip>
+        )}
       </Space>
     );
   };
@@ -984,13 +1151,18 @@ const AppointmentDetails = () => {
       </div>
     );
   };
-  const handleDelete = async () => {
-    const res = await PostData('DeleteCharge', {
-      Id: selectedRecord!.Id,
-      fk_Appointments_Id: selectedRecord?.fk_Appointments_Id,
-      Qty: selectedRecord?.Qty,
-      fk_Items_Id: selectedRecord?.fk_Items_Id,
-    });
+  const handleDelete = async (data: TCharges) => {
+    const charge = normalizeChargeItemId(data);
+    const isPackage = charge.IsPackage ? charge.IsPackage : 'N';
+    const res = await PostData(
+      `DeleteCharge2?IsPackage=${isPackage}&BranchCode=${store.branchCode}`,
+      {
+        Id: charge.Id,
+        fk_Appointments_Id: charge.fk_Appointments_Id,
+        Qty: charge.Qty,
+        fk_Items_Id: charge.fk_Items_Id,
+      },
+    );
     if (res) {
       if (res.status === 1) {
         notification.success({
@@ -998,10 +1170,17 @@ const AppointmentDetails = () => {
           placement: 'topRight',
           duration: 3,
         });
-        setShowDelete(false);
+        // setShowDelete(false);
 
+        if (selectedRecord?.Id === charge.Id) {
+          setSelectedRecord(undefined);
+        }
         form2.resetFields();
         handleGetCharges();
+        q.invalidateQueries({
+          queryKey: ['resultStatus', appointmentDetails?.Id],
+        });
+        q.invalidateQueries({ queryKey: ['checklistDeptOpt'] });
       } else {
         notification.error({
           message: res.message,
@@ -1180,472 +1359,622 @@ const AppointmentDetails = () => {
     // handleGetDoctors();
   }, [Id]);
 
-  const positionOnBOardWatch = Form.useWatch('PositionAppliedFor', form);
+  useEffect(() => {
+    if (Id === '0' && initialPatientId > 0) {
+      setPatientId(initialPatientId);
+      handleNewAppointment(initialPatientId);
+    }
+  }, [initialPatientId]);
+
+  useEffect(() => {
+    const element = appointmentInformationRef.current;
+    if (!element) return;
+
+    let animationFrame = 0;
+
+    const updateStickyAppointment = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        const sectionBottom = element.getBoundingClientRect().bottom;
+
+        setShowStickyAppointment((isVisible) =>
+          isVisible ? sectionBottom < 24 : sectionBottom < -12,
+        );
+      });
+    };
+
+    updateStickyAppointment();
+    document.addEventListener('scroll', updateStickyAppointment, true);
+    window.addEventListener('resize', updateStickyAppointment);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.removeEventListener('scroll', updateStickyAppointment, true);
+      window.removeEventListener('resize', updateStickyAppointment);
+    };
+  }, []);
+
+  const patientNoWatch = Form.useWatch('PatientNo', form);
+  const patientNameWatch = Form.useWatch('Name', form);
+  const appointmentTypeWatch = Form.useWatch('AppointmentType', form);
+  const appointmentTypeLabel =
+    appointmentType.data?.find(
+      (type: TAppointmentType) => type.Code === appointmentTypeWatch,
+    )?.Description ??
+    appointmentDetails?.AppointmentTypeDesc ??
+    appointmentTypeWatch ??
+    '-';
 
   return (
-    <div className="cardBackGround">
+    <div className="min-h-full bg-slate-100 p-3">
       <Helmet>
         <meta charSet="utf-8" />
         <title>{title}</title>
       </Helmet>
-      <Divider>Appointment Details</Divider>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <Button onClick={() => router.history.back()}>Back</Button>
         <div>
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmitForm}
-            scrollToFirstError
-          >
-            <div className="grid place-items-center">
-              <Avatar size={128} src={picture as string} />
-              <Space className="mt-2" direction="vertical">
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    setShowWebCam(true);
-                  }}
-                  // disabled={Id === "0"}
-                >
-                  Capture from Webcam
-                </Button>
-              </Space>
-            </div>
-            <div className="flex gap-x-3 items-center">
-              <div className="grid md:grid-cols-2 gap-2">
-                <Form.Item
-                  name="PatientNo"
-                  label="Patient No."
-                  // className="md:w-[120px]"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                  ]}
-                >
-                  <Input readOnly />
-                </Form.Item>
-                <div className="flex justify-start items-center">
-                  <Tooltip title="Search Patient">
-                    <Button
-                      type="primary"
-                      icon={<BiSearch />}
-                      onClick={() => setShowPatient(true)}
-                    />
-                  </Tooltip>
-                </div>
+          <h1 className="text-xl font-semibold text-slate-800">
+            {createOnly ? 'New Appointment' : 'Update Appointment Detail'}
+          </h1>
+          <p className="text-xs text-slate-500">
+            Appointment No. {appointmentDetails?.AppointmentNo ?? '-'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-12">
+        <aside className="space-y-4 lg:col-span-3">
+          <section className="border-t-2 border-emerald-500 bg-white p-4 shadow-sm">
+            <div className="flex flex-col items-center text-center">
+              <Avatar size={112} src={picture as string} />
+              <h2 className="mt-3 text-lg font-medium uppercase text-slate-700">
+                {appointmentDetails?.Name ?? patientNameWatch ?? 'Patient'}
+              </h2>
+              <div className="mt-2 space-y-1 text-xs">
+                <p>
+                  <span className="text-slate-500">Patient ID:</span>{' '}
+                  <strong>{PatientId || '-'}</strong>
+                </p>
+                <p>
+                  <span className="text-slate-500">Patient No:</span>{' '}
+                  <strong className="text-blue-600">
+                    {appointmentDetails?.PatientNo ?? patientNoWatch ?? '-'}
+                  </strong>
+                </p>
+                <p>
+                  <span className="text-slate-500">Member No:</span>{' '}
+                  <strong className="text-blue-600">
+                    {appointmentDetails?.MemberNo ?? '-'}
+                  </strong>
+                </p>
               </div>
-              <Tooltip title="Mer">
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Button type="primary" onClick={() => setShowWebCam(true)}>
+                  Capture Photo
+                </Button>
+                {!createOnly && (
+                  <Button onClick={() => setShowPatient(true)}>
+                    Change Patient
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 divide-y text-sm">
+              <div className="flex justify-between py-2">
+                <span className="font-medium text-slate-600">Age</span>
+                <span>{appointmentDetails?.AgeYears ?? '-'}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="font-medium text-slate-600">Gender</span>
+                <span>
+                  {appointmentDetails?.Sex === 'M'
+                    ? 'Male'
+                    : appointmentDetails?.Sex === 'F'
+                      ? 'Female'
+                      : appointmentDetails?.Sex ?? '-'}
+                </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="font-medium text-slate-600">Civil Status</span>
+                <span>{appointmentDetails?.CivilStatus ?? '-'}</span>
+              </div>
+            </div>
+          </section>
+
+          {!createOnly && (
+            <section className="border-t-2 border-sky-500 bg-white p-4 text-center shadow-sm">
+              <div className="mt-3 grid gap-2">
                 <Link
                   to="/mer/$AppointmentId"
-                  params={{
-                    AppointmentId: Id!.toString(),
-                  }}
+                  params={{ AppointmentId: Id.toString() }}
                 >
-                  <Button icon={<BiNote />}>MER</Button>
+                  <Button block>Open MER</Button>
                 </Link>
-              </Tooltip>
-            </div>
-            <div className="grid lg:grid-cols-3 gap-4">
-              <Form.Item name="Name" label="Name" className="col-span-2">
-                <Input readOnly />
-              </Form.Item>
-              <Form.Item
-                label="Senior/PWD?"
-                name="IsSeniorOrPwd"
-                rules={[
-                  {
-                    required: true,
-                    message: 'This field is required!',
-                  },
-                ]}
-              >
-                <Radio.Group>
-                  <Radio value="Y">Yes</Radio>
-                  <Radio value="N">No</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-            <div className="grid lg:grid-cols-3 gap-4">
-              <Form.Item name="AppointmentNo" label="Appointment No.">
-                <Input readOnly className="font-bold" />
-              </Form.Item>
-
-              <Form.Item name="Date" label="Date">
-                <DatePicker format="MM/DD/YYYY" style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item
-                label="Appointment Type"
-                name="AppointmentType"
-                rules={[
-                  {
-                    required: true,
-                    message: 'Appointment type is required!',
-                  },
-                ]}
-              >
-                <Select
-                  style={{ width: '100%' }}
-                  showSearch
-                  allowClear
-                  filterOption={(input, option) =>
-                    (
-                      option!.children
-                        ?.toString()
-                        .toLocaleLowerCase() as unknown as string
-                    ).includes(input.toLocaleLowerCase())
-                  }
-                >
-                  {appointmentType.data &&
-                    appointmentType.data.map((d: TAppointmentType) => (
-                      <Select.Option
-                        key={d.Code}
-                        value={d.Code}
-                        title={d.Description}
-                      >
-                        {d.Description}
-                      </Select.Option>
-                    ))}
-                </Select>
-              </Form.Item>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              <Form.Item label="Civil Status" name="CivilStatus">
-                <Select
-                  style={{ width: '100%' }}
-                  showSearch
-                  allowClear
-                  filterOption={(input, option) =>
-                    (
-                      option!.children
-                        ?.toString()
-                        .toLocaleLowerCase() as unknown as string
-                    ).includes(input.toLocaleLowerCase())
-                  }
-                >
-                  <Select.Option key="D" value="D" title="Divorced">
-                    Divorced
-                  </Select.Option>
-                  <Select.Option key="L" value="L" title="Legally Separated">
-                    Legally Separated
-                  </Select.Option>
-                  <Select.Option key="M" value="M" title="Married">
-                    Married
-                  </Select.Option>
-                  <Select.Option key="S" value="S" title="Single">
-                    Single
-                  </Select.Option>
-                  <Select.Option key="W" value="W" title="Widowed">
-                    Widowed
-                  </Select.Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="ReferredBy"
-                label="Referred By"
-                normalize={(v) => v.toUpperCase()}
-              >
-                <AutoComplete
-                  filterOption={(inputValue, option) =>
-                    option!
-                      .value!.toString()
-                      .toUpperCase()
-                      .indexOf(inputValue.toUpperCase()) !== -1
-                  }
-                >
-                  {referredBy.data &&
-                    referredBy.data!.map((v: TSettings) => (
-                      <AutoComplete.Option
-                        key={v.Id}
-                        value={v.Value}
-                        title={v.Value}
-                      >
-                        {v.Value}
-                      </AutoComplete.Option>
-                    ))}
-                </AutoComplete>
-              </Form.Item>
-
-              <Form.Item
-                name="Occupation"
-                label="Occupation"
-                normalize={(v) => v.toUpperCase()}
-              >
-                <AutoComplete
-                  filterOption={(inputValue, option) =>
-                    option!
-                      .value!.toString()
-                      .toUpperCase()
-                      .indexOf(inputValue.toUpperCase()) !== -1
-                  }
-                >
-                  {occupation.data &&
-                    occupation.data!.map((v: any) => (
-                      <AutoComplete.Option
-                        key={v.Value}
-                        value={v.Value}
-                        title={v.Value}
-                      >
-                        {v.Value}
-                      </AutoComplete.Option>
-                    ))}
-                </AutoComplete>
-              </Form.Item>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Form.Item
-                name="fk_HmoCompany_Id"
-                label="HMO"
-                className="col-span-2"
-              >
-                <Select
-                  style={{ width: '100%' }}
-                  showSearch
-                  allowClear
-                  filterOption={(input, option) =>
-                    (
-                      option!.children
-                        ?.toString()
-                        .toLocaleLowerCase() as unknown as string
-                    ).includes(input.toLocaleLowerCase())
-                  }
-                >
-                  {hmo.data &&
-                    hmo.data.map((d: THmoCompany) => (
-                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
-                        {d.Name}
-                      </Select.Option>
-                    ))}
-                </Select>
-              </Form.Item>
-              <div className="flex justify-start items-center">
-                <Popover
-                  content={content}
-                  title="New Company/HMO"
-                  trigger="click"
-                >
-                  <Button type="primary">New</Button>
-                </Popover>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Form.Item
-                name="HmoCompany"
-                label="Company"
-                className="col-span-2"
-              >
-                <Select
-                  style={{ width: '100%' }}
-                  showSearch
-                  allowClear
-                  filterOption={(input, option) =>
-                    (
-                      option!.children
-                        ?.toString()
-                        .toLocaleLowerCase() as unknown as string
-                    ).includes(input.toLocaleLowerCase())
-                  }
-                >
-                  {company.data &&
-                    company.data.map((d: THmoCompany) => (
-                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
-                        {d.Name}
-                      </Select.Option>
-                    ))}
-                </Select>
-              </Form.Item>
-              <div className="flex justify-start items-center">
-                <Popover
-                  content={content}
-                  title="New Company/HMO"
-                  trigger="click"
-                >
-                  <Button type="primary">New</Button>
-                </Popover>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <Form.Item name="QueueNo" label="Queue No.">
-                <Input readOnly className="font-bold" />
-              </Form.Item>
-              <Form.Item name="LoaApprovedBy" label="LOA Approved By">
-                <Input />
-              </Form.Item>
-            </div>
-
-            <div className="flex items-start gap-x-3 flex-wrap">
-              {/* <Form.Item name="PassportNo" label="Passport No.">
-                <Input />
-              </Form.Item>
-              <Form.Item name="SeamanBookNo" label="Seaman's Book No.">
-                <Input />
-              </Form.Item> */}
-              <Form.Item
-                name="CountryOfDestination"
-                label="Country Of Destination"
-              >
-                <AutoComplete
-                  filterOption={(inputValue, option) =>
-                    option!
-                      .value!.toString()
-                      .toUpperCase()
-                      .indexOf(inputValue.toUpperCase()) !== -1
-                  }
-                >
-                  {CountryOfDestination.data &&
-                    CountryOfDestination.data!.map((v: TSettings) => (
-                      <AutoComplete.Option
-                        key={v.Id}
-                        value={v.Value}
-                        title={v.Value}
-                      >
-                        {v.Value}
-                      </AutoComplete.Option>
-                    ))}
-                </AutoComplete>
-              </Form.Item>
-              {/* <Form.Item name="PositionAppliedFor" label="Position Applied For">
-                <AutoComplete
-                  filterOption={(inputValue, option) =>
-                    option!
-                      .value!.toString()
-                      .toUpperCase()
-                      .indexOf(inputValue.toUpperCase()) !== -1
-                  }
-                >
-                  {PositionAppliedFor.data &&
-                    PositionAppliedFor.data!.map((v: TSettings) => (
-                      <AutoComplete.Option
-                        key={v.Id}
-                        value={v.Value}
-                        title={v.Value}
-                      >
-                        {v.Value}
-                      </AutoComplete.Option>
-                    ))}
-                </AutoComplete>
-              </Form.Item> */}
-              <Form.Item name="PositionAppliedFor" label="Position Applied For">
-                <Select
-                  options={positionOnBoardOpt.map((opt) => ({
-                    value: opt.value,
-                    label: opt.label,
-                  }))}
-                />
-              </Form.Item>
-              {positionOnBOardWatch !== undefined &&
-                !positionOnBord.includes(positionOnBOardWatch) && (
-                  <Form.Item name="PositionAppliedForOthers" label="Specify">
-                    <Input />
-                  </Form.Item>
+                {(appType === 'HEM' || appType === 'AMB') && (
+                  <Button
+                    block
+                    type="primary"
+                    onClick={() =>
+                      router.navigate({
+                        to: '/billing/$AppointmentId',
+                        params: { AppointmentId: Id },
+                      })
+                    }
+                  >
+                    Billing
+                  </Button>
                 )}
-              <Form.Item name="Employer" label="Employer">
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="flex justify-start items-center">
-                <Button type="primary" htmlType="submit">
-                  Submit
-                </Button>
               </div>
-            </div>
-          </Form>
-        </div>
-        <div>
-          <div id="charge-editor" className="mb-4 rounded-md border p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="font-semibold">
-                {selectedRecord ? 'Edit Charge' : 'Add Charge'}
-              </div>
-              {selectedRecord && (
-                <Button onClick={() => setSelectedRecord(undefined)}>
-                  Cancel Edit
-                </Button>
-              )}
-            </div>
-            {Id !== '0' ? (
-              <AddCharge
-                key={selectedRecord?.Id ?? 'new-charge'}
-                Id={Id}
-                ChargeDetails={selectedRecord}
-                Gender={gender}
-                AppointmentDetails={appointmentDetails}
-                onSaved={async () => {
-                  setSelectedRecord(undefined);
-                  await handleGetCharges();
-                  q.invalidateQueries({ queryKey: ['qcounters'] });
-                }}
-              />
-            ) : (
-              <div className="text-gray-500">
-                Save the appointment before adding charges.
-              </div>
-            )}
-          </div>
+            </section>
+          )}
+        </aside>
 
-          <Space>
-            {(appType === 'HEM' || appType === 'AMB') && (
-              <>
-                <Button
-                  type="primary"
-                  disabled={Id === '0'}
-                  onClick={() => {
-                    router.navigate({
-                      to: '/billing/$AppointmentId',
-                      params: {
-                        AppointmentId: Id,
-                      },
-                    });
-                  }}
-                >
-                  Billing
-                </Button>
-              </>
-            )}
-          </Space>
+        <main className="space-y-4 lg:col-span-9">
+          {showStickyAppointment && (
+            <div className="fixed left-1/2 top-3 z-50 flex w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 flex-wrap items-center justify-between gap-2 border-l-4 border-emerald-500 bg-white px-4 py-3 shadow-lg">
+              <div className="min-w-0">
+                <div className="truncate font-semibold uppercase text-slate-800">
+                  {appointmentDetails?.Name ?? patientNameWatch ?? 'Patient'}
+                </div>
+                <div className="text-xs text-slate-500">Appointment Type</div>
+              </div>
+              <div className="rounded bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+                {appointmentTypeLabel}
+              </div>
+            </div>
+          )}
 
-          <div className="mt-2">
-            {isLoading ? (
-              <Loading size={64} />
-            ) : (
-              <DataTable
-                value={charges}
-                // paginator
-                // rows={10}
-                // rowsPerPageOptions={[10, 25, 50]}
-                emptyMessage="No Records!"
-                stripedRows
-                size="small"
-                filterDisplay="row"
-                rowExpansionTemplate={rowExpansionTemplate}
-                expandedRows={expandedRows as any}
-                onRowToggle={(e) => setExpandedRows(e.data as any)}
-                footerColumnGroup={footerGroup}
+          <section
+            ref={appointmentInformationRef}
+            className="border-t-2 border-emerald-500 bg-white shadow-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+              <h2 className="font-semibold text-slate-700">
+                Appointment Information
+              </h2>
+              <Button
+                onClick={() =>
+                  setShowFullAppointmentForm((isVisible) => !isVisible)
+                }
               >
-                <Column
-                  expander={charges!.length > 0}
-                  style={{ width: '2rem' }}
-                />
-                <Column
-                  field="action"
-                  header="Action"
-                  body={(data: any) => actionBodyTemplate(data)}
-                ></Column>
-                <Column field="Description" header="Description"></Column>
-                <Column field="Gross" header="Gross"></Column>
-                <Column field="HmoAmount" header="Hmo"></Column>
-                <Column field="CashPayment" header="Cash Payment"></Column>
-                <Column field="Net" header="Net"></Column>
-                <Column field="PaymentType" header="Payment Type"></Column>
-              </DataTable>
-            )}
+                {showFullAppointmentForm
+                  ? 'Hide Full Appointment Form'
+                  : 'Show Full Appointment Form'}
+              </Button>
+            </div>
+            <div className="p-5">
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleSubmitForm}
+                scrollToFirstError
+              >
+                <Form.Item name="PatientNo" hidden rules={[{ required: true }]}>
+                  <Input />
+                </Form.Item>
+                <Form.Item name="Name" hidden>
+                  <Input />
+                </Form.Item>
+                <Form.Item name="AppointmentNo" hidden>
+                  <Input />
+                </Form.Item>
+                {!showFullAppointmentForm && (
+                  <>
+                    <Form.Item name="CivilStatus" hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name="ReferredBy" hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name="Occupation" hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name="QueueNo" hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name="LoaApprovedBy" hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name="CountryOfDestination" hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name="PositionAppliedFor" hidden>
+                      <Input />
+                    </Form.Item>
+                  </>
+                )}
+                <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-12">
+                  <Form.Item
+                    name="Date"
+                    label="Date"
+                    className="!mb-0 md:col-span-4"
+                  >
+                    <DatePicker format="MM/DD/YYYY" style={{ width: '100%' }} />
+                  </Form.Item>
 
-            <div className="flex justify-end">
-              <Space>
-                {/* <Button
+                  <Form.Item
+                    label="Appointment Type"
+                    name="AppointmentType"
+                    className="!mb-0 md:col-span-5"
+                    rules={[
+                      {
+                        required: true,
+                        message: 'Appointment type is required!',
+                      },
+                    ]}
+                  >
+                    <Select
+                      showSearch
+                      allowClear
+                      filterOption={(input, option) =>
+                        (
+                          option!.children
+                            ?.toString()
+                            .toLocaleLowerCase() as unknown as string
+                        ).includes(input.toLocaleLowerCase())
+                      }
+                    >
+                      {appointmentType.data?.map((d: TAppointmentType) => (
+                        <Select.Option
+                          key={d.Code}
+                          value={d.Code}
+                          title={d.Description}
+                        >
+                          {d.Description}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Senior/PWD?"
+                    name="IsSeniorOrPwd"
+                    className="!mb-0 md:col-span-3"
+                    rules={[
+                      {
+                        required: true,
+                        message: 'This field is required!',
+                      },
+                    ]}
+                  >
+                    <Radio.Group className="flex h-8 items-center">
+                      <Radio value="Y">Yes</Radio>
+                      <Radio value="N">No</Radio>
+                    </Radio.Group>
+                  </Form.Item>
+
+                  <Form.Item label="HMO" className="!mb-0 md:col-span-6">
+                    <div className="flex gap-2">
+                      <Form.Item name="fk_HmoCompany_Id" noStyle>
+                        <Select
+                          className="flex-1"
+                          showSearch
+                          allowClear
+                          filterOption={(input, option) =>
+                            (
+                              option!.children
+                                ?.toString()
+                                .toLocaleLowerCase() as unknown as string
+                            ).includes(input.toLocaleLowerCase())
+                          }
+                        >
+                          {hmo.data?.map((d: THmoCompany) => (
+                            <Select.Option
+                              key={d.Id}
+                              value={d.Id}
+                              title={d.Name}
+                            >
+                              {d.Name}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      <Popover
+                        content={content}
+                        title="New Company/HMO"
+                        trigger="click"
+                      >
+                        <Button type="primary">New</Button>
+                      </Popover>
+                    </div>
+                  </Form.Item>
+
+                  <Form.Item label="Company" className="!mb-0 md:col-span-6">
+                    <div className="flex gap-2">
+                      <Form.Item name="HmoCompany" noStyle>
+                        <Select
+                          className="flex-1"
+                          showSearch
+                          allowClear
+                          filterOption={(input, option) =>
+                            (
+                              option!.children
+                                ?.toString()
+                                .toLocaleLowerCase() as unknown as string
+                            ).includes(input.toLocaleLowerCase())
+                          }
+                        >
+                          {company.data?.map((d: THmoCompany) => (
+                            <Select.Option
+                              key={d.Id}
+                              value={d.Id}
+                              title={d.Name}
+                            >
+                              {d.Name}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      <Popover
+                        content={content}
+                        title="New Company/HMO"
+                        trigger="click"
+                      >
+                        <Button type="primary">New</Button>
+                      </Popover>
+                    </div>
+                  </Form.Item>
+                </div>
+
+                {showFullAppointmentForm && (
+                  <div className="mt-5 rounded-md border bg-slate-50 p-4">
+                    <div className="mb-3 font-semibold text-slate-700">
+                      Full Appointment Details
+                    </div>
+                    <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-12">
+                      <Form.Item
+                        label="Civil Status"
+                        name="CivilStatus"
+                        className="!mb-0 md:col-span-4"
+                      >
+                        <Select showSearch allowClear>
+                          <Select.Option key="D" value="D" title="Divorced">
+                            Divorced
+                          </Select.Option>
+                          <Select.Option
+                            key="L"
+                            value="L"
+                            title="Legally Separated"
+                          >
+                            Legally Separated
+                          </Select.Option>
+                          <Select.Option key="M" value="M" title="Married">
+                            Married
+                          </Select.Option>
+                          <Select.Option key="S" value="S" title="Single">
+                            Single
+                          </Select.Option>
+                          <Select.Option key="W" value="W" title="Widowed">
+                            Widowed
+                          </Select.Option>
+                        </Select>
+                      </Form.Item>
+
+                      <Form.Item
+                        name="ReferredBy"
+                        label="Referred By"
+                        className="!mb-0 md:col-span-4"
+                        normalize={(v) => v.toUpperCase()}
+                      >
+                        <AutoComplete
+                          filterOption={(inputValue, option) =>
+                            option!
+                              .value!.toString()
+                              .toUpperCase()
+                              .indexOf(inputValue.toUpperCase()) !== -1
+                          }
+                        >
+                          {referredBy.data?.map((v: TSettings) => (
+                            <AutoComplete.Option
+                              key={v.Id}
+                              value={v.Value}
+                              title={v.Value}
+                            >
+                              {v.Value}
+                            </AutoComplete.Option>
+                          ))}
+                        </AutoComplete>
+                      </Form.Item>
+
+                      <Form.Item
+                        name="Occupation"
+                        label="Occupation"
+                        className="!mb-0 md:col-span-4"
+                        normalize={(v) => v.toUpperCase()}
+                      >
+                        <AutoComplete
+                          filterOption={(inputValue, option) =>
+                            option!
+                              .value!.toString()
+                              .toUpperCase()
+                              .indexOf(inputValue.toUpperCase()) !== -1
+                          }
+                        >
+                          {occupation.data?.map((v: any) => (
+                            <AutoComplete.Option
+                              key={v.Value}
+                              value={v.Value}
+                              title={v.Value}
+                            >
+                              {v.Value}
+                            </AutoComplete.Option>
+                          ))}
+                        </AutoComplete>
+                      </Form.Item>
+
+                      <Form.Item
+                        name="QueueNo"
+                        label="Queue No."
+                        className="!mb-0 md:col-span-3"
+                      >
+                        <Input readOnly className="font-bold" />
+                      </Form.Item>
+
+                      <Form.Item
+                        name="LoaApprovedBy"
+                        label="LOA Approved By"
+                        className="!mb-0 md:col-span-5"
+                      >
+                        <Input />
+                      </Form.Item>
+
+                      <Form.Item
+                        name="CountryOfDestination"
+                        label="Country Of Destination"
+                        className="!mb-0 md:col-span-4"
+                      >
+                        <AutoComplete
+                          filterOption={(inputValue, option) =>
+                            option!
+                              .value!.toString()
+                              .toUpperCase()
+                              .indexOf(inputValue.toUpperCase()) !== -1
+                          }
+                        >
+                          {CountryOfDestination.data?.map((v: TSettings) => (
+                            <AutoComplete.Option
+                              key={v.Id}
+                              value={v.Value}
+                              title={v.Value}
+                            >
+                              {v.Value}
+                            </AutoComplete.Option>
+                          ))}
+                        </AutoComplete>
+                      </Form.Item>
+
+                      <Form.Item
+                        name="PositionAppliedFor"
+                        label="Position Applied For"
+                        className="!mb-0 md:col-span-4"
+                        normalize={(v) => v.toUpperCase()}
+                      >
+                        <AutoComplete
+                          options={positionOnBoardOpt.map((opt) => ({
+                            value: opt.label,
+                          }))}
+                          filterOption={(inputValue, option) =>
+                            option!
+                              .value!.toString()
+                              .toUpperCase()
+                              .indexOf(inputValue.toUpperCase()) !== -1
+                          }
+                        />
+                      </Form.Item>
+
+                      {/* <Form.Item
+                        name="Employer"
+                        label="Employer"
+                        className="!mb-0 md:col-span-4"
+                      >
+                        <Input />
+                      </Form.Item> */}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-5 flex justify-end border-t pt-4">
+                  <Button type="primary" htmlType="submit">
+                    Update Appointment
+                  </Button>
+                </div>
+              </Form>
+            </div>
+          </section>
+
+          {!createOnly && (
+            <>
+              <section
+                id="charge-editor"
+                className="border-t-2 border-sky-500 bg-white shadow-sm"
+              >
+                <div className="flex items-center justify-between border-b px-4 py-3">
+                  <div className="font-semibold">
+                    {selectedRecord ? 'Edit Charge' : 'Add Charge'}
+                  </div>
+                  {selectedRecord && (
+                    <Button onClick={() => setSelectedRecord(undefined)}>
+                      Cancel Edit
+                    </Button>
+                  )}
+                </div>
+                <div className="p-4">
+                  {Id !== '0' ? (
+                    <AddCharge
+                      key={selectedRecord?.Id ?? 'new-charge'}
+                      Id={Id}
+                      ChargeDetails={selectedRecord}
+                      Gender={gender}
+                      AppointmentDetails={appointmentDetails}
+                      onSaved={async () => {
+                        setSelectedRecord(undefined);
+                        await handleGetCharges();
+                        q.invalidateQueries({ queryKey: ['qcounters'] });
+                        q.invalidateQueries({ queryKey: ['checklistDeptOpt'] });
+                        q.invalidateQueries({
+                          queryKey: ['resultStatus', appointmentDetails?.Id],
+                        });
+                      }}
+                    />
+                  ) : (
+                    <div className="text-gray-500">
+                      Save the appointment before adding charges.
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="border-t-2 border-sky-500 bg-white shadow-sm">
+                <div className="border-b px-4 py-3">
+                  <h2 className="font-semibold text-slate-700">Charges</h2>
+                </div>
+                <div className="p-4">
+                  {isLoading ? (
+                    <Loading size={64} />
+                  ) : (
+                    <DataTable
+                      value={charges}
+                      // paginator
+                      // rows={10}
+                      // rowsPerPageOptions={[10, 25, 50]}
+                      emptyMessage="No Records!"
+                      stripedRows
+                      size="small"
+                      filterDisplay="row"
+                      rowExpansionTemplate={rowExpansionTemplate}
+                      expandedRows={expandedRows as any}
+                      onRowToggle={(e) => setExpandedRows(e.data as any)}
+                      footerColumnGroup={footerGroup}
+                    >
+                      <Column
+                        expander={charges!.length > 0}
+                        style={{ width: '2rem' }}
+                      />
+                      <Column
+                        field="action"
+                        header="Action"
+                        body={(data: any) => actionBodyTemplate(data)}
+                      ></Column>
+                      <Column field="Description" header="Description"></Column>
+                      <Column field="Gross" header="Gross"></Column>
+                      <Column field="HmoAmount" header="Hmo"></Column>
+                      <Column
+                        field="CashPayment"
+                        header="Cash Payment"
+                      ></Column>
+                      <Column field="Net" header="Net"></Column>
+                      <Column
+                        field="PaymentType"
+                        header="Payment Type"
+                      ></Column>
+                    </DataTable>
+                  )}
+
+                  <div className="mt-4 flex justify-end">
+                    <Space>
+                      {/* <Button
                   disabled={charges!.length <= 0}
                   type="primary"
                   onClick={handlePrintCs}
@@ -1653,7 +1982,7 @@ const AppointmentDetails = () => {
                 >
                   Print Charge Slip
                 </Button> */}
-                {/* <Button
+                      {/* <Button
                   disabled={charges!.length <= 0}
                   type="primary"
                   onClick={handlePrintCheckList}
@@ -1661,68 +1990,79 @@ const AppointmentDetails = () => {
                   Print Check List
                 </Button> */}
 
-                <Button
-                  type="primary"
-                  onClick={handlePrintSoa}
-                  loading={isLoading}
-                >
-                  Print SOA
-                </Button>
-                {/* <Dropdown menu={{ items: qCounters, onClick: onMenuClick }}>
+                      <Button
+                        type="primary"
+                        onClick={handlePrintSoa}
+                        loading={isLoading}
+                      >
+                        Print SOA
+                      </Button>
+                      {/* <Dropdown menu={{ items: qCounters, onClick: onMenuClick }}>
                   <Button loading={isLoading} type="primary">
                     Print Checklist
                   </Button>
                 </Dropdown> */}
-                <Dropdown
-                  disabled={Id === '0'}
-                  menu={{
-                    items: [
-                      {
-                        label: 'All',
-                        key: '0',
-                      },
-                      ...(checklistDeptOpt.data ?? []),
-                    ],
-                    onClick: ({ key }) => {
-                      handlePrintCheckList(key);
-                    },
-                  }}
-                >
-                  <Button loading={isLoading} type="primary">
-                    Print Checklist
-                  </Button>
-                </Dropdown>
-                {/* <Button
+                      <Dropdown
+                        disabled={Id === '0'}
+                        menu={{
+                          items: [
+                            {
+                              label: 'All',
+                              key: '0',
+                            },
+                            ...(checklistDeptOpt.data ?? []),
+                          ],
+                          onClick: ({ key }) => {
+                            handlePrintCheckList(key);
+                          },
+                        }}
+                      >
+                        <Button loading={isLoading} type="primary">
+                          Print Checklist
+                        </Button>
+                      </Dropdown>
+                      {/* <Button
                   loading={isLoading}
                   type="primary"
                   onClick={() => handlePrintCheckList('*ALL*')}
                 >
                   Print Checklist
                 </Button> */}
-              </Space>
-            </div>
-            <div className="mt-2">
-              <Divider>Result Status</Divider>
+                    </Space>
+                  </div>
+                </div>
+              </section>
 
-              <ResultStatus
-                AppointmentId={appointmentDetails?.Id}
-                AppointmentType={appointmentDetails?.AppointmentType}
-                QueueNo={appointmentDetails?.QueueNo}
-              />
-            </div>
-          </div>
-        </div>
+              <section className="border-t-2 border-amber-500 bg-white shadow-sm">
+                <div className="border-b px-4 py-3">
+                  <h2 className="font-semibold text-slate-700">
+                    Result Status
+                  </h2>
+                </div>
+                <div className="p-4">
+                  <ResultStatus
+                    AppointmentId={appointmentDetails?.Id}
+                    AppointmentType={appointmentDetails?.AppointmentType}
+                    QueueNo={appointmentDetails?.QueueNo}
+                  />
+                </div>
+              </section>
+            </>
+          )}
+        </main>
       </div>
-      <Modal
-        open={showPatients}
-        onCancel={() => setShowPatient(false)}
-        width={1200}
-        footer={false}
-        destroyOnClose
-      >
-        <ListOfPatients handleSelect={handleSelect} />
-      </Modal>
-      <Modal
+      {!createOnly && (
+        <Modal
+          open={showPatients}
+          onCancel={() => setShowPatient(false)}
+          width={1200}
+          footer={false}
+          destroyOnClose
+        >
+          <ListOfPatients handleSelect={handleSelect} />
+        </Modal>
+      )}
+      {/* <Modal
         open={showDelete}
         onCancel={() => setShowDelete(false)}
         okText="Yes"
@@ -1731,7 +2071,7 @@ const AppointmentDetails = () => {
         title=<p className="font-bold">{selectedRecord?.Description}</p>
       >
         Delete this item?
-      </Modal>
+      </Modal> */}
       <Modal
         open={showWebCam}
         footer={false}
@@ -1760,6 +2100,7 @@ const AppointmentDetails = () => {
         open={showPackageDetails}
         onCancel={() => {
           setShowPackageDetails(false);
+          setPackageId(undefined);
         }}
         title="Package Details"
         footer={false}
@@ -1767,17 +2108,12 @@ const AppointmentDetails = () => {
         destroyOnClose
       >
         <DataTable
-          value={chargesAll}
+          value={packageDetails.data}
           emptyMessage="No Records!"
           stripedRows
           size="small"
         >
           <Column field="Description" header="Description"></Column>
-          <Column field="Gross" header="Gross"></Column>
-          <Column field="HmoAmount" header="Hmo"></Column>
-          <Column field="CashPayment" header="Cash Payment"></Column>
-          <Column field="Net" header="Net"></Column>
-          <Column field="PaymentType" header="Payment Type"></Column>
         </DataTable>
       </Modal>
 

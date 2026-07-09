@@ -13,24 +13,45 @@ type Props = {
   handleOpen: (data: any) => void;
 };
 
+const formatDate = (value: unknown, format: string) => {
+  if (!value) {
+    return '';
+  }
+
+  const date = dayjs(value as string | number | Date);
+
+  return date.isValid() ? date.format(format) : '';
+};
+
 export const ExistingCadioResults: FC<Props> = ({
   PatientId,
   AppointmentId,
   handleOpen,
 }) => {
   const { data } = useQuery({
-    queryKey: ['udp_GetCardiologyResultByPatientId', PatientId],
+    queryKey: [
+      'udp_GetCardiologyResultsByPatientId',
+      PatientId,
+      AppointmentId,
+    ],
     enabled: !!PatientId && !!AppointmentId,
     queryFn: async () => {
       const res = await PostData('GetRecords', {
-        sp: 'udp_GetCardiologyResultByPatientId',
+        sp: 'udp_GetCardiologyResultsByPatientId',
         parameters: {
           PatientId: PatientId,
-          AppointmentId,
+          AppointmentId: AppointmentId,
         },
       });
 
-      return res.parameters.lst;
+      const rows = Array.isArray(res?.parameters?.lst)
+        ? res.parameters.lst
+        : [];
+
+      return rows.map((row: any) => ({
+        ...row,
+        Id: row.Id ?? row.ResultId,
+      }));
     },
   });
 
@@ -50,7 +71,7 @@ export const ExistingCadioResults: FC<Props> = ({
 
   return (
     <DataTable
-      value={data}
+      value={data ?? []}
       // paginator
       // rows={10}
       // rowsPerPageOptions={[10, 25, 50]}
@@ -64,14 +85,22 @@ export const ExistingCadioResults: FC<Props> = ({
         body={(data) => actionBodyTemplate(data)}
       ></Column>
       <Column field="ChargeDescription" header="Description"></Column>
-
+      {/* <Column field="ResultId" header="Result Id"></Column> */}
+      {/* <Column field="AdmissionId" header="Admission Id"></Column> */}
+      {/* <Column field="ChargeId" header="Charge Id"></Column> */}
       <Column
-        field="ReportDate"
-        header="Report Date"
-        body={(rowdata) => {
-          return dayjs(rowdata.ReportDate).format('DD/MM/YYYY h:mm:ss A');
-        }}
+        field="DateOfExamination"
+        header="Date Of Examination"
+        body={(rowdata) => formatDate(rowdata.DateOfExamination, 'MM/DD/YYYY')}
       />
+      <Column
+        field="DateFinalized"
+        header="Date Finalized"
+        body={(rowdata) =>
+          formatDate(rowdata.DateFinalized, 'MM/DD/YYYY hh:mm:ss A')
+        }
+      />
+      <Column field="FinalizedBy" header="Finalized By"></Column>
     </DataTable>
   );
 };

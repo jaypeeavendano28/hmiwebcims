@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   App,
   AutoComplete,
   Card,
+  Checkbox,
   DatePicker,
   FloatButton,
   Form,
@@ -63,6 +64,33 @@ const apiUrl = isDev ? devApi : prodApi;
 const formatDatePayload = (value: any) =>
   value ? dayjs(value).format('YYYY-MM-DD') : null;
 
+type ServiceFitnessValue = 'F' | 'U' | undefined;
+
+function ServiceFitnessCheckboxes({
+  value,
+  onChange,
+}: {
+  value?: ServiceFitnessValue;
+  onChange?: (value: ServiceFitnessValue) => void;
+}) {
+  return (
+    <div className="flex gap-x-3">
+      <Checkbox
+        checked={value === 'F'}
+        onChange={(event) => onChange?.(event.target.checked ? 'F' : undefined)}
+      >
+        Fit
+      </Checkbox>
+      <Checkbox
+        checked={value === 'U'}
+        onChange={(event) => onChange?.(event.target.checked ? 'U' : undefined)}
+      >
+        Unfit
+      </Checkbox>
+    </div>
+  );
+}
+
 export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
   const { notification, message } = App.useApp();
   const [isProcessing, setIsProccessing] = useState(false);
@@ -85,7 +113,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
     staleTime: 0,
   });
 
-  useQuery({
+  const examData = useQuery({
     queryKey: ['medicalExaminationSeaBased', AppointmentId],
     queryFn: async () => {
       const res = await PostData('GetRecords', {
@@ -107,15 +135,68 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
             ? dayjs(x.DateOfExamination)
             : undefined,
         });
+        return x;
       }
     },
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
 
+  const ishiharaWatch = Form.useWatch('Ishihara', form);
   const earRightWatch = Form.useWatch('EarRight', form);
   const earLeftWatch = Form.useWatch('EarLeft', form);
   const dutyRestrictionWatch = Form.useWatch('DutyRestriction', form);
+
+  useEffect(() => {
+    if (!examData.isFetched) return;
+
+    if (ishiharaWatch === 'D') {
+      if (
+        examData.data?.IshiharaRem == null ||
+        examData.data?.IshiharaRem == ''
+      ) {
+        form.setFieldValue('IshiharaRem', 'CLEARED');
+      } else {
+        form.setFieldValue('IshiharaRem', examData.data.IshiharaRem);
+      }
+      return;
+    }
+    form.setFieldValue('IshiharaRem', undefined);
+  }, [examData.data, examData.isFetched, form, ishiharaWatch]);
+
+  useEffect(() => {
+    if (!examData.isFetched) return;
+
+    if (earRightWatch === 'I') {
+      if (
+        examData.data?.EarRightRemarks == null ||
+        examData.data?.EarRightRemarks == ''
+      ) {
+        form.setFieldValue('EarRightRemarks', 'CLEARED');
+      } else {
+        form.setFieldValue('EarRightRemarks', examData.data.EarRightRemarks);
+      }
+      return;
+    }
+    form.setFieldValue('EarRightRemarks', undefined);
+  }, [earRightWatch, examData.data, examData.isFetched, form]);
+
+  useEffect(() => {
+    if (!examData.isFetched) return;
+
+    if (earLeftWatch === 'I') {
+      if (
+        examData.data?.EarLeftRemarks == null ||
+        examData.data?.EarLeftRemarks == ''
+      ) {
+        form.setFieldValue('EarLeftRemarks', 'CLEARED');
+      } else {
+        form.setFieldValue('EarLeftRemarks', examData.data.EarLeftRemarks);
+      }
+      return;
+    }
+    form.setFieldValue('EarLeftRemarks', undefined);
+  }, [earLeftWatch, examData.data, examData.isFetched, form]);
 
   const store = useAppStore();
   const queryClient = useQueryClient();
@@ -246,9 +327,9 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
         NonPrescription: 'N',
         Ishihara: 'A',
         EarRight: 'A',
-        EarRightInadequateRemarks: undefined,
+        EarRightRemarks: undefined,
         EarLeft: 'A',
-        EarLeftInadequateRemarks: undefined,
+        EarLeftRemarks: undefined,
         ClartityOfSpeech: 'A',
         Skin: 'Y',
         HeadNeckScalp: 'Y',
@@ -263,9 +344,9 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
         Heart: 'Y',
         Abdomen: 'Y',
         Back: 'Y',
-        Anus: 'N',
-        Genito: 'N',
-        Inguinals: 'N',
+        Anus: 'Y',
+        Genito: 'Y',
+        Inguinals: 'Y',
         Extremities: 'Y',
         Reflexes: 'Y',
         Dental: 'Y',
@@ -283,10 +364,10 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
         HostCountry: 'P',
         // Assessment: 'F',
         LookOutDuty: 'F',
-        DeckService: 'F',
-        EngineService: 'F',
-        CateringService: 'F',
-        OtherService: 'F',
+        DeckService: undefined,
+        EngineService: undefined,
+        CateringService: undefined,
+        OtherService: undefined,
         DutyRestriction: 'WO',
         DutyRestrictionRemarks: undefined,
         VisualAidRequired: 'N',
@@ -535,6 +616,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
               <Radio.Group>
                 <Radio value="Y">Yes</Radio>
                 <Radio value="N">No</Radio>
+                <Radio value="F">N/A</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item name="GyneRem" label="Remarks">
@@ -548,6 +630,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
               <Radio.Group>
                 <Radio value="Y">Yes</Radio>
                 <Radio value="N">No</Radio>
+                <Radio value="F">N/A</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item name="LastMenstrualRem" label="Remarks">
@@ -811,47 +894,78 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
         </div>
         <div className="grid grid-cols-4 gap-4">
           <Form.Item
-            name="VAUncorrectedFarVisionOU"
-            label="Far Vision Uncorrected OU"
+            name="VAUncorrectedFarVisIonOU"
+            label="FAR VISION UNCORRECTED OD"
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="VACorrectedFarVisionOU"
-            label="Far Vision Corrected OU"
+            label="FAR VISION UNCORRECTED OS"
           >
             <Input />
           </Form.Item>
           <Form.Item
+            name="VAUncorrectedFarVisionOS"
+            label="FAR VISION UNCORRECTED OS"
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="VACorrectedFarVisionOD"
+            label="FAR VISION CORRECTED OD"
+          >
+            <Input />
+          </Form.Item>
+          {/* <Form.Item name="NearVision" label="Near Vision">
+              <Input />
+            </Form.Item> */}
+
+          <Form.Item
             name="NearVisionCorrectedODJ"
-            label="Near Vision Corrected ODJ"
+            label="NEAR VISION UNCORRECTED OD"
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="NearVisionUncorrectedODJ"
-            label="Near Vision Uncorrected ODJ"
+            label="NEAR VISION UNCORRECTED OS"
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="NearVisionCorrectedOSJ"
-            label="Near Vision Corrected OSJ"
+            label="NEAR VISION UNCORRECTED OS
+"
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="NearVisionUncorrectedOSJ"
-            label="Near Vision Uncorrected OSJ"
+            label="NEAR VISION CORRECTED OD
+"
           >
             <Input />
           </Form.Item>
-          <Form.Item name="Ishihara" label="Ishihara Color Vision">
-            <Radio.Group>
-              <Radio value="A">Adequuate</Radio>
-              <Radio value="D">Defective</Radio>
-            </Radio.Group>
-          </Form.Item>
+          <div>
+            <Form.Item name="Ishihara" label="Ishihara Color Vision">
+              <Radio.Group>
+                <Radio value="A">Adequuate</Radio>
+                <Radio value="D">Defective</Radio>
+              </Radio.Group>
+            </Form.Item>
+            <Form.Item
+              name="IshiharaRem"
+              label="Ishihara Remarks"
+              rules={[
+                {
+                  required: ishiharaWatch === 'D',
+                },
+              ]}
+            >
+              <Input disabled={ishiharaWatch !== 'D'} />
+            </Form.Item>
+          </div>
         </div>
         <div className="grid grid-cols-4 gap-4">
           <div>
@@ -862,7 +976,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
               </Radio.Group>
             </Form.Item>
             <Form.Item
-              name="EarRightInadequateRemarks"
+              name="EarRightRemarks"
               label="Ear Right Inadequate Remarks"
               rules={[
                 {
@@ -881,7 +995,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
               </Radio.Group>
             </Form.Item>
             <Form.Item
-              name="EarLeftInadequateRemarks"
+              name="EarLeftRemarks"
               label="Ear Left Inadequate Remarks"
               rules={[
                 {
@@ -1107,6 +1221,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
             <Radio.Group>
               <Radio value="N">Normal</Radio>
               <Radio value="W">With Findings</Radio>
+              <Radio value="F">N/A</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item name="EcgRem" label="Result">
@@ -1138,6 +1253,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
             <Radio.Group>
               <Radio value="N">Normal</Radio>
               <Radio value="W">With Findings</Radio>
+              <Radio value="F">N/A</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item name="StoolRem" label="Result">
@@ -1147,6 +1263,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
             <Radio.Group>
               <Radio value="N">Normal</Radio>
               <Radio value="W">With Findings</Radio>
+              <Radio value="F">N/A</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item name="HepaRem" label="Result">
@@ -1158,6 +1275,7 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
             <Radio.Group>
               <Radio value="N">Normal</Radio>
               <Radio value="W">With Findings</Radio>
+              <Radio value="F">N/A</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item name="HivRem" label="Result">
@@ -1258,28 +1376,16 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
         </Form.Item>
         <div className="grid grid-cols-4 gap-x-2">
           <Form.Item name="DeckService" label="Deck Service">
-            <Radio.Group>
-              <Radio value="F">Fit</Radio>
-              <Radio value="U">Unfit</Radio>
-            </Radio.Group>
+            <ServiceFitnessCheckboxes />
           </Form.Item>
           <Form.Item name="EngineService" label="Engine Service">
-            <Radio.Group>
-              <Radio value="F">Fit</Radio>
-              <Radio value="U">Unfit</Radio>
-            </Radio.Group>
+            <ServiceFitnessCheckboxes />
           </Form.Item>
           <Form.Item name="CateringService" label="Catering Service">
-            <Radio.Group>
-              <Radio value="F">Fit</Radio>
-              <Radio value="U">Unfit</Radio>
-            </Radio.Group>
+            <ServiceFitnessCheckboxes />
           </Form.Item>
           <Form.Item name="OtherService" label="Other Service">
-            <Radio.Group>
-              <Radio value="F">Fit</Radio>
-              <Radio value="U">Unfit</Radio>
-            </Radio.Group>
+            <ServiceFitnessCheckboxes />
           </Form.Item>
         </div>
         <div className="grid grid-cols-3 gap-x-5">

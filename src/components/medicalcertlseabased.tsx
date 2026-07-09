@@ -244,7 +244,7 @@ export default function MedicalCertificateSeaBased({ AppointmentId }: Props) {
           result: 'F',
           dateOfExamination: dayjs(),
           dateOfAssuancePemeCert: dayjs(),
-          dateOfExpiration: dayjs(),
+          dateOfExpiration: dayjs().add(2, 'year'),
           dateOfPatientSignature: dayjs(),
         }}
       >

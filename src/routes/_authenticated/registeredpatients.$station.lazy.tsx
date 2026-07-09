@@ -35,6 +35,8 @@ const RegisteredPatients = () => {
   const search = Route.useSearch() as { IsMobile?: boolean | string };
   const IsMobile = search.IsMobile === true || search.IsMobile === 'true';
 
+  const queryClient = useQueryClient();
+
   const [filterData, setFilterData] = useState<FilterType>({
     DateFrom: dayjs().format('YYYYMMDD'),
     DateTo: dayjs().format('YYYYMMDD'),
@@ -117,6 +119,7 @@ const RegisteredPatients = () => {
     } else if (station === '0') {
       setHeader('Hemodialysis/Ambulatory Patients');
     }
+    queryClient.invalidateQueries({ queryKey: ['patientPerCounter'] });
   }, [station]);
   return (
     <div className="cardBackGround">

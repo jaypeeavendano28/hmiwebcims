@@ -43,6 +43,7 @@ const AddCharge: FC<Props> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [itemPopoverOpen, setItemPopoverOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [doctors, setDoctors] = useState<TDoctors[] | undefined>([]);
   const store = useAppStore();
   const [form] = Form.useForm();
@@ -50,6 +51,11 @@ const AddCharge: FC<Props> = ({
   const [selectedItem, setSelectedItem] = useState<TPrice | undefined>(
     undefined,
   );
+  const getItemId = (values?: TCharges) =>
+    selectedItem?.ItemId ??
+    selectedItem?.fk_Items_Id ??
+    values?.fk_Items_Id ??
+    ChargeDetails?.fk_Items_Id;
   const hmoCompany = useQuery({
     queryKey: ['hmoCompany'],
     queryFn: async () => {
@@ -147,8 +153,6 @@ const AddCharge: FC<Props> = ({
     }
   }, [paymentTypeQuery, AppointmentDetails]);
 
-  console.log(AppointmentDetails);
-
   const hmoCompanyLabel =
     paymentTypeQuery === 'HMO'
       ? 'HMO'
@@ -170,14 +174,14 @@ const AddCharge: FC<Props> = ({
   });
 
   const items = useQuery({
-    queryKey: ['items_prices2', searchQuery, deptQuery],
+    queryKey: ['items_prices2', debouncedSearchQuery, deptQuery],
     queryFn: async () => {
       const res = await PostData('GetRecords', {
         sp: 'udp_GetItemPrices2',
         parameters: {
           BranchCode: store.branchCode,
-          SearchStr: searchQuery,
-          Gender: Gender,
+          SearchStr: debouncedSearchQuery,
+          Gender: Gender === 'Female' ? 'F' : 'M',
           DepartmentId: deptQuery ?? '',
         },
       });
@@ -189,14 +193,25 @@ const AddCharge: FC<Props> = ({
     staleTime: 0,
     enabled:
       isNullOrUndefinedOrBlank(ChargeDetails) &&
-      searchQuery.trim().length > 0,
+      debouncedSearchQuery.trim().length > 0,
   });
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
+
   const handleSelect = (x: TPrice) => {
+    const itemId = x.ItemId ?? x.fk_Items_Id;
+
     setSelectedItem({
       ...x,
       Qty: x.Qty ?? 0,
     });
+    form.setFieldValue('fk_Items_Id', itemId);
     form.setFieldValue('Price', x.Price);
     form.setFieldValue('Qty', 1);
     form.setFieldValue('OnHand', x.Qty ?? 0);
@@ -260,6 +275,17 @@ const AddCharge: FC<Props> = ({
       v.HmoAmount = v.Price!;
     }
 
+    const fkItemsId = getItemId(v);
+
+    if (isNullOrUndefinedOrBlank(fkItemsId)) {
+      notification.error({
+        message: 'Please select an item/procedure!',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
     if (
       selectedItem?.Inventoriable === 'Y' &&
       (v.Qty === undefined || v.Qty <= 0)
@@ -294,7 +320,7 @@ const AddCharge: FC<Props> = ({
       fk_HmoCompany_Id: isNullOrUndefinedOrBlank(v.HmoCompany)
         ? 0
         : v.HmoCompany,
-      fk_Items_Id: selectedItem!.ItemId,
+      fk_Items_Id: fkItemsId,
       fk_Charges_Id: selectedItem!.Id,
       PriceCategory: selectedItem!.PriceCategory2,
     });
@@ -314,6 +340,7 @@ const AddCharge: FC<Props> = ({
           Price: undefined,
           Qty: undefined,
           OnHand: undefined,
+          fk_Items_Id: undefined,
           Diagnosis: undefined,
           fk_Doctors_Id: undefined,
           PaymentType: paymentType,
@@ -338,10 +365,18 @@ const AddCharge: FC<Props> = ({
     handleGetDoctors();
     // handleGetItems();
     if (ChargeDetails !== undefined) {
-      setSelectedItem(ChargeDetails);
+      const itemId = ChargeDetails.fk_Items_Id;
+
+      setSelectedItem({
+        ...ChargeDetails,
+        ItemId: itemId,
+        PriceCategory2: ChargeDetails.PriceCategory,
+      });
 
       form.setFieldsValue({
         Price: ChargeDetails.Price,
+        Qty: ChargeDetails.Qty,
+        fk_Items_Id: itemId,
         PaymentType: ChargeDetails.PaymentType,
         fk_Doctors_Id: ChargeDetails.fk_Doctors_Id,
         Diagnosis: ChargeDetails.Diagnosis,
@@ -351,8 +386,8 @@ const AddCharge: FC<Props> = ({
   }, []);
 
   const itemResults = (
-    <div className="w-[min(700px,80vw)]">
-      {items.isLoading ? (
+    <div className="w-full min-w-0">
+      {items.isLoading || items.isFetching ? (
         <div className="flex h-[160px] items-center justify-center">
           <Loading size={48} />
         </div>
@@ -394,28 +429,28 @@ const AddCharge: FC<Props> = ({
         scrollToFirstError
         onFinish={handleAdd}
       >
+        <Form.Item name="fk_Items_Id" hidden>
+          <Input />
+        </Form.Item>
         <div>
           <div className="flex flex-wrap items-end gap-x-2">
-              <Form.Item
-                name="DepartmentId"
-                label="Department"
-                className="!mb-1"
-              >
-                <Select
-                  allowClear
-                  showSearch
-                  className="!min-w-[250px]"
-                  optionFilterProp="label"
-                  options={departments.data?.map((d) => ({
-                    value: d.Id,
-                    label: d.Description,
-                  }))}
-                />
-              </Form.Item>
-              <Form.Item
-                label="Item Description"
-                className="!mb-1"
-              >
+            <Form.Item name="DepartmentId" label="Department" className="!mb-1">
+              <Select
+                allowClear
+                showSearch
+                className="!min-w-[250px]"
+                optionFilterProp="label"
+                options={departments.data?.map((d) => ({
+                  value: d.Id,
+                  label: d.Description,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item
+              label="Item Description"
+              className="!mb-1 min-w-0 flex-[1_1_320px]"
+            >
+              <div className="relative w-full min-w-0">
                 <Popover
                   content={itemResults}
                   open={itemPopoverOpen && searchQuery.trim().length > 0}
@@ -426,13 +461,24 @@ const AddCharge: FC<Props> = ({
                   }}
                   trigger={[]}
                   placement="bottomLeft"
+                  autoAdjustOverflow={false}
+                  arrow={false}
+                  getPopupContainer={(triggerNode) =>
+                    triggerNode.parentElement ?? document.body
+                  }
+                  overlayStyle={{ width: '100%', maxWidth: '100%' }}
                 >
                   <Input
-                    className="!min-w-[320px]"
+                    className="w-full"
                     allowClear
                     placeholder="Type an item description to search"
                     disabled={!isNullOrUndefinedOrBlank(ChargeDetails)}
                     value={searchQuery}
+                    onFocus={() => {
+                      if (searchQuery.trim().length > 0) {
+                        setItemPopoverOpen(true);
+                      }
+                    }}
                     onChange={(event) => {
                       const value = event.target.value;
                       const hasSearchText = value.trim().length > 0;
@@ -440,36 +486,35 @@ const AddCharge: FC<Props> = ({
                       setSearchQuery(value);
                       setItemPopoverOpen(hasSearchText);
 
-                      if (
-                        selectedItem ||
-                        !hasSearchText
-                      ) {
+                      if (selectedItem || !hasSearchText) {
                         setSelectedItem(undefined);
                         form.setFieldsValue({
                           Price: undefined,
                           Qty: undefined,
                           OnHand: undefined,
+                          fk_Items_Id: undefined,
                           fk_Doctors_Id: undefined,
                         });
                       }
                     }}
                   />
                 </Popover>
-              </Form.Item>
+              </div>
+            </Form.Item>
 
-              <Form.Item
-                label="Show all charges?"
-                name="ShowAllCharges"
-                valuePropName="checked"
-                className="!mb-1"
-              >
-                <Switch
-                  onChange={onChange}
-                  checkedChildren="Yes"
-                  unCheckedChildren="No"
-                  defaultChecked
-                />
-              </Form.Item>
+            <Form.Item
+              label="Show all charges?"
+              name="ShowAllCharges"
+              valuePropName="checked"
+              className="!mb-1"
+            >
+              <Switch
+                onChange={onChange}
+                checkedChildren="Yes"
+                unCheckedChildren="No"
+                defaultChecked
+              />
+            </Form.Item>
           </div>
 
           <div className="mt-3">

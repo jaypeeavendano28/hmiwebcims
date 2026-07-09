@@ -55,6 +55,7 @@ import { Route as AuthenticatedItemsdepartmentIdImport } from './routes/_authent
 import { Route as AuthenticatedItemprofileIdImport } from './routes/_authenticated/itemprofile/$Id'
 import { Route as AuthenticatedItempriceIdImport } from './routes/_authenticated/itemprice.$Id'
 import { Route as AuthenticatedBranchprofileCodeImport } from './routes/_authenticated/branchprofile/$code'
+import { Route as AuthenticatedAppointmentdetailsNewImport } from './routes/_authenticated/appointmentdetails.new'
 import { Route as AuthenticatedAppointmentdetailsIdImport } from './routes/_authenticated/appointmentdetails.$Id'
 import { Route as AuthenticatedMaterialManagementStockIssuanceIndexImport } from './routes/_authenticated/material-management/stock-issuance/index'
 import { Route as AuthenticatedMaterialManagementReceivingIndexImport } from './routes/_authenticated/material-management/receiving/index'
@@ -68,6 +69,9 @@ import { Route as AuthenticatedMaterialManagementPurchaseOrderNewImport } from '
 
 const AuthenticatedXraytemplatesLazyImport = createFileRoute(
   '/_authenticated/xraytemplates',
+)()
+const AuthenticatedTransactionSummaryLazyImport = createFileRoute(
+  '/_authenticated/transaction-summary',
 )()
 const AuthenticatedReportsLazyImport = createFileRoute(
   '/_authenticated/reports',
@@ -139,6 +143,9 @@ const AuthenticatedChartAppointmentIdLazyImport = createFileRoute(
 const AuthenticatedCardioresultIdLazyImport = createFileRoute(
   '/_authenticated/cardioresult/$Id',
 )()
+const AuthenticatedCardiologyresultIdLazyImport = createFileRoute(
+  '/_authenticated/cardiologyresult/$Id',
+)()
 const AuthenticatedBillingAppointmentIdLazyImport = createFileRoute(
   '/_authenticated/billing/$AppointmentId',
 )()
@@ -183,6 +190,16 @@ const AuthenticatedXraytemplatesLazyRoute =
     getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/xraytemplates.lazy').then((d) => d.Route),
+  )
+
+const AuthenticatedTransactionSummaryLazyRoute =
+  AuthenticatedTransactionSummaryLazyImport.update({
+    path: '/transaction-summary',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/transaction-summary.lazy').then(
+      (d) => d.Route,
+    ),
   )
 
 const AuthenticatedReportsLazyRoute = AuthenticatedReportsLazyImport.update({
@@ -506,6 +523,16 @@ const AuthenticatedCardioresultIdLazyRoute =
     ),
   )
 
+const AuthenticatedCardiologyresultIdLazyRoute =
+  AuthenticatedCardiologyresultIdLazyImport.update({
+    path: '/cardiologyresult/$Id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/cardiologyresult.$Id.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
 const AuthenticatedBillingAppointmentIdLazyRoute =
   AuthenticatedBillingAppointmentIdLazyImport.update({
     path: '/billing/$AppointmentId',
@@ -634,6 +661,12 @@ const AuthenticatedItempriceIdRoute = AuthenticatedItempriceIdImport.update({
 const AuthenticatedBranchprofileCodeRoute =
   AuthenticatedBranchprofileCodeImport.update({
     path: '/branchprofile/$code',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+
+const AuthenticatedAppointmentdetailsNewRoute =
+  AuthenticatedAppointmentdetailsNewImport.update({
+    path: '/appointmentdetails/new',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 
@@ -845,12 +878,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsLazyImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/_authenticated/transaction-summary': {
+      preLoaderRoute: typeof AuthenticatedTransactionSummaryLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
     '/_authenticated/xraytemplates': {
       preLoaderRoute: typeof AuthenticatedXraytemplatesLazyImport
       parentRoute: typeof AuthenticatedImport
     }
     '/_authenticated/appointmentdetails/$Id': {
       preLoaderRoute: typeof AuthenticatedAppointmentdetailsIdImport
+      parentRoute: typeof AuthenticatedImport
+    }
+    '/_authenticated/appointmentdetails/new': {
+      preLoaderRoute: typeof AuthenticatedAppointmentdetailsNewImport
       parentRoute: typeof AuthenticatedImport
     }
     '/_authenticated/branchprofile/$code': {
@@ -935,6 +976,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/billing/$AppointmentId': {
       preLoaderRoute: typeof AuthenticatedBillingAppointmentIdLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
+    '/_authenticated/cardiologyresult/$Id': {
+      preLoaderRoute: typeof AuthenticatedCardiologyresultIdLazyImport
       parentRoute: typeof AuthenticatedImport
     }
     '/_authenticated/cardioresult/$Id': {
@@ -1087,8 +1132,10 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedRadtechsLazyRoute,
     AuthenticatedReceivingLazyRoute,
     AuthenticatedReportsLazyRoute,
+    AuthenticatedTransactionSummaryLazyRoute,
     AuthenticatedXraytemplatesLazyRoute,
     AuthenticatedAppointmentdetailsIdRoute,
+    AuthenticatedAppointmentdetailsNewRoute,
     AuthenticatedBranchprofileCodeRoute,
     AuthenticatedItempriceIdRoute,
     AuthenticatedItemprofileIdRoute,
@@ -1110,6 +1157,7 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedUtilitiesVendorsRoute,
     AuthenticatedArdetailsIdLazyRoute,
     AuthenticatedBillingAppointmentIdLazyRoute,
+    AuthenticatedCardiologyresultIdLazyRoute,
     AuthenticatedCardioresultIdLazyRoute,
     AuthenticatedChartAppointmentIdLazyRoute,
     AuthenticatedDoctorsprofileIdLazyRoute,

@@ -11,6 +11,7 @@ import {
   MenuProps,
   Modal,
   Space,
+  Tag,
   Tooltip,
   notification,
 } from 'antd';
@@ -32,6 +33,15 @@ type Props = {
   MemberNo: string;
   Name: string;
   IsMobile: boolean;
+};
+
+const statusTagColors: Record<string, string> = {
+  A: 'processing',
+  C: 'blue',
+  D: 'success',
+  E: 'warning',
+  O: 'error',
+  W: 'default',
 };
 
 const PatientsPerCounter: FC<Props> = ({
@@ -133,6 +143,9 @@ const PatientsPerCounter: FC<Props> = ({
           }
         }
         await refreshPatientQueries();
+        queryClient.invalidateQueries({
+          queryKey: ['patientsPerCounter'],
+        });
       } else {
         notification.error({
           message: res.message,
@@ -198,10 +211,17 @@ const PatientsPerCounter: FC<Props> = ({
   };
 
   const handleCardioResult = (data: any) => {
+    // router.navigate({
+    //   to: '/cardioresult/$Id',
+    //   params: {
+    //     Id: data.fk_Appointments_Id,
+    //   },
+    // });
+
     router.navigate({
-      to: '/cardioresult/$Id',
+      to: '/cardiologyresult/$Id',
       params: {
-        Id: data.fk_Appointments_Id,
+        Id: data.fk_Appointments_Id.toString(),
       },
     });
   };
@@ -282,7 +302,7 @@ const PatientsPerCounter: FC<Props> = ({
             />
           </Tooltip>
         )}
-        {!IsMobile && (
+        {!IsMobile && !effectiveIsDone && (
           <Tooltip title="Change Status">
             <Dropdown menu={{ items }} placement="top" trigger={['click']}>
               <Button
@@ -376,6 +396,16 @@ const PatientsPerCounter: FC<Props> = ({
       </div>
     );
   };
+  const statusBodyTemplate = (data: any) => {
+    const statusDescription = data.StatusDesc ?? data.StatusDescription ?? '-';
+    const color = statusTagColors[data.Status] ?? 'default';
+
+    return (
+      <Tag color={color} className="m-0 font-semibold">
+        {statusDescription}
+      </Tag>
+    );
+  };
   const handleRequest = (data: any) => {
     setSelectedRecord(data);
     setShowRequest(true);
@@ -416,24 +446,38 @@ const PatientsPerCounter: FC<Props> = ({
           header="Action"
           body={(data) => actionBodyTemplate(data)}
         ></Column>
-        <Column field="AppointmentNo" header="Appointment No."></Column>
+        {/* <Column field="AppointmentNo" header="Appointment No."></Column> */}
+        <Column
+          field="AppointmentDate"
+          header="Appointment Date"
+          filter
+          body={(data) =>
+            data.AppointmentDate
+              ? dayjs(data.AppointmentDate).format('MMM D, YYYY')
+              : '-'
+          }
+        ></Column>
         <Column field="Name" header="Name" filter></Column>
         <Column
           field="CurrentCounterAndStatus"
           header="Current Counter"
+          hidden={isDone}
           filter
         ></Column>
 
         <Column field="QueueNo" header="Queue No." filter></Column>
         <Column field="MemberNo" header="Member No." filter></Column>
-        <Column field="Company" header="Company" filter></Column>
+
+        {/* <Column field="Company" header="Company" filter></Column> */}
         <Column
           hidden={IsMobile}
-          field="Status"
+          field="StatusDesc"
           header="Status"
           filter
+          body={(data) => statusBodyTemplate(data)}
         ></Column>
         <Column
+          hidden={!isDone}
           field="DateCompleted"
           header="Date Completed"
           body={(data) =>
@@ -444,6 +488,7 @@ const PatientsPerCounter: FC<Props> = ({
         ></Column>
 
         <Column
+          hidden={isDone}
           field="ElapseTime"
           header="Elapsed Time"
           body={(data) => actionBodyElapseTime(data)}

@@ -76,9 +76,15 @@ const ChargesPerPatient: FC<Props> = ({
         {Counter === data.QCounter && Counter !== 'LAB' && (
           <>
             <Tooltip title="Result">
-              <Link>
-                <BiNotepad size={16} onClick={() => handleNewResult!(data)} />
-              </Link>
+              <BiNotepad
+                size={16}
+                className="cursor-pointer"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleNewResult!(data);
+                }}
+              />
             </Tooltip>
           </>
         )}
@@ -143,13 +149,13 @@ const ChargesPerPatient: FC<Props> = ({
         <Column field="StatusDate" header="Status set Date"></Column>
         <Column field="StatusSetBy" header="Status Set By"></Column>
         <Column field="StatusRemarks" header="Status Remarks"></Column>
-        <Column field="Gross" header="Gross"></Column>
+        {/* <Column field="Gross" header="Gross"></Column>
         <Column field="HmoAmount" header="Hmo"></Column>
         <Column field="CashPayment" header="Cash Payment"></Column>
         <Column field="Net" header="Net"></Column>
         <Column field="PaymentType" header="Payment Type"></Column>
         <Column field="ResultId" header="ResultId"></Column>
-        <Column field="QCounter" header="Q Counter"></Column>
+        <Column field="QCounter" header="Q Counter"></Column> */}
       </DataTable>
       <Modal
         open={showModal}

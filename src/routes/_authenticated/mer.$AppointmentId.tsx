@@ -31,6 +31,7 @@ import { Column } from 'primereact/column';
 import axios from 'axios';
 import useAppStore from '../../store';
 import { useAuth } from '../../hooks/userAuth';
+import { useQuery } from '@tanstack/react-query';
 
 export const Route = createFileRoute('/_authenticated/mer/$AppointmentId')({
   component: () => <Mer />,
@@ -44,6 +45,9 @@ const otherMedicalHistory: TMerOthers[] = [
   { Id: 2, Description: 'Alcohol beverage drinker' },
   { Id: 3, Description: 'Covid-19 Vaccinated' },
 ];
+const encodeReportLineBreaks = (value?: string) =>
+  value?.replace(/\r?\n/g, '\\n');
+const decodeReportLineBreaks = (value?: string) => value?.replace(/\\n/g, '\n');
 const Mer = () => {
   const [peStatus, setPeStatus] = useState([]);
   const [chestXrayStatus, setChestXrayStatus] = useState<
@@ -82,6 +86,21 @@ const Mer = () => {
   const [doctors, setDoctors] = useState<TDoctors[] | undefined>([]);
   const { AppointmentId } = Route.useParams();
   const [form] = useForm();
+
+  const occupation = useQuery({
+    queryKey: ['occupation'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetOccupation',
+        parameters: {},
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
 
   const handleInitialize = async () => {
     let res = await PostData('GetRecords', {
@@ -183,39 +202,39 @@ const Mer = () => {
           Lmp: isNullOrUndefinedOrBlank(x.Lmp) ? undefined : dayjs(x.Lmp),
           ChestXrayStudyNo: x.ChestXrayStudyNo,
           ChestXrayView: x.ChestXrayView,
-          ChestXrayResult: x.ChestXrayResult,
+          ChestXrayResult: decodeReportLineBreaks(x.ChestXrayResult),
           UrinalysisDate: isNullOrUndefinedOrBlank(x.UrinalysisDate)
             ? undefined
             : dayjs(x.UrinalysisDate),
-          UrinalysisResult: x.UrinalysisResult,
+          UrinalysisResult: decodeReportLineBreaks(x.UrinalysisResult),
           EcgDate: isNullOrUndefinedOrBlank(x.EcgDate)
             ? undefined
             : dayjs(x.EcgDate),
-          EcgResult: x.EcgResult,
+          EcgResult: decodeReportLineBreaks(x.EcgResult),
           CbcDate: isNullOrUndefinedOrBlank(x.CbcDate)
             ? undefined
             : dayjs(x.CbcDate),
-          CbcResult: x.CbcResult,
+          CbcResult: decodeReportLineBreaks(x.CbcResult),
           FecalysisDate: isNullOrUndefinedOrBlank(x.FecalysisDate)
             ? undefined
             : dayjs(x.FecalysisDate),
-          FecalysisResult: x.FecalysisResult,
+          FecalysisResult: decodeReportLineBreaks(x.FecalysisResult),
           DrugTestDate: isNullOrUndefinedOrBlank(x.DrugTestDate)
             ? undefined
             : dayjs(x.DrugTestDate),
-          DrugTestResult: x.DrugTestResult,
+          DrugTestResult: decodeReportLineBreaks(x.DrugTestResult),
           TreadmillDate: isNullOrUndefinedOrBlank(x.TreadmillDate)
             ? undefined
             : dayjs(x.TreadmillDate),
-          TreadmillResult: x.TreadmillResult,
+          TreadmillResult: decodeReportLineBreaks(x.TreadmillResult),
           EchoDate: isNullOrUndefinedOrBlank(x.EchoDate)
             ? undefined
             : dayjs(x.EchoDate),
-          EchoResult: x.EchoResult,
+          EchoResult: decodeReportLineBreaks(x.EchoResult),
           UltrasoundDate: isNullOrUndefinedOrBlank(x.UltrasoundDate)
             ? undefined
             : dayjs(x.UltrasoundDate),
-          UltrasoundResult: x.UltrasoundResult,
+          UltrasoundResult: decodeReportLineBreaks(x.UltrasoundResult),
           ClassA: x.ClassA,
           ClassB: x.ClassB,
           ClassC: x.ClassC,
@@ -237,6 +256,7 @@ const Mer = () => {
           Appointment: x.Appointment,
           AppointmentRemarks: x.AppointmentRemarks,
           DisplaySignatureIfAny: x.DisplaySignatureIfAny,
+          LmpRemarks: x.LmpRemarks,
         });
       } else {
         form.setFieldsValue({
@@ -274,9 +294,11 @@ const Mer = () => {
         },
       });
 
-      console.log(res);
-
-      if (res && res.parameters.lst > 0 && res.parameters.lst[0].ResultId) {
+      if (
+        res &&
+        res.parameters.lst.length > 0 &&
+        res.parameters.lst[0].ResultId
+      ) {
         setChestXrayStatus(res.parameters.lst[0]);
         var studyno = await PostData('GetRecords', {
           sp: 'udp_GetRadiologyResult',
@@ -284,10 +306,11 @@ const Mer = () => {
             Id: res.parameters.lst[0].ResultId,
           },
         });
+        console.log(studyno);
         if (studyno) {
           form.setFieldsValue({
             ChestXrayStudyNo: studyno.parameters.lst[0].StudyNo,
-            ChestXrayDate: dayjs(studyno.parameters.lst[0].ReportDate),
+            ChestXrayDate: dayjs(studyno.parameters.lst[0].StatusDate),
           });
         }
       }
@@ -364,10 +387,9 @@ const Mer = () => {
         setEchoStatus(res.parameters.lst[0]);
       }
       res = await PostData('GetRecords', {
-        sp: 'udp_GetMerProcedureStatus',
+        sp: 'udp_GetMerProcedureUltrasoundStatus',
         parameters: {
           AppointmentId: AppointmentId,
-          ItemId: 2278,
         },
       });
       if (res) {
@@ -531,8 +553,19 @@ const Mer = () => {
         UltrasoundDate: isNullOrUndefinedOrBlank(v.UltrasoundDate)
           ? undefined
           : dayjs(v.UltrasoundDate).format('YYYY-MM-DD'),
+        ChestXrayResult: encodeReportLineBreaks(v.ChestXrayResult),
+        UrinalysisResult: encodeReportLineBreaks(v.UrinalysisResult),
+        EcgResult: encodeReportLineBreaks(v.EcgResult),
+        CbcResult: encodeReportLineBreaks(v.CbcResult),
+        FecalysisResult: encodeReportLineBreaks(v.FecalysisResult),
+        DrugTestResult: encodeReportLineBreaks(v.DrugTestResult),
+        TreadmillResult: encodeReportLineBreaks(v.TreadmillResult),
+        EchoResult: encodeReportLineBreaks(v.EchoResult),
+        UltrasoundResult: encodeReportLineBreaks(v.UltrasoundResult),
         Type: 'R',
       };
+
+      // console.log(valuesToSave);
       const res = await PostData('SaveMer', valuesToSave);
 
       if (res) {
@@ -845,7 +878,25 @@ const Mer = () => {
             <Input readOnly />
           </Form.Item>
           <Form.Item name="Occupation" label="Occupation">
-            <Input />
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+            >
+              {occupation.data &&
+                occupation.data!.map((v: any) => (
+                  <AutoComplete.Option
+                    key={v.Value}
+                    value={v.Value}
+                    title={v.Value}
+                  >
+                    {v.Value}
+                  </AutoComplete.Option>
+                ))}
+            </AutoComplete>
           </Form.Item>
           <Form.Item name="ContactNos" label="Contact Nos.">
             <Input readOnly />
@@ -930,15 +981,17 @@ const Mer = () => {
           <Form.Item name="Weight" label="Weight">
             <Input />
           </Form.Item>
-          <Form.Item name="Lmp" label="LMP">
-            <DatePicker format="MM/DD/YYYY" />
-          </Form.Item>
         </div>
         <div className="grid lg:grid-cols-6 gap-4">
-          {form.getFieldValue('Sex') === 'F' && (
-            <Form.Item name="Lmp" label="Last menstrual period">
-              <DatePicker />
-            </Form.Item>
+          {form.getFieldValue('Sex') === 'Female' && (
+            <>
+              <Form.Item name="Lmp" label="Last menstrual period (LMP)">
+                <DatePicker />
+              </Form.Item>
+              <Form.Item name="LmpRemarks" label="LMP Remarks">
+                <Input />
+              </Form.Item>
+            </>
           )}
         </div>
 
@@ -1166,7 +1219,7 @@ const Mer = () => {
                 <Input />
               </Form.Item>
               <Form.Item name="ChestXrayResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -1199,7 +1252,7 @@ const Mer = () => {
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="UrinalysisResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -1235,7 +1288,7 @@ const Mer = () => {
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="EcgResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -1268,7 +1321,7 @@ const Mer = () => {
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="CbcResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -1303,7 +1356,7 @@ const Mer = () => {
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="FecalysisResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -1336,7 +1389,7 @@ const Mer = () => {
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="DrugTestResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -1371,7 +1424,7 @@ const Mer = () => {
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="TreadmillResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -1404,7 +1457,7 @@ const Mer = () => {
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="EchoResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -1439,7 +1492,7 @@ const Mer = () => {
                 <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="UltrasoundResult" label="Result">
-                <Input />
+                <Input.TextArea rows={3} />
               </Form.Item>
             </div>
           </div>
@@ -2133,7 +2186,7 @@ const Mer = () => {
               <Form.Item name="TriglyceridesValue" noStyle>
                 <Radio.Group>
                   <Radio value="Normal">Normal</Radio>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Not Normal">Not Normal</Radio>
                 </Radio.Group>
               </Form.Item>
               <Form.Item

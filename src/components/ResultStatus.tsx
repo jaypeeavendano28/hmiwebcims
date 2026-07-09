@@ -4,13 +4,14 @@ import { PostData } from '../helpers';
 import { Column } from 'primereact/column';
 import { Space, Tooltip } from 'antd';
 
-import { BiNote } from 'react-icons/bi';
+// import { BiNote } from 'react-icons/bi';
 import { PiQueueLight } from 'react-icons/pi';
-import { useRouter } from '@tanstack/react-router';
+// import { useRouter } from '@tanstack/react-router';
 import { TCharges } from '../types';
 import useAppStore from '../store';
 import { Modal } from 'antd';
 import { useState } from 'react';
+import dayjs from 'dayjs';
 
 type Props = {
   AppointmentId?: number;
@@ -19,7 +20,7 @@ type Props = {
 };
 
 export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
-  const router = useRouter();
+  // const router = useRouter();
   const resultStatus = useQuery({
     queryKey: ['resultStatus', AppointmentId],
     queryFn: async () => {
@@ -36,11 +37,12 @@ export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
+
   const [queueLoading, setQueueLoading] = useState(false);
   const actionBodyTemplate = (data: any) => {
     return (
       <Space>
-        {(data.fk_Departments_Id === 1000 ||
+        {/* {(data.fk_Departments_Id === 1000 ||
           data.fk_Departments_Id === 1001 ||
           data.fk_Departments_Id === 1002) && (
           <Tooltip title="Result">
@@ -50,7 +52,7 @@ export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
               onClick={() => handleResult(data)}
             />
           </Tooltip>
-        )}
+        )} */}
         {data.Status === 'TO FOLLOW' && QueueNo === '' && (
           <Tooltip title="Send to Queue">
             <PiQueueLight
@@ -64,31 +66,31 @@ export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
     );
   };
 
-  function handleResult(data: any) {
-    ///Lab
-    if (data.fk_Departments_Id === 1000) {
-      router.navigate({
-        to: '/laboratoryresults/$Id',
-        params: {
-          Id: data.fk_Appointments_Id,
-        },
-      });
-    } else if (data.fk_Departments_Id === 1001) {
-      router.navigate({
-        to: '/xrayresult/$Id',
-        params: {
-          Id: data.fk_Appointments_Id,
-        },
-      });
-    } else if (data.fk_Departments_Id === 1002) {
-      router.navigate({
-        to: '/ultrasound/$Id',
-        params: {
-          Id: data.fk_Appointments_Id,
-        },
-      });
-    }
-  }
+  // function handleResult(data: any) {
+  //   ///Lab
+  //   if (data.fk_Departments_Id === 1000) {
+  //     router.navigate({
+  //       to: '/laboratoryresults/$Id',
+  //       params: {
+  //         Id: data.fk_Appointments_Id,
+  //       },
+  //     });
+  //   } else if (data.fk_Departments_Id === 1001) {
+  //     router.navigate({
+  //       to: '/xrayresult/$Id',
+  //       params: {
+  //         Id: data.fk_Appointments_Id,
+  //       },
+  //     });
+  //   } else if (data.fk_Departments_Id === 1002) {
+  //     router.navigate({
+  //       to: '/ultrasound/$Id',
+  //       params: {
+  //         Id: data.fk_Appointments_Id,
+  //       },
+  //     });
+  //   }
+  // }
 
   const store = useAppStore();
 
@@ -155,6 +157,11 @@ export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
         size="small"
       >
         <Column field="Description" header="Description"></Column>
+        <Column
+          field="DateAdded"
+          header="Date Added"
+          body={(data: TCharges) => dayjs(data.DateAdded).format('MM/DD/YYYY')}
+        ></Column>
         <Column field="Status" header="Status"></Column>
         <Column field="StatusDate" header="Date"></Column>
         <Column

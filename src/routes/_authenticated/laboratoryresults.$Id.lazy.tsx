@@ -7,7 +7,6 @@ import {
 } from '../../types';
 import { useEffect, useState } from 'react';
 import {
-  AutoComplete,
   Button,
   DatePicker,
   Divider,
@@ -59,6 +58,7 @@ const formItemLayout = {
     sm: { span: 18 },
   },
 };
+const DEFAULT_PATHOLOGIST_NAME = 'DR. ALMUHAIMIN USMAN';
 
 const LaboratoryResults = () => {
   const [allowSave, setAllowSave] = useState(false);
@@ -66,11 +66,11 @@ const LaboratoryResults = () => {
   const [isFinalized, setIsFinalized] = useState(false);
   const [showFinalize, setShowFinalize] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [specimen, setSpecimen] = useState([]);
+  // const [specimen, setSpecimen] = useState([]);
   const [branchDetails, setBranchDetails] = useState({});
   // const [Remarks, setRemarks] = useState([]);
   const [Medtechs, setMedtechs] = useState([]);
-  const [Pathologist, setPathologist] = useState([]);
+  const [Pathologist, setPathologist] = useState<any[]>([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
   const [IsSaving, setIsSaving] = useState(false);
   const [ResultNo, setResultNo] = useState('');
@@ -189,6 +189,9 @@ const LaboratoryResults = () => {
       ReportDate: dayjs(),
       DateReceived: dayjs(),
       TemplateId: form1.getFieldValue('Template'),
+      Pathologist: Pathologist.find(
+        (d: any) => d.Name === DEFAULT_PATHOLOGIST_NAME,
+      )?.Id,
     });
     setResultNo('');
     setResultId(0);
@@ -326,7 +329,18 @@ const LaboratoryResults = () => {
       },
     });
     if (res) {
-      setPathologist(res.parameters.lst);
+      const pathologists = res.parameters.lst;
+      setPathologist(pathologists);
+      const defaultPathologist = pathologists.find(
+        (d: any) => d.Name === DEFAULT_PATHOLOGIST_NAME,
+      );
+
+      if (
+        defaultPathologist &&
+        isNullOrUndefinedOrBlank(form.getFieldValue('Pathologist'))
+      ) {
+        form.setFieldValue('Pathologist', defaultPathologist.Id);
+      }
     }
 
     res = await PostData('GetRecords', {
@@ -345,7 +359,7 @@ const LaboratoryResults = () => {
       parameters: {},
     });
     if (res) {
-      setSpecimen(res.parameters.lst);
+      // setSpecimen(res.parameters.lst);
     }
 
     ///udp_GetBranchDetails
@@ -649,16 +663,16 @@ const LaboratoryResults = () => {
             <Form.Item
               label="Date Recorded"
               name="DateCollected"
-              // rules={[
-              //   {
-              //     required: true,
-              //     message: "Date received is required!",
-              //   },
-              // ]}
+              rules={[
+                {
+                  required: true,
+                  message: 'Date received is required!',
+                },
+              ]}
             >
               <DatePicker showTime showToday format="MM/DD/YYYY hh:mm A" />
             </Form.Item>
-            <Form.Item
+            {/* <Form.Item
               label="Specimen"
               name="Specimen"
               rules={[
@@ -670,17 +684,17 @@ const LaboratoryResults = () => {
               normalize={(v) => v.toUpperCase()}
             >
               <AutoComplete options={specimen} placeholder="Please select" />
-            </Form.Item>
+            </Form.Item> */}
             <Form.Item
               label="Lab No."
               name="LabNo"
-              // rules={[
-              //   { required: true, message: "Specimen is required!" },
-              //   {
-              //     max: 100,
-              //     message: "Specimen must not exceed 100 characters!",
-              //   },
-              // ]}
+              rules={[
+                { required: true, message: 'Specimen is required!' },
+                {
+                  max: 100,
+                  message: 'Specimen must not exceed 100 characters!',
+                },
+              ]}
               normalize={(v) => v.toUpperCase()}
             >
               <Input />
@@ -746,12 +760,12 @@ const LaboratoryResults = () => {
             <Form.Item
               label="Pathologist"
               name="Pathologist"
-              // rules={[
-              //   {
-              //     required: true,
-              //     message: "Pathologist is required!",
-              //   },
-              // ]}
+              rules={[
+                {
+                  required: true,
+                  message: 'Pathologist is required!',
+                },
+              ]}
             >
               <Select
                 showSearch

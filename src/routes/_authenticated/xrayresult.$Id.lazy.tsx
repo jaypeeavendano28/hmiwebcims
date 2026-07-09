@@ -444,7 +444,7 @@ const XrayResult = () => {
                 },
               ]}
             >
-              <DatePicker showTime format="MM/DD/YYYY hh:mm A" />
+              <DatePicker format="MM/DD/YYYY" />
             </Form.Item>
             {/* <Form.Item
               label="Date of Result Read"
@@ -468,7 +468,7 @@ const XrayResult = () => {
                 },
               ]}
             >
-              <DatePicker showTime format="MM/DD/YYYY hh:mm A" />
+              <DatePicker format="MM/DD/YYYY" />
             </Form.Item>
 
             {/* <Form.Item
@@ -573,7 +573,7 @@ const XrayResult = () => {
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item label="Radiologist 3" name="Rad3">
+            {/* <Form.Item label="Radiologist 3" name="Rad3">
               <Select
                 showSearch
                 allowClear
@@ -589,7 +589,7 @@ const XrayResult = () => {
                   </Select.Option>
                 ))}
               </Select>
-            </Form.Item>
+            </Form.Item> */}
 
             <Form.Item label="Template" name="Template">
               <Select onChange={handleChangeTemplate}>
@@ -602,10 +602,10 @@ const XrayResult = () => {
             </Form.Item>
 
             <Form.Item label="Findings" name="Findings">
-              <Input.TextArea rows={10} />
+              <Input.TextArea rows={20} />
             </Form.Item>
             <Form.Item label="Impression" name="Impression">
-              <Input.TextArea rows={10} />
+              <Input.TextArea rows={20} />
             </Form.Item>
             <Form.Item label="Note" name="Note">
               <Input.TextArea rows={10} />
