@@ -111,38 +111,6 @@ const Sider = () => {
           icon: <FaRegCalendarPlus />,
         }
       : null,
-    store.withHemoAmb
-      ? {
-          label: (
-            <Link
-              to="/registeredpatients/$station"
-              params={{
-                station: "0",
-              }}
-            >
-              Hemodialyis/Ambulatory Patients
-            </Link>
-          ),
-          key: "mnuHemoPatients",
-          icon: <FaRegCalendarPlus />,
-        }
-      : null,
-    store.withConsultations
-      ? {
-          label: (
-            <Link
-              to="/registeredpatients/$station"
-              params={{
-                station: "2",
-              }}
-            >
-              Consultations
-            </Link>
-          ),
-          key: "mnuConsultations",
-          icon: <FaRegCalendarPlus />,
-        }
-      : null,
     {
       label: "Material Management",
       key: "mm",

@@ -1,7 +1,7 @@
-import { createLazyFileRoute } from '@tanstack/react-router';
-import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
-import { TAppointments, TRadiologyResult } from '../../types';
-import { useEffect, useState } from 'react';
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
+import { TAppointments, TRadiologyResult } from "../../types";
+import { useEffect, useRef, useState } from "react";
 import {
   Button,
   DatePicker,
@@ -14,18 +14,18 @@ import {
   Space,
   Tabs,
   notification,
-} from 'antd';
-import useAppStore from '../../store';
-import dayjs from 'dayjs';
-import axios from 'axios';
-import ChargesPerPatient from '../../components/ChargesPerPatient';
-import FinalizeForm from '../../components/FinalizeForm';
-import { ExistingRadiologyResults } from '../../components/ExistingRadiologyResult';
+} from "antd";
+import useAppStore from "../../store";
+import dayjs from "dayjs";
+import axios from "axios";
+import ChargesPerPatient from "../../components/ChargesPerPatient";
+import FinalizeForm from "../../components/FinalizeForm";
+import { ExistingRadiologyResults } from "../../components/ExistingRadiologyResult";
 const isDev = import.meta.env.DEV;
-const prodApi = import.meta.env.VITE_PROD_API + '/api/';
-const devApi = import.meta.env.VITE_DEV_API + '/api/';
+const prodApi = import.meta.env.VITE_PROD_API + "/api/";
+const devApi = import.meta.env.VITE_DEV_API + "/api/";
 const apiUrl = isDev ? devApi : prodApi;
-export const Route = createLazyFileRoute('/_authenticated/xrayresult/$Id')({
+export const Route = createLazyFileRoute("/_authenticated/xrayresult/$Id")({
   component: () => <XrayResult />,
 });
 const tailFormItemLayout = {
@@ -55,26 +55,31 @@ const XrayResult = () => {
   const [isFinalized, setIsFinalized] = useState(false);
   const [Key, setKey] = useState<string>(Math.random().toString());
   const [allowSave, setAllowSave] = useState(false);
-  const [chargeDescription, setChargeDescription] = useState('');
+  const [chargeDescription, setChargeDescription] = useState("");
   const [chargeId, setChargeId] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [Radiologist, setRadiologist] = useState([]);
   const [radtechs, setRadTechs] = useState([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
   const [IsSaving, setIsSaving] = useState(false);
-  const [ResultNo, setResultNo] = useState('');
+  const [ResultNo, setResultNo] = useState("");
   const [ResultId, setResultId] = useState(0);
   const [form] = Form.useForm();
   const store = useAppStore();
   const [templates, setTemplates] = useState([]);
   const Id = Route.useParams().Id;
+  const search = Route.useSearch() as {
+    chargeId?: string | number;
+  };
+  const requestedChargeId = Number(search.chargeId ?? 0);
+  const selectedChargeHandledRef = useRef("");
   const [appointmentDetails, setAppointmentDetails] = useState<
     TAppointments | undefined
   >();
 
   const handleGetAppointmentDetails = async () => {
-    let res = await PostData('GetRecords', {
-      sp: 'udp_GetAppointmentDetails',
+    let res = await PostData("GetRecords", {
+      sp: "udp_GetAppointmentDetails",
       parameters: {
         Id: Id,
       },
@@ -96,18 +101,18 @@ const XrayResult = () => {
         Id: ResultId,
         fk_Appointments_Id: appointmentDetails?.Id,
         fk_Charges_Id: chargeId,
-        Department: 'XR',
+        Department: "XR",
         ChargeDescription: chargeDescription,
       };
 
-      const res = await PostData('SaveRadiologyResult', valuesToSave);
+      const res = await PostData("SaveRadiologyResult", valuesToSave);
       if (res) {
         console.log(res);
         setIsProcessing(false);
         if (res.status === 1) {
           notification.success({
-            message: 'Successfully saved!',
-            placement: 'topRight',
+            message: "Successfully saved!",
+            placement: "topRight",
             duration: 3,
           });
 
@@ -119,7 +124,7 @@ const XrayResult = () => {
           setIsProcessing(false);
           notification.error({
             message: res.message,
-            placement: 'topRight',
+            placement: "topRight",
             duration: 3,
           });
         }
@@ -128,7 +133,7 @@ const XrayResult = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
     }
@@ -136,12 +141,12 @@ const XrayResult = () => {
   const handleFinalizeResult = async (v: any) => {
     setShowFinalize(false);
     setIsProcessing(true);
-    const res = await PostData('FinalizeResult', {
+    const res = await PostData("FinalizeResult", {
       ResultId: ResultId,
-      Table: 'RAD',
+      Table: "RAD",
       Username: v.Username,
       Password: v.Password,
-      Mode: isFinalized ? 'U' : 'F',
+      Mode: isFinalized ? "U" : "F",
     });
 
     try {
@@ -150,9 +155,9 @@ const XrayResult = () => {
         if (res.status === 1) {
           notification.success({
             message: isFinalized
-              ? 'Result successfully un-finalized!'
-              : 'Result successfully finalized!',
-            placement: 'topRight',
+              ? "Result successfully un-finalized!"
+              : "Result successfully finalized!",
+            placement: "topRight",
             duration: 3,
           });
           if (!isFinalized) {
@@ -162,7 +167,7 @@ const XrayResult = () => {
         } else {
           notification.error({
             message: res.message,
-            placement: 'topRight',
+            placement: "topRight",
             duration: 3,
           });
         }
@@ -171,22 +176,22 @@ const XrayResult = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
     }
   };
   const handleInitialize = async () => {
-    let res = await PostData('GetRecords', {
-      sp: 'udp_GetDoctors',
+    let res = await PostData("GetRecords", {
+      sp: "udp_GetDoctors",
       parameters: {},
     });
     if (res) {
       setRequestingPhysician(res.parameters.lst);
     }
 
-    res = await PostData('GetRecords', {
-      sp: 'udp_GetListOfRadiologist',
+    res = await PostData("GetRecords", {
+      sp: "udp_GetListOfRadiologist",
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -195,10 +200,10 @@ const XrayResult = () => {
       setRadiologist(res.parameters.lst);
     }
 
-    res = await PostData('GetRecords', {
-      sp: 'udp_GetListOfMedtechs',
+    res = await PostData("GetRecords", {
+      sp: "udp_GetListOfMedtechs",
       parameters: {
-        Type: 'R',
+        Type: "R",
       },
     });
     if (res) {
@@ -209,32 +214,32 @@ const XrayResult = () => {
     setIsProcessing(true);
     const isDownload = false;
     const Finalized = isNullOrUndefinedOrBlank(
-      form.getFieldValue('FinalizedBy'),
+      form.getFieldValue("FinalizedBy"),
     )
-      ? 'Y'
-      : 'N';
+      ? "Y"
+      : "N";
     const url =
-      apiUrl + 'radiologyresult/' + ResultId + '/xray.rdl/' + Finalized;
-    axios.defaults.headers.common['Authorization'] =
-      'Bearer ' + store.tokenIdWebCims;
+      apiUrl + "radiologyresult/" + ResultId + "/xray.rdl/" + Finalized;
+    axios.defaults.headers.common["Authorization"] =
+      "Bearer " + store.tokenIdWebCims;
     try {
       await axios({
         url: url, //your url
-        method: 'GET',
-        responseType: 'blob',
+        method: "GET",
+        responseType: "blob",
       }).then((response: any) => {
         let newBlob;
         if (isDownload === false) {
           newBlob = new Blob([response.data], {
-            type: 'application/pdf',
+            type: "application/pdf",
           });
 
           const data = window.URL.createObjectURL(newBlob);
 
-          const a = document.createElement('a');
+          const a = document.createElement("a");
           if (isPrint === true) {
-            a.setAttribute('href', data);
-            a.setAttribute('target', '_blank');
+            a.setAttribute("href", data);
+            a.setAttribute("target", "_blank");
 
             a.click();
           }
@@ -242,13 +247,13 @@ const XrayResult = () => {
           setIsProcessing(false);
         } else {
           newBlob = new Blob([response.data], {
-            type: 'application/excel',
+            type: "application/excel",
           });
-          const a = document.createElement('a');
+          const a = document.createElement("a");
           document.body.appendChild(a);
           const url = window.URL.createObjectURL(newBlob);
           a.href = url;
-          a.download = 'download.xls';
+          a.download = "download.xls";
           a.click();
           setTimeout(() => {
             window.URL.revokeObjectURL(url);
@@ -266,10 +271,10 @@ const XrayResult = () => {
   };
   const handleGetTemplate = async (e: any) => {
     try {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetTemplateByDoctor',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetTemplateByDoctor",
         parameters: {
-          Department: 'XR',
+          Department: "XR",
           DoctorId: e,
         },
       });
@@ -279,7 +284,7 @@ const XrayResult = () => {
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
     }
@@ -295,8 +300,8 @@ const XrayResult = () => {
     });
   };
   const handleOpenResult = async (Id: number) => {
-    const res = await PostData('GetRecords', {
-      sp: 'udp_GetRadiologyResult',
+    const res = await PostData("GetRecords", {
+      sp: "udp_GetRadiologyResult",
       parameters: {
         Id: Id,
       },
@@ -326,7 +331,7 @@ const XrayResult = () => {
       });
 
       handleGetTemplate(r.Rad1);
-      form.setFieldValue('Template', r.Template);
+      form.setFieldValue("Template", r.Template);
       setAllowSave(true);
       if (!isNullOrUndefinedOrBlank(r.FinalizedBy)) {
         setIsFinalized(true);
@@ -347,7 +352,7 @@ const XrayResult = () => {
         DateRead: dayjs(),
         ReportDate: dayjs(),
       });
-      setResultNo('');
+      setResultNo("");
       setResultId(0);
       setIsFinalized(false);
     } else {
@@ -360,6 +365,35 @@ const XrayResult = () => {
     handleInitialize();
     setKey(Math.random().toString());
   }, []);
+  useEffect(() => {
+    if (!Number.isFinite(requestedChargeId) || requestedChargeId <= 0) {
+      return;
+    }
+
+    const chargeKey = `${Id}:${requestedChargeId}`;
+    if (selectedChargeHandledRef.current === chargeKey) {
+      return;
+    }
+    selectedChargeHandledRef.current = chargeKey;
+
+    const openSelectedCharge = async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetChargesByAppointmentIdForResult",
+        parameters: {
+          AppointmentId: Number(Id),
+        },
+      });
+      const selectedCharge = res?.parameters?.lst?.find(
+        (charge: any) => Number(charge.Id) === requestedChargeId,
+      );
+
+      if (selectedCharge) {
+        await handleNewResult(selectedCharge);
+      }
+    };
+
+    void openSelectedCharge();
+  }, [Id, requestedChargeId]);
   return (
     <div className="cardBackGround">
       <div className="grid lg:grid-cols-3">
@@ -389,8 +423,8 @@ const XrayResult = () => {
               defaultActiveKey="1"
               items={[
                 {
-                  label: 'Charges',
-                  key: '1',
+                  label: "Charges",
+                  key: "1",
                   children: (
                     <ChargesPerPatient
                       AppointmentId={appointmentDetails?.Id}
@@ -401,8 +435,8 @@ const XrayResult = () => {
                   ),
                 },
                 {
-                  label: 'Existing Results',
-                  key: '2',
+                  label: "Existing Results",
+                  key: "2",
                   children: (
                     <ExistingRadiologyResults
                       PatientId={appointmentDetails?.fk_PatientInformation_Id}
@@ -440,7 +474,7 @@ const XrayResult = () => {
               rules={[
                 {
                   required: true,
-                  message: 'Report date is required!',
+                  message: "Report date is required!",
                 },
               ]}
             >
@@ -464,7 +498,7 @@ const XrayResult = () => {
               rules={[
                 {
                   required: true,
-                  message: 'Date of result read is required!',
+                  message: "Date of result read is required!",
                 },
               ]}
             >
@@ -509,7 +543,7 @@ const XrayResult = () => {
               rules={[
                 {
                   required: true,
-                  message: 'Rad. Technologist is required!',
+                  message: "Rad. Technologist is required!",
                 },
               ]}
             >
@@ -535,7 +569,7 @@ const XrayResult = () => {
               rules={[
                 {
                   required: true,
-                  message: 'Radiologist 1 is required!',
+                  message: "Radiologist 1 is required!",
                 },
               ]}
             >
@@ -653,9 +687,9 @@ const XrayResult = () => {
                     onConfirm={() => {
                       setAllowSave(false);
                       setChargeId(0);
-                      setChargeDescription('');
+                      setChargeDescription("");
                       setResultId(0);
-                      setResultNo('');
+                      setResultNo("");
                       form.resetFields();
                     }}
                   >
@@ -671,7 +705,7 @@ const XrayResult = () => {
                     loading={isProcessing}
                     disabled={ResultId === 0}
                   >
-                    {isFinalized ? 'Un-Finalize Result' : 'Finalize Result'}
+                    {isFinalized ? "Un-Finalize Result" : "Finalize Result"}
                   </Button>
 
                   <Button

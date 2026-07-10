@@ -1,7 +1,7 @@
-import { Column } from 'primereact/column';
-import { DataTable } from 'primereact/datatable';
-import { FC, useEffect, useState } from 'react';
-import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
+import { Column } from "primereact/column";
+import { DataTable } from "primereact/datatable";
+import { FC, useEffect, useState } from "react";
+import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
 import {
   Button,
   Form,
@@ -11,9 +11,8 @@ import {
   Select,
   Space,
   Tooltip,
-} from 'antd';
-import { Link } from '@tanstack/react-router';
-import { BiEdit, BiNotepad } from 'react-icons/bi';
+} from "antd";
+import { BiEdit, BiNotepad } from "react-icons/bi";
 
 type Props = {
   AppointmentId?: number;
@@ -33,8 +32,8 @@ const ChargesPerPatient: FC<Props> = ({
   const [charges, setCharges] = useState([]);
   const handleGetCharges = async () => {
     try {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetChargesByAppointmentIdForResult',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetChargesByAppointmentIdForResult",
         parameters: {
           AppointmentId: AppointmentId,
         },
@@ -53,27 +52,27 @@ const ChargesPerPatient: FC<Props> = ({
       <Space>
         {Counter === data.QCounter && (
           <Tooltip title="Set Status">
-            <Link>
-              <BiEdit
-                size={16}
-                onClick={() => {
-                  setSelectedRow(data);
-                  form.resetFields();
-                  if (!isNullOrUndefinedOrBlank(data.Status)) {
-                    form.setFieldsValue({
-                      Status: data.Status,
-                      StatusRemarks: data.StatusRemarks,
-                    });
-                  }
+            <Button
+              type="link"
+              className="!h-auto !p-0"
+              icon={<BiEdit size={16} />}
+              onClick={() => {
+                setSelectedRow(data);
+                form.resetFields();
+                if (!isNullOrUndefinedOrBlank(data.Status)) {
+                  form.setFieldsValue({
+                    Status: data.Status,
+                    StatusRemarks: data.StatusRemarks,
+                  });
+                }
 
-                  setShowModal(true);
-                }}
-              />
-            </Link>
+                setShowModal(true);
+              }}
+            />
           </Tooltip>
         )}
 
-        {Counter === data.QCounter && Counter !== 'LAB' && (
+        {Counter === data.QCounter && Counter !== "LAB" && (
           <>
             <Tooltip title="Result">
               <BiNotepad
@@ -94,7 +93,7 @@ const ChargesPerPatient: FC<Props> = ({
 
   const handleSetStatus = async (v: any) => {
     try {
-      const res = await PostData('SaveSetStatus', {
+      const res = await PostData("SaveSetStatus", {
         Id: selectedRow.Id,
         Status: v.Status,
         StatusRemarks: v.StatusRemarks,
@@ -103,8 +102,8 @@ const ChargesPerPatient: FC<Props> = ({
       if (res) {
         if (res.status === 1) {
           notification.success({
-            message: 'Successfully Saved!',
-            placement: 'topRight',
+            message: "Successfully Saved!",
+            placement: "topRight",
             duration: 3,
           });
           handleGetCharges();
@@ -112,7 +111,7 @@ const ChargesPerPatient: FC<Props> = ({
         } else {
           notification.error({
             message: res.message,
-            placement: 'topRight',
+            placement: "topRight",
             duration: 3,
           });
         }
@@ -120,7 +119,7 @@ const ChargesPerPatient: FC<Props> = ({
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
     }
@@ -172,7 +171,7 @@ const ChargesPerPatient: FC<Props> = ({
             rules={[
               {
                 required: true,
-                message: 'Status is required!',
+                message: "Status is required!",
               },
             ]}
           >
@@ -196,10 +195,10 @@ const ChargesPerPatient: FC<Props> = ({
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (
-                    getFieldValue('Status') === 'DEFERRED' &&
+                    getFieldValue("Status") === "DEFERRED" &&
                     isNullOrUndefinedOrBlank(value)
                   ) {
-                    return Promise.reject('Remarks is required!');
+                    return Promise.reject("Remarks is required!");
                   }
                   return Promise.resolve();
                 },

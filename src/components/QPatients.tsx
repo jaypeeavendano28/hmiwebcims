@@ -1,35 +1,39 @@
-import { FC, useEffect, useState } from "react";
-import { TCurrentDepartment } from "../types";
-import { PostData } from "../helpers";
-import useAppStore from "../store";
-import dayjs from "dayjs";
+import { FC, useCallback, useEffect, useState } from 'react';
+import { TCurrentDepartment } from '../types';
+import { PostData } from '../helpers';
+import useAppStore from '../store';
+import dayjs from 'dayjs';
 
 type Props = {
   CurrentDepartment: TCurrentDepartment;
 };
 
 const QPatients: FC<Props> = ({ CurrentDepartment }) => {
-  const [listOfPatients, setListOfPatients] = useState([]);
+  const [listOfPatients, setListOfPatients] = useState<any[]>([]);
   const store = useAppStore();
 
-  const handleGetPatients = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetPatientsPerCounter2",
+  const handleGetPatients = useCallback(async () => {
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetPatientsPerCounter2',
       parameters: {
         BranchCode: store.branchCode,
         CounterCode: CurrentDepartment.CounterCode,
-        DateFrom: dayjs().format("YYYYMMDD"),
-        DateTo: dayjs().format("YYYYMMDD"),
+        DateFrom: dayjs().format('YYYYMMDD'),
+        DateTo: dayjs().format('YYYYMMDD'),
       },
     });
     if (res) {
-      setListOfPatients(res.parameters.lst);
+      setListOfPatients(res.parameters.lst ?? []);
     }
-  };
+  }, [CurrentDepartment.CounterCode, store.branchCode]);
 
   useEffect(() => {
     handleGetPatients();
-  }, [CurrentDepartment]);
+    const interval = setInterval(handleGetPatients, 5000);
+
+    return () => clearInterval(interval);
+  }, [handleGetPatients]);
+
   return (
     <>
       {listOfPatients.length >= 0 ? (
@@ -47,9 +51,6 @@ const QPatients: FC<Props> = ({ CurrentDepartment }) => {
                 <div className="font-bold text-5xl text-yellow-100  col-span-8">
                   {v.StatusDesc}
                 </div>
-                {/* <div className="font-bold text-4xl text-yellow-100 text-center col-span-8">
-      {v.StatusDesc}
-    </div> */}
               </div>
             ))}
           </div>

@@ -287,19 +287,17 @@ const Mer = () => {
     try {
       ///chest xray
       let res = await PostData('GetRecords', {
-        sp: 'udp_GetMerProcedureStatus',
+        sp: 'udp_GetChestXRayStatus',
         parameters: {
           AppointmentId: AppointmentId,
-          ItemId: 2197,
         },
       });
-
+      setChestXrayStatus(res.parameters.lst[0]);
       if (
         res &&
         res.parameters.lst.length > 0 &&
         res.parameters.lst[0].ResultId
       ) {
-        setChestXrayStatus(res.parameters.lst[0]);
         var studyno = await PostData('GetRecords', {
           sp: 'udp_GetRadiologyResult',
           parameters: {

@@ -1,29 +1,32 @@
-import { FC, useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PostData } from "../helpers";
-import useAppStore from "../store";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { TAppointments, TQueueDetail } from "../types";
+import { FC, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { PostData } from '../helpers';
+import useAppStore from '../store';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { TAppointments, TQueueDetail } from '../types';
 import {
   Button,
   Dropdown,
+  Form,
+  Input,
   MenuProps,
   Modal,
   Radio,
+  Select,
   Space,
   Tag,
   Tooltip,
   notification,
-} from "antd";
-import { BsCheckLg, BsClipboardCheck, BsMegaphoneFill } from "react-icons/bs";
-import Calling from "./calling";
-import { BiNotepad } from "react-icons/bi";
-import { useRouter } from "@tanstack/react-router";
-import dayjs from "dayjs";
-import { FaUpload } from "react-icons/fa6";
-import { GiMedicines } from "react-icons/gi";
-import RequestForMedicines from "./RequestForMedicines";
+} from 'antd';
+import { BsCheckLg, BsClipboardCheck, BsMegaphoneFill } from 'react-icons/bs';
+import Calling from './calling';
+import { BiEdit, BiNotepad } from 'react-icons/bi';
+import { useRouter } from '@tanstack/react-router';
+import dayjs from 'dayjs';
+import { FaUpload } from 'react-icons/fa6';
+import { GiMedicines } from 'react-icons/gi';
+import RequestForMedicines from './RequestForMedicines';
 
 type Props = {
   CounterCode?: string;
@@ -35,16 +38,25 @@ type Props = {
   MemberNo: string;
   Name: string;
   IsMobile: boolean;
+  Compact?: boolean;
 };
 
 const statusTagColors: Record<string, string> = {
-  A: "processing",
-  C: "blue",
-  D: "success",
-  E: "warning",
-  O: "error",
-  W: "default",
+  A: 'processing',
+  C: 'blue',
+  D: 'success',
+  E: 'warning',
+  O: 'error',
+  W: 'default',
 };
+
+type ProcedureStatusFormValues = {
+  Status?: string;
+  StatusRemarks?: string;
+};
+
+const procedureStatusOptions = ['DONE', 'TO FOLLOW', 'DEFERRED'];
+const resultCounterCodes = ['LAB', 'XRAY', 'ULT', 'CARDIO'];
 
 const PatientsPerCounter: FC<Props> = ({
   CounterCode,
@@ -56,6 +68,7 @@ const PatientsPerCounter: FC<Props> = ({
   MemberNo,
   Name,
   IsMobile,
+  Compact = false,
 }) => {
   const [showRequest, setShowRequest] = useState(false);
   const router = useRouter();
@@ -68,6 +81,10 @@ const PatientsPerCounter: FC<Props> = ({
   const [selectedQueueDetailId, setSelectedQueueDetailId] = useState<
     number | undefined
   >();
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusRecord, setStatusRecord] = useState<TAppointments>();
+  const [isStatusSubmitting, setIsStatusSubmitting] = useState(false);
+  const [statusForm] = Form.useForm<ProcedureStatusFormValues>();
   const [IsSubmitting, setIsSubmitting] = useState(false);
   const [now, setNow] = useState(dayjs());
   const store = useAppStore();
@@ -75,7 +92,7 @@ const PatientsPerCounter: FC<Props> = ({
   const effectiveIsDone = IsMobile || isDone;
 
   const patientsQueryKey = [
-    "patientsPerCounter",
+    'patientsPerCounter',
     store.branchCode,
     CounterCode,
     DepartmentId,
@@ -91,38 +108,53 @@ const PatientsPerCounter: FC<Props> = ({
     queryKey: patientsQueryKey,
     queryFn: async () => {
       const useDepartmentView = DepartmentId !== undefined;
-      const useProcedureCompletedList = isDone && !IsMobile && Station !== "0";
-      const sp = useDepartmentView
-        ? useProcedureCompletedList
-          ? "udp_GetCompletedProceduresByDepartment"
-          : "udp_GetPatientsPerDepartment"
-        : useProcedureCompletedList
-          ? "udp_GetCompletedProcedures"
-          : "udp_GetPatientsPerCounter";
-      const parameters = useDepartmentView
+      const useProcedureCompletedList = isDone && !IsMobile && Station !== '0';
+      const sp = IsMobile
+        ? 'udp_GetMobileProceduresByDepartment'
+        : useDepartmentView
+          ? useProcedureCompletedList
+            ? 'udp_GetCompletedProceduresByDepartment'
+            : 'udp_GetPatientsPerDepartment'
+          : useProcedureCompletedList
+            ? 'udp_GetCompletedProcedures'
+            : 'udp_GetPatientsPerCounter';
+      const parameters = IsMobile
         ? {
             BranchCode: store.branchCode,
-            DepartmentId,
+            DepartmentId: DepartmentId ?? 0,
             DateFrom,
             DateTo,
-            Station,
             UserId: store.userId,
-            IsDone: effectiveIsDone,
             Name,
             MemberNo,
-            IsMobile,
           }
-        : {
-            BranchCode: store.branchCode,
-            CounterCode,
-            DateFrom,
-            DateTo,
-            IsDone: effectiveIsDone,
-            Name,
-            MemberNo,
-            IsMobile,
-          };
-      const res = await PostData("GetRecords", {
+        : useDepartmentView
+          ? {
+              BranchCode: store.branchCode,
+              DepartmentId,
+              ...(useProcedureCompletedList
+                ? {}
+                : { CounterCode: CounterCode ?? '' }),
+              DateFrom,
+              DateTo,
+              Station,
+              UserId: store.userId,
+              IsDone: effectiveIsDone,
+              Name,
+              MemberNo,
+              IsMobile,
+            }
+          : {
+              BranchCode: store.branchCode,
+              CounterCode,
+              DateFrom,
+              DateTo,
+              IsDone: effectiveIsDone,
+              Name,
+              MemberNo,
+              IsMobile,
+            };
+      const res = await PostData('GetRecords', {
         sp,
         parameters,
       });
@@ -141,12 +173,94 @@ const PatientsPerCounter: FC<Props> = ({
         exact: true,
       }),
       queryClient.invalidateQueries({
-        queryKey: ["patientPerCounter"],
+        queryKey: ['patientPerCounter'],
       }),
     ]);
   };
 
-  const handleCall = async (data: any) => {
+  const getPositiveNumber = (value: unknown) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
+  };
+
+  const hasProcedureResult = (data: TAppointments) => {
+    if (typeof data.HasResult === 'boolean') return data.HasResult;
+    if (data.HasResult !== undefined) return Number(data.HasResult) === 1;
+
+    return getPositiveNumber(data.ResultId) > 0 || Boolean(data.DateRead);
+  };
+
+  const canSetProcedureStatus = (data: TAppointments) => {
+    return (
+      effectiveIsDone &&
+      getPositiveNumber(data.ChargeId) > 0 &&
+      !hasProcedureResult(data)
+    );
+  };
+
+  const openSetProcedureStatus = (data: TAppointments) => {
+    setStatusRecord(data);
+    statusForm.setFieldsValue({
+      Status: data.ChargeStatus?.trim() || undefined,
+      StatusRemarks: data.ChargeStatusRemarks ?? '',
+    });
+    setShowStatusModal(true);
+  };
+
+  const handleSetProcedureStatus = async (
+    values: ProcedureStatusFormValues,
+  ) => {
+    const chargeId = getPositiveNumber(statusRecord?.ChargeId);
+    const queueDetailId = getPositiveNumber(statusRecord?.QueueDetailId);
+
+    if (!chargeId) {
+      notification.error({
+        message: 'Procedure charge is missing.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    setIsStatusSubmitting(true);
+    try {
+      const res = await PostData('SaveProcedureStatus', {
+        ChargeId: chargeId,
+        QueueDetailId: queueDetailId || undefined,
+        Status: values.Status,
+        StatusRemarks: values.StatusRemarks,
+      });
+
+      if (res?.status === 1) {
+        notification.success({
+          message: 'Successfully Saved!',
+          placement: 'topRight',
+          duration: 3,
+        });
+        setShowStatusModal(false);
+        setStatusRecord(undefined);
+        statusForm.resetFields();
+        await refreshPatientQueries();
+        return;
+      }
+
+      notification.error({
+        message: res?.message ?? 'Unable to set procedure status.',
+        placement: 'topRight',
+        duration: 5,
+      });
+    } catch (error: any) {
+      notification.error({
+        message: error?.message ?? 'Unable to set procedure status.',
+        placement: 'topRight',
+        duration: 5,
+      });
+    } finally {
+      setIsStatusSubmitting(false);
+    }
+  };
+
+  const handleCall = async (data: any, resultWindow?: Window | null) => {
     setIsSubmitting(true);
 
     try {
@@ -157,15 +271,19 @@ const PatientsPerCounter: FC<Props> = ({
         QNo: data.QueueNo,
         Code: data.CounterCode,
         fk_Appointments_Id: data.fk_Appointments_Id,
-        ElapseTime: "",
+        ElapseTime: '',
         Station,
       };
 
-      const res = await PostData("CallCounter", valuesToSave);
-      if (!res) return;
+      const res = await PostData('CallCounter', valuesToSave);
+      if (!res) {
+        resultWindow?.close();
+        return;
+      }
 
       if (res.status === 2) {
-        setSelectedRecord({ ...data, Status: "C" });
+        resultWindow?.close();
+        setSelectedRecord({ ...data, Status: 'C' });
         setPendingQueueDetails(res.parameters ?? []);
         setSelectedQueueDetailId(undefined);
         setShowProcedureModal(true);
@@ -179,36 +297,40 @@ const PatientsPerCounter: FC<Props> = ({
           data.QueueDetailId;
         const activeRecord = {
           ...data,
+          ...(res.parameters ?? {}),
+          Id: data.Id,
           QueueDetailId: responseDetailId,
           CurrentQueueDetailId: responseDetailId,
         };
 
-        if (data.Status === "C") {
+        if (data.Status === 'C') {
           setSelectedRecord(activeRecord);
           setShowModal(true);
-        } else if (data.Status === "O") {
+        } else if (data.Status === 'O') {
           setSelectedRecord({});
           setShowModal(false);
-        } else if (data.Status === "A") {
+        } else if (data.Status === 'A') {
           setSelectedRecord(activeRecord);
           setShowModal(false);
-          openProcedureWorkspace(activeRecord);
+          openProcedureWorkspace(activeRecord, resultWindow);
         }
         await refreshPatientQueries();
         queryClient.invalidateQueries({
-          queryKey: ["patientsPerCounter"],
+          queryKey: ['patientsPerCounter'],
         });
       } else {
+        resultWindow?.close();
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 5,
         });
       }
     } catch (error: any) {
+      resultWindow?.close();
       notification.error({
-        message: error?.message ?? "Unable to update the queue.",
-        placement: "topRight",
+        message: error?.message ?? 'Unable to update the queue.',
+        placement: 'topRight',
         duration: 5,
       });
     } finally {
@@ -219,14 +341,14 @@ const PatientsPerCounter: FC<Props> = ({
   const beginCall = async (data: any) => {
     setIsSubmitting(true);
     try {
-      const res = await PostData("GetPendingQueueDetails", {
+      const res = await PostData('GetPendingQueueDetails', {
         QueueId: data.Id,
       });
 
       if (!res || res.status !== 1) {
         notification.error({
-          message: res?.message ?? "Unable to load pending procedures.",
-          placement: "topRight",
+          message: res?.message ?? 'Unable to load pending procedures.',
+          placement: 'topRight',
           duration: 5,
         });
         return;
@@ -234,7 +356,7 @@ const PatientsPerCounter: FC<Props> = ({
 
       const details: TQueueDetail[] = res.parameters ?? [];
       if (details.length > 1) {
-        setSelectedRecord({ ...data, Status: "C" });
+        setSelectedRecord({ ...data, Status: 'C' });
         setPendingQueueDetails(details);
         setSelectedQueueDetailId(undefined);
         setShowProcedureModal(true);
@@ -245,75 +367,111 @@ const PatientsPerCounter: FC<Props> = ({
         details[0]?.QueueDetailId ?? (details[0] as any)?.queueDetailId;
       await handleCall({
         ...data,
-        Status: "C",
+        Status: 'C',
         QueueDetailId: queueDetailId,
       });
     } catch (error: any) {
       notification.error({
-        message: error?.message ?? "Unable to load pending procedures.",
-        placement: "topRight",
+        message: error?.message ?? 'Unable to load pending procedures.',
+        placement: 'topRight',
         duration: 5,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-  const items: MenuProps["items"] = [
+  const items: MenuProps['items'] = [
     {
-      key: "A",
-      label: "Attending",
+      key: 'A',
+      label: 'Attending',
       onClick: () => {
-        void handleCall({ ...selectedRecord, Status: "A" });
+        const resultWindow = createResultWindow();
+        void handleCall({ ...selectedRecord, Status: 'A' }, resultWindow);
       },
     },
     {
-      key: "D",
-      label: "Done",
+      key: 'D',
+      label: 'Done',
       onClick: (e) => {
         void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: "E",
-      label: "Deferred",
+      key: 'E',
+      label: 'Deferred',
       onClick: (e) => {
         void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: "O",
-      label: "Out When Called",
+      key: 'O',
+      label: 'Out When Called',
       onClick: (e) => {
         void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
     {
-      key: "W",
-      label: "Waiting",
+      key: 'W',
+      label: 'Waiting',
       onClick: (e) => {
         void handleCall({ ...selectedRecord, Status: e.key });
       },
     },
   ];
-  const handleLabResult = (data: any) => {
-    router.navigate({
-      to: "/laboratoryresults/$Id",
-      params: {
-        Id: data.fk_Appointments_Id,
+  const createResultWindow = () => {
+    const resultWindow = window.open('', '_blank');
+    if (resultWindow) {
+      resultWindow.opener = null;
+    }
+    return resultWindow;
+  };
+  const openResultLocation = (
+    locationOptions: any,
+    resultWindow?: Window | null,
+  ) => {
+    const href = router.buildLocation(locationOptions).href;
+
+    if (resultWindow && !resultWindow.closed) {
+      resultWindow.location.href = href;
+      return;
+    }
+
+    window.open(href, '_blank', 'noopener,noreferrer');
+  };
+  const handleLabResult = (data: any, resultWindow?: Window | null) => {
+    openResultLocation(
+      {
+        to: '/laboratoryresults/$Id',
+        params: {
+          Id: data.fk_Appointments_Id.toString(),
+        },
+        search: {
+          templateId: Number(data.LabTemplateId ?? 0),
+          chargeId: Number(data.ChargeId ?? 0),
+          standalone: true,
+        },
       },
-    });
+      resultWindow,
+    );
   };
 
-  const handleXrayResult = (data: any) => {
-    router.navigate({
-      to: "/xrayresult/$Id",
-      params: {
-        Id: data.fk_Appointments_Id,
+  const handleXrayResult = (data: any, resultWindow?: Window | null) => {
+    openResultLocation(
+      {
+        to: '/xrayresult/$Id',
+        params: {
+          Id: data.fk_Appointments_Id.toString(),
+        },
+        search: {
+          chargeId: Number(data.ChargeId ?? 0),
+          standalone: true,
+        },
       },
-    });
+      resultWindow,
+    );
   };
 
-  const handleCardioResult = (data: any) => {
+  const handleCardioResult = (data: any, resultWindow?: Window | null) => {
     // router.navigate({
     //   to: '/cardioresult/$Id',
     //   params: {
@@ -321,68 +479,87 @@ const PatientsPerCounter: FC<Props> = ({
     //   },
     // });
 
-    router.navigate({
-      to: "/cardiologyresult/$Id",
-      params: {
-        Id: data.fk_Appointments_Id.toString(),
+    openResultLocation(
+      {
+        to: '/cardiologyresult/$Id',
+        params: {
+          Id: data.fk_Appointments_Id.toString(),
+        },
+        search: {
+          exam: data.Exam,
+          chargeId: Number(data.ChargeId ?? 0),
+          resultId: Number(data.ResultId ?? 0),
+          standalone: true,
+        },
       },
-    });
+      resultWindow,
+    );
   };
 
-  const handleUltrasoundResult = (data: any) => {
-    router.navigate({
-      to: "/ultrasound/$Id",
-      params: {
-        Id: data.fk_Appointments_Id,
+  const handleUltrasoundResult = (data: any, resultWindow?: Window | null) => {
+    openResultLocation(
+      {
+        to: '/ultrasound/$Id',
+        params: {
+          Id: data.fk_Appointments_Id.toString(),
+        },
+        search: {
+          chargeId: Number(data.ChargeId ?? 0),
+          standalone: true,
+        },
       },
-    });
+      resultWindow,
+    );
   };
 
-  const openProcedureWorkspace = (data: any) => {
+  const openProcedureWorkspace = (data: any, resultWindow?: Window | null) => {
     switch (data.CounterCode ?? CounterCode) {
-      case "LAB":
-        handleLabResult(data);
+      case 'LAB':
+        handleLabResult(data, resultWindow);
         break;
-      case "XRAY":
-        handleXrayResult(data);
+      case 'XRAY':
+        handleXrayResult(data, resultWindow);
         break;
-      case "CARDIO":
-        handleCardioResult(data);
+      case 'CARDIO':
+        handleCardioResult(data, resultWindow);
         break;
-      case "ULT":
-        handleUltrasoundResult(data);
+      case 'ULT':
+        handleUltrasoundResult(data, resultWindow);
         break;
+      default:
+        resultWindow?.close();
     }
   };
   const actionBodyElapseTime = (data: TAppointments) => {
-    if (data.Status === "D") return data.ElapseTime ?? "-";
-    if (!data.DateAdded) return "-";
+    if (data.Status === 'D') return data.ElapseTime ?? '-';
+    const elapsedStart = data.ElapsedStart ?? data.DateAdded;
+    if (!elapsedStart) return '-';
 
-    const dateAdded = dayjs(data.DateAdded);
-    if (!dateAdded.isValid()) return "-";
+    const dateAdded = dayjs(elapsedStart);
+    if (!dateAdded.isValid()) return '-';
 
-    const elapsedSeconds = Math.max(now.diff(dateAdded, "second"), 0);
+    const elapsedSeconds = Math.max(now.diff(dateAdded, 'second'), 0);
     const days = Math.floor(elapsedSeconds / 86400);
     const hours = Math.floor((elapsedSeconds % 86400) / 3600);
     const minutes = Math.floor((elapsedSeconds % 3600) / 60);
     const seconds = elapsedSeconds % 60;
 
     if (days > 0) {
-      return `${days} day${days > 1 ? "s" : ""} ${hours
+      return `${days} day${days > 1 ? 's' : ''} ${hours
         .toString()
-        .padStart(2, "0")} hr`;
+        .padStart(2, '0')} hr`;
     }
 
     if (hours > 0) {
-      return `${hours} hr ${minutes.toString().padStart(2, "0")} min`;
+      return `${hours} hr ${minutes.toString().padStart(2, '0')} min`;
     }
 
-    return `${minutes} min ${seconds.toString().padStart(2, "0")} sec`;
+    return `${minutes} min ${seconds.toString().padStart(2, '0')} sec`;
   };
   const handleUploadDocument = async (data: any) => {
     try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetPatientInformationByAppointmentId",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetPatientInformationByAppointmentId',
         parameters: {
           AppointmentId: data.fk_Appointments_Id,
         },
@@ -390,7 +567,7 @@ const PatientsPerCounter: FC<Props> = ({
 
       if (res) {
         router.navigate({
-          to: "/uploaddocuments/$Id",
+          to: '/uploaddocuments/$Id',
           params: {
             Id: res.parameters.lst[0].Id,
           },
@@ -399,7 +576,7 @@ const PatientsPerCounter: FC<Props> = ({
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -418,13 +595,13 @@ const PatientsPerCounter: FC<Props> = ({
               }}
               className="text-center"
               loading={IsSubmitting}
-              disabled={data.CurrentQStatus === "A" || data.cantCall}
+              disabled={data.CurrentQStatus === 'A' || data.cantCall}
             />
           </Tooltip>
         )}
         {!IsMobile && !effectiveIsDone && (
           <Tooltip title="Change Status">
-            <Dropdown menu={{ items }} placement="top" trigger={["click"]}>
+            <Dropdown menu={{ items }} placement="top" trigger={['click']}>
               <Button
                 type="primary"
                 icon={<BsClipboardCheck />}
@@ -435,7 +612,18 @@ const PatientsPerCounter: FC<Props> = ({
             </Dropdown>
           </Tooltip>
         )}
-        {rowCounterCode === "LAB" && effectiveIsDone && (
+        {!resultCounterCodes.includes(rowCounterCode ?? '') &&
+          canSetProcedureStatus(data) && (
+          <Tooltip title="Set Status">
+            <Button
+              type="primary"
+              icon={<BiEdit />}
+              onClick={() => openSetProcedureStatus(data)}
+              loading={isStatusSubmitting}
+            />
+          </Tooltip>
+          )}
+        {rowCounterCode === 'LAB' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -446,7 +634,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {rowCounterCode === "XRAY" && effectiveIsDone && (
+        {rowCounterCode === 'XRAY' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -458,7 +646,7 @@ const PatientsPerCounter: FC<Props> = ({
           </>
         )}
 
-        {rowCounterCode === "ULT" && effectiveIsDone && (
+        {rowCounterCode === 'ULT' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -469,7 +657,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {rowCounterCode === "CARDIO" && effectiveIsDone && (
+        {rowCounterCode === 'CARDIO' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
               <Button
@@ -480,7 +668,7 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {(rowCounterCode === "DIA" || rowCounterCode === "AMB") && (
+        {(rowCounterCode === 'DIA' || rowCounterCode === 'AMB') && (
           <>
             <Tooltip title="Request for Medicines">
               <Button
@@ -499,9 +687,9 @@ const PatientsPerCounter: FC<Props> = ({
           />
         </Tooltip>
 
-        {data.Status === "D" && <BsCheckLg size={32} color="green" />}
+        {data.Status === 'D' && <BsCheckLg size={32} color="green" />}
 
-        {data.WithMer === "Y" && (
+        {data.WithMer === 'Y' && (
           <Tooltip title="MER is available">
             <BsCheckLg size={32} color="green" />
           </Tooltip>
@@ -517,8 +705,8 @@ const PatientsPerCounter: FC<Props> = ({
     );
   };
   const statusBodyTemplate = (data: any) => {
-    const statusDescription = data.StatusDesc ?? data.StatusDescription ?? "-";
-    const color = statusTagColors[data.Status] ?? "default";
+    const statusDescription = data.StatusDesc ?? data.StatusDescription ?? '-';
+    const color = statusTagColors[data.Status] ?? 'default';
 
     return (
       <Tag color={color} className="m-0 font-semibold">
@@ -526,6 +714,45 @@ const PatientsPerCounter: FC<Props> = ({
       </Tag>
     );
   };
+  const completedStatusBodyTemplate = (data: TAppointments) => {
+    const chargeStatus = data.ChargeStatus?.trim() || 'NOT SET';
+    const color =
+      chargeStatus === 'DONE'
+        ? 'success'
+        : chargeStatus === 'TO FOLLOW'
+          ? 'warning'
+          : chargeStatus === 'DEFERRED'
+            ? 'error'
+            : 'default';
+
+    return (
+      <Tag color={color} className="m-0 px-2 text-[10px] font-bold uppercase">
+        {chargeStatus === 'DONE' && <BsCheckLg className="mr-1 inline" />}
+        {chargeStatus}
+      </Tag>
+    );
+  };
+  const formatProcedureWait = (dateQueued?: string) => {
+    if (!dateQueued) return null;
+
+    const queuedAt = dayjs(dateQueued);
+    if (!queuedAt.isValid()) return null;
+
+    const elapsedMinutes = Math.max(now.diff(queuedAt, 'minute'), 0);
+    if (elapsedMinutes < 60) {
+      return `${elapsedMinutes} min waiting`;
+    }
+
+    const hours = Math.floor(elapsedMinutes / 60);
+    const minutes = elapsedMinutes % 60;
+    return `${hours} hr ${minutes.toString().padStart(2, '0')} min waiting`;
+  };
+  const packageBodyTemplate = (data: TAppointments) =>
+    data.IsPackage ? (
+      <span className="font-semibold text-blue-700">✓ Yes</span>
+    ) : (
+      <span className="font-semibold text-red-600">✕ No</span>
+    );
   const handleRequest = (data: any) => {
     setSelectedRecord(data);
     setShowRequest(true);
@@ -548,75 +775,259 @@ const PatientsPerCounter: FC<Props> = ({
       <DataTable
         value={listOfPatients}
         loading={patients.isFetching}
-        // rows={10}
-        // rowsPerPageOptions={[10, 25, 50]}
+        paginator={Compact}
+        rows={Compact ? 10 : undefined}
+        rowsPerPageOptions={Compact ? [10, 25, 50] : undefined}
         filterDisplay="row"
         emptyMessage="No Records!"
         stripedRows
-        size="normal"
+        scrollable={Compact}
+        size={Compact ? 'small' : 'normal'}
         // rowExpansionTemplate={rowExpansionTemplate}
         // expandedRows={expandedRows as any}
         // onRowToggle={(e) => setExpandedRows(e.data as any)}
-        rowExpansionTemplate={descriptionsRowTemplate}
-        expandedRows={expandedDescriptionRows as any}
-        tableStyle={{ fontSize: "12px", fontWeight: "bold" }}
+        rowExpansionTemplate={Compact ? undefined : descriptionsRowTemplate}
+        expandedRows={Compact ? undefined : (expandedDescriptionRows as any)}
+        tableStyle={{
+          fontSize: Compact ? '11px' : '12px',
+          fontWeight: 'bold',
+          minWidth: Compact ? '1180px' : undefined,
+        }}
       >
-        <Column
-          field="action"
-          header="Action"
-          body={(data) => actionBodyTemplate(data)}
-        ></Column>
-        {/* <Column field="AppointmentNo" header="Appointment No."></Column> */}
-        <Column
-          field="AppointmentDate"
-          header="Appointment Date"
-          filter
-          body={(data) =>
-            data.AppointmentDate
-              ? dayjs(data.AppointmentDate).format("MMM D, YYYY")
-              : "-"
-          }
-        ></Column>
-        <Column field="Name" header="Name" filter></Column>
-        <Column
-          field="CurrentCounterAndStatus"
-          header="Current Counter"
-          hidden={isDone}
-          filter
-        ></Column>
-
-        <Column field="QueueNo" header="Queue No." filter></Column>
-        <Column field="MemberNo" header="Member No." filter></Column>
-
-        {/* <Column field="Company" header="Company" filter></Column> */}
-        <Column
-          hidden={IsMobile}
-          field="StatusDesc"
-          header="Status"
-          filter
-          body={(data) => statusBodyTemplate(data)}
-        ></Column>
-        <Column
-          hidden={!isDone}
-          field="DateCompleted"
-          header="Date Completed"
-          body={(data) =>
-            data.DateCompleted
-              ? dayjs(data.DateCompleted).format("MMM D, YYYY")
-              : "-"
-          }
-        ></Column>
-
-        <Column
-          hidden={isDone}
-          field="ElapseTime"
-          header="Elapsed Time"
-          body={(data) => actionBodyElapseTime(data)}
-        ></Column>
+        {Compact && (
+          <Column
+            field="AppointmentDate"
+            header="APNT DATE"
+            sortable
+            body={(data) => (
+              <span className="text-blue-700">
+                {data.AppointmentDate
+                  ? dayjs(data.AppointmentDate).format('MMM DD, YYYY')
+                  : '-'}
+              </span>
+            )}
+          />
+        )}
+        {Compact && (
+          <Column
+            field="Descriptions"
+            header="EXAMINATION"
+            sortable
+            body={(data) => (
+              <span className="font-medium">{data.Descriptions ?? '-'}</span>
+            )}
+          />
+        )}
+        {Compact && (
+          <Column
+            field="IsPackage"
+            header="PACKAGE"
+            sortable
+            body={packageBodyTemplate}
+          />
+        )}
+        {Compact && (
+          <Column
+            field="Name"
+            header="PATIENT NAME"
+            sortable
+            body={(data) => (
+              <span className="uppercase">{data.Name ?? '-'}</span>
+            )}
+          />
+        )}
+        {Compact && (
+          <Column
+            field="HmoCompany"
+            header="COMPANY"
+            sortable
+            body={(data) => (
+              <span className="font-medium italic">
+                {data.HmoCompany || '-'}
+              </span>
+            )}
+          />
+        )}
+        {Compact && (
+          <Column
+            field="BranchName"
+            header="BRANCH"
+            sortable
+            body={(data) => (
+              <span className="font-semibold text-blue-700">
+                {data.BranchName || data.BranchCode || '-'}
+              </span>
+            )}
+          />
+        )}
+        {Compact && (
+          <Column
+            field="MemberNo"
+            header="CONTRACT #"
+            sortable
+            body={(data) => (
+              <span className="font-semibold text-blue-700">
+                {data.MemberNo || '-'}
+              </span>
+            )}
+          />
+        )}
+        {Compact && (
+          <Column
+            field="ChargeStatusDate"
+            header="DATE DONE"
+            sortable
+            body={(data) =>
+              data.ChargeStatusDate
+                ? dayjs(data.ChargeStatusDate).format('MMM DD, YYYY')
+                : '-'
+            }
+          />
+        )}
+        {Compact && (
+          <Column
+            field="ChargeStatus"
+            header="STATUS"
+            body={completedStatusBodyTemplate}
+          />
+        )}
+        {Compact && (
+          <Column
+            field="action"
+            header="ACTION"
+            body={(data) => actionBodyTemplate(data)}
+            frozen
+            alignFrozen="right"
+          />
+        )}
+        {!Compact && (
+          <Column
+            field="action"
+            header="Action"
+            body={(data) => actionBodyTemplate(data)}
+          />
+        )}
+        {!Compact && (
+          <Column
+            field="AppointmentDate"
+            header="Appointment Date"
+            filter
+            body={(data) =>
+              data.AppointmentDate
+                ? dayjs(data.AppointmentDate).format('MMM D, YYYY')
+                : '-'
+            }
+          />
+        )}
+        {!Compact && <Column field="Name" header="Name" filter />}
+        {!Compact && (
+          <Column
+            field="CurrentCounterAndStatus"
+            header="Current Counter"
+            hidden={isDone}
+            filter
+          />
+        )}
+        {!Compact && <Column field="QueueNo" header="Queue No." filter />}
+        {!Compact && <Column field="MemberNo" header="Member No." filter />}
+        {!Compact && (
+          <Column
+            hidden={IsMobile}
+            field="StatusDesc"
+            header="Status"
+            filter
+            body={(data) => statusBodyTemplate(data)}
+          />
+        )}
+        {!Compact && (
+          <Column
+            hidden={!isDone}
+            field="DateCompleted"
+            header="Date Completed"
+            body={(data) =>
+              data.DateCompleted
+                ? dayjs(data.DateCompleted).format('MMM D, YYYY')
+                : '-'
+            }
+          />
+        )}
+        {!Compact && (
+          <Column
+            hidden={isDone}
+            field="ElapseTime"
+            header="Elapsed Time"
+            body={(data) => actionBodyElapseTime(data)}
+          />
+        )}
       </DataTable>
       <Modal
+        open={showStatusModal}
+        destroyOnClose
+        title={`Set status for ${statusRecord?.Descriptions ?? 'procedure'}`}
+        footer={false}
+        onCancel={() => {
+          setShowStatusModal(false);
+          setStatusRecord(undefined);
+          statusForm.resetFields();
+        }}
+        width={500}
+      >
+        <Form
+          form={statusForm}
+          layout="vertical"
+          onFinish={handleSetProcedureStatus}
+        >
+          <Form.Item
+            name="Status"
+            label="Status"
+            rules={[
+              {
+                required: true,
+                message: 'Status is required!',
+              },
+            ]}
+          >
+            <Select
+              options={procedureStatusOptions.map((status) => ({
+                value: status,
+                label: status,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="StatusRemarks"
+            label="Remarks"
+            normalize={(value) =>
+              typeof value === 'string' ? value.toUpperCase() : value
+            }
+            rules={[
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (
+                    getFieldValue('Status') === 'DEFERRED' &&
+                    !String(value ?? '').trim()
+                  ) {
+                    return Promise.reject('Remarks is required!');
+                  }
+                  return Promise.resolve();
+                },
+              }),
+            ]}
+          >
+            <Input.TextArea rows={4} />
+          </Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={isStatusSubmitting}
+          >
+            Submit
+          </Button>
+        </Form>
+      </Modal>
+      <Modal
         open={showProcedureModal}
-        title={`Select procedure for ${selectedRecord?.QueueNo ?? "queue"}`}
+        title={`Select procedure for ${selectedRecord?.QueueNo ?? 'queue'}`}
         okText="Call selected procedure"
         confirmLoading={IsSubmitting}
         okButtonProps={{ disabled: selectedQueueDetailId === undefined }}
@@ -629,7 +1040,7 @@ const PatientsPerCounter: FC<Props> = ({
           setShowProcedureModal(false);
           void handleCall({
             ...selectedRecord,
-            Status: "C",
+            Status: 'C',
             QueueDetailId: selectedQueueDetailId,
           });
         }}
@@ -643,11 +1054,24 @@ const PatientsPerCounter: FC<Props> = ({
             {pendingQueueDetails.map((detail) => {
               const detailId =
                 detail.QueueDetailId ?? (detail as any).queueDetailId;
+              const dateQueued =
+                detail.DateQueued ?? (detail as any).dateQueued;
+              const procedureWait = formatProcedureWait(dateQueued);
               return (
                 <Radio key={detailId} value={detailId}>
-                  {detail.Description ??
-                    (detail as any).description ??
-                    `Charge ${detail.ChargeId ?? (detail as any).chargeId}`}
+                  <div>
+                    <div>
+                      {detail.Description ??
+                        (detail as any).description ??
+                        `Charge ${detail.ChargeId ?? (detail as any).chargeId}`}
+                    </div>
+                    {procedureWait && (
+                      <div className="text-xs font-normal text-gray-500">
+                        Queued {dayjs(dateQueued).format('MMM D, h:mm A')} ·{' '}
+                        {procedureWait}
+                      </div>
+                    )}
+                  </div>
                 </Radio>
               );
             })}
@@ -673,7 +1097,7 @@ const PatientsPerCounter: FC<Props> = ({
             type="primary"
             danger
             onClick={() => {
-              handleCall({ ...selectedRecord, Status: "O" });
+              handleCall({ ...selectedRecord, Status: 'O' });
               setShowModal(false);
             }}
           >
@@ -682,8 +1106,9 @@ const PatientsPerCounter: FC<Props> = ({
           <Button
             type="primary"
             onClick={() => {
-              if (Station === "1") {
-                handleCall({ ...selectedRecord, Status: "A" });
+              if (Station === '1') {
+                const resultWindow = createResultWindow();
+                handleCall({ ...selectedRecord, Status: 'A' }, resultWindow);
               }
 
               setShowModal(false);

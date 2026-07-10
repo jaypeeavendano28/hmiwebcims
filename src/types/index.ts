@@ -283,6 +283,7 @@ export type TAppointments = {
   PositionAppliedForOthers?: string;
   AddedBy?: string;
   DateAdded?: string;
+  ElapsedStart?: string;
   UpdatedBy?: string;
   DateUpdated?: string;
   PatientNo?: string;
@@ -318,6 +319,23 @@ export type TAppointments = {
   cantCall?: boolean;
   DateAssignedQueueNo?: string;
   CurrentQueueDetailId?: number;
+  QueueDetailId?: number;
+  ChargeId?: number;
+  ItemId?: number;
+  PackageId?: number;
+  IsPackage?: boolean;
+  LabTypeId?: number;
+  LabTemplateId?: number;
+  Exam?: "2decho" | "treadmill" | "ecg";
+  ResultId?: number;
+  BranchName?: string;
+  DateRead?: string;
+  HasResult?: boolean | number;
+  ChargeStatus?: string;
+  ChargeStatusDate?: string;
+  ChargeStatusSetBy?: string;
+  ChargeStatusRemarks?: string;
+  Descriptions?: string;
 };
 
 export type TQueueDetail = {
@@ -326,6 +344,12 @@ export type TQueueDetail = {
   fk_Queue_Id: number;
   fk_Charges_Id: number;
   ChargeId: number;
+  ItemId?: number;
+  LabTypeId?: number;
+  LabTemplateId?: number;
+  Exam?: "2decho" | "treadmill" | "ecg";
+  ResultId?: number;
+  DateQueued?: string;
   Description?: string;
   Status: string;
 };

@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { createLazyFileRoute, useRouter } from '@tanstack/react-router';
+import { useQuery } from "@tanstack/react-query";
+import { createLazyFileRoute, useRouter } from "@tanstack/react-router";
 import {
   AutoComplete,
   Button,
@@ -9,19 +9,19 @@ import {
   notification,
   Select,
   Tabs,
-} from 'antd';
-import axios from 'axios';
-import dayjs, { type Dayjs } from 'dayjs';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { PostData } from '../../helpers';
-import useAppStore from '../../store';
-import type { TAppointments, TDoctors } from '../../types';
-import ChargesPerPatient from '../../components/ChargesPerPatient';
-import { ExistingCadioResults } from '../../components/ExistingCardioResult';
-import FinalizeForm from '../../components/FinalizeForm';
+} from "antd";
+import axios from "axios";
+import dayjs, { type Dayjs } from "dayjs";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { PostData } from "../../helpers";
+import useAppStore from "../../store";
+import type { TAppointments, TDoctors } from "../../types";
+import ChargesPerPatient from "../../components/ChargesPerPatient";
+import { ExistingCadioResults } from "../../components/ExistingCardioResult";
+import FinalizeForm from "../../components/FinalizeForm";
 
 export const Route = createLazyFileRoute(
-  '/_authenticated/cardiologyresult/$Id',
+  "/_authenticated/cardiologyresult/$Id",
 )({
   component: () => <CardiologyResult />,
 });
@@ -47,7 +47,7 @@ type SpectralRow = {
   pulmonaryName?: string;
 };
 
-type Exam = '2decho' | 'treadmill' | 'ecg';
+type Exam = "2decho" | "treadmill" | "ecg";
 
 type CardioKeyword = {
   Id: number;
@@ -76,39 +76,39 @@ type ExistingCardiologyResultRecord = {
 };
 
 const tableClassName =
-  'w-full min-w-[940px] table-fixed border-collapse text-[10px] leading-tight text-black';
+  "w-full min-w-[940px] table-fixed border-collapse text-[10px] leading-tight text-black";
 const thClassName =
-  'border border-black px-1 py-[2px] text-left align-top font-bold';
-const tdClassName = 'border border-black p-0 align-top';
+  "border border-black px-1 py-[2px] text-left align-top font-bold";
+const tdClassName = "border border-black p-0 align-top";
 const labelCellClassName =
-  'whitespace-normal break-words border border-black px-1 py-[3px] align-top text-[10px]';
+  "whitespace-normal break-words border border-black px-1 py-[3px] align-top text-[10px]";
 const referenceCellClassName =
-  'whitespace-pre-line border border-black px-1 py-[2px] align-top text-[8px] leading-tight';
+  "whitespace-pre-line border border-black px-1 py-[2px] align-top text-[8px] leading-tight";
 const inputClassName =
-  'block min-h-[20px] w-full bg-transparent px-1 py-[2px] text-center text-[10px] leading-tight outline-none focus:bg-sky-50';
+  "block min-h-[20px] w-full bg-transparent px-1 py-[2px] text-center text-[10px] leading-tight outline-none focus:bg-sky-50";
 const impressionClassName =
-  'min-h-[240px] w-full resize-y rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100';
-const reportTextFields = new Set(['Interpretation', 'Impression']);
+  "min-h-[240px] w-full resize-y rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100";
+const reportTextFields = new Set(["Interpretation", "Impression"]);
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API;
 const devApi = import.meta.env.VITE_DEV_API;
 const apiUrl = isDev ? devApi : prodApi;
 
 const encodeReportLineBreaks = (value?: string) =>
-  value?.replace(/\r?\n/g, '\\n');
+  value?.replace(/\r?\n/g, "\\n");
 
-const decodeReportLineBreaks = (value?: string) => value?.replace(/\\n/g, '\n');
+const decodeReportLineBreaks = (value?: string) => value?.replace(/\\n/g, "\n");
 
 const examLabels: Record<Exam, string> = {
-  '2decho': '2D Echo',
-  treadmill: 'Treadmill',
-  ecg: 'ECG',
+  "2decho": "2D Echo",
+  treadmill: "Treadmill",
+  ecg: "ECG",
 };
 
 const examByItemId: Record<number, Exam> = {
-  2285: '2decho',
-  2283: 'ecg',
-  2284: 'treadmill',
+  2285: "2decho",
+  2283: "ecg",
+  2284: "treadmill",
 };
 
 const getPositiveNumber = (value: unknown) => {
@@ -121,25 +121,25 @@ const getExamByItemId = (itemId: unknown) =>
   examByItemId[getPositiveNumber(itemId)];
 
 const saveResultEndpoints: Record<Exam, string> = {
-  '2decho': 'SaveCardiology2DEchoResult',
-  treadmill: 'SaveCardiologyTreadmillResult',
-  ecg: 'SaveCardiologyECGResult',
+  "2decho": "SaveCardiology2DEchoResult",
+  treadmill: "SaveCardiologyTreadmillResult",
+  ecg: "SaveCardiologyECGResult",
 };
 
 const finalizeResultEndpoints: Record<Exam, string> = {
-  '2decho': 'FinalizedCardiology2DEchoResult',
-  treadmill: 'FinalizedCardiologyTreadmillResult',
-  ecg: 'FinalizedCardiologyECGResult',
+  "2decho": "FinalizedCardiology2DEchoResult",
+  treadmill: "FinalizedCardiologyTreadmillResult",
+  ecg: "FinalizedCardiologyECGResult",
 };
 
 const printReportNames: Record<Exam, string> = {
-  '2decho': '2decho.rdl',
-  treadmill: 'treadmill.rdl',
-  ecg: 'ecg.rdl',
+  "2decho": "2decho.rdl",
+  treadmill: "treadmill.rdl",
+  ecg: "ecg.rdl",
 };
 
 const normalizeExam = (exam?: string): Exam | undefined => {
-  if (exam === 'treadmill' || exam === 'ecg' || exam === '2decho') {
+  if (exam === "treadmill" || exam === "ecg" || exam === "2decho") {
     return exam;
   }
 
@@ -149,230 +149,230 @@ const normalizeExam = (exam?: string): Exam | undefined => {
 const measurementRows: MeasurementRow[] = [
   {
     left: {
-      name: 'TwoDLvidEd',
-      parameter: 'LVID (ed)',
-      reference: 'Male [4.2-5.8] cm\nFemale [3.8-5.2] cm',
+      name: "TwoDLvidEd",
+      parameter: "LVID (ed)",
+      reference: "Male [4.2-5.8] cm\nFemale [3.8-5.2] cm",
     },
     middle: {
-      name: 'TwoDIvstEd',
-      parameter: 'IVST (ed)',
-      reference: 'Male [0.6-1.0] cm\nFemale [0.6-0.9] cm',
+      name: "TwoDIvstEd",
+      parameter: "IVST (ed)",
+      reference: "Male [0.6-1.0] cm\nFemale [0.6-0.9] cm",
     },
     right: {
-      name: 'TwoDRvMid',
-      parameter: 'RV (mid)',
-      reference: '1.9-3.5 cm',
+      name: "TwoDRvMid",
+      parameter: "RV (mid)",
+      reference: "1.9-3.5 cm",
     },
   },
   {
     left: {
-      name: 'TwoDLvidEs',
-      parameter: 'LVID (es)',
-      reference: 'Male [2.5-4.0] cm\nFemale [2.2-3.5] cm',
+      name: "TwoDLvidEs",
+      parameter: "LVID (es)",
+      reference: "Male [2.5-4.0] cm\nFemale [2.2-3.5] cm",
     },
     middle: {
-      name: 'TwoDIvstEs',
-      parameter: 'IVST (es)',
-      reference: 'Male [0.6-1.0] cm\nFemale [0.6-0.9] cm',
+      name: "TwoDIvstEs",
+      parameter: "IVST (es)",
+      reference: "Male [0.6-1.0] cm\nFemale [0.6-0.9] cm",
     },
     right: {
-      name: 'TwoDTapse',
-      parameter: 'TAPSE',
-      reference: 'greater than or\nequal to 17mm',
+      name: "TwoDTapse",
+      parameter: "TAPSE",
+      reference: "greater than or\nequal to 17mm",
     },
   },
   {
     left: {
-      name: 'TwoDLvVolEd',
-      parameter: 'LV Vol (ed)',
-      reference: 'Male [62-150] cm\nFemale [46-106] cm',
+      name: "TwoDLvVolEd",
+      parameter: "LV Vol (ed)",
+      reference: "Male [62-150] cm\nFemale [46-106] cm",
     },
     middle: {
-      name: 'TwoDPwtEd',
-      parameter: 'PWT (ed)',
-      reference: 'Male [0.6-1.0] cm\nFemale [0.6-0.9] cm',
+      name: "TwoDPwtEd",
+      parameter: "PWT (ed)",
+      reference: "Male [0.6-1.0] cm\nFemale [0.6-0.9] cm",
     },
     right: {
-      name: 'TwoDLvot',
-      parameter: 'LVOT',
-      reference: 'Male [2.3-2.9] cm\nFemale [2.1-2.5]',
+      name: "TwoDLvot",
+      parameter: "LVOT",
+      reference: "Male [2.3-2.9] cm\nFemale [2.1-2.5]",
     },
   },
   {
     left: {
-      name: 'TwoDLvVolEs',
-      parameter: 'LV Vol (es)',
-      reference: 'Male [21-61] cm\nFemale [14-42] cm',
+      name: "TwoDLvVolEs",
+      parameter: "LV Vol (es)",
+      reference: "Male [21-61] cm\nFemale [14-42] cm",
     },
     middle: {
-      name: 'TwoDPwtEs',
-      parameter: 'PWT (es)',
-      reference: 'Male [0.6-1.0] cm\nFemale [0.6-0.9] cm',
+      name: "TwoDPwtEs",
+      parameter: "PWT (es)",
+      reference: "Male [0.6-1.0] cm\nFemale [0.6-0.9] cm",
     },
     right: {
-      name: 'TwoDAoAnn',
-      parameter: 'Ao. ann',
+      name: "TwoDAoAnn",
+      parameter: "Ao. ann",
     },
   },
   {
     left: {
-      name: 'TwoDLvEfTeicholz',
-      parameter: 'LV EF (Teicholz)',
-      reference: 'Male [52-72%]\nFemale [54-74%]',
+      name: "TwoDLvEfTeicholz",
+      parameter: "LV EF (Teicholz)",
+      reference: "Male [52-72%]\nFemale [54-74%]",
     },
     middle: {
-      name: 'TwoDLvmi',
-      parameter: 'LVMI',
-      reference: 'Male [49-115] gm\nFemale [43-95] gm',
+      name: "TwoDLvmi",
+      parameter: "LVMI",
+      reference: "Male [49-115] gm\nFemale [43-95] gm",
     },
     right: {
-      name: 'TwoDAorticRootSinusOfValsalva',
-      parameter: 'Aortic root/Sinus of\nvalsalva',
-      reference: 'Male [3.1-3.7] cm\nFemale [2.7-3.3]',
+      name: "TwoDAorticRootSinusOfValsalva",
+      parameter: "Aortic root/Sinus of\nvalsalva",
+      reference: "Male [3.1-3.7] cm\nFemale [2.7-3.3]",
     },
   },
   {
     left: {
-      name: 'TwoDBiplaneSimpsons',
-      parameter: 'Biplane (Simpsons)',
+      name: "TwoDBiplaneSimpsons",
+      parameter: "Biplane (Simpsons)",
     },
     middle: {
-      name: 'TwoDRwt',
-      parameter: 'RWT',
-      reference: '[0.22-0.42] cm',
+      name: "TwoDRwt",
+      parameter: "RWT",
+      reference: "[0.22-0.42] cm",
     },
     right: {
-      name: 'TwoDMpa',
-      parameter: 'MPA',
-      reference: '0.9-2.9cm',
+      name: "TwoDMpa",
+      parameter: "MPA",
+      reference: "0.9-2.9cm",
     },
   },
   {
     left: {
-      name: 'TwoDCo',
-      parameter: 'CO',
-      reference: '4-7 L/min',
+      name: "TwoDCo",
+      parameter: "CO",
+      reference: "4-7 L/min",
     },
     middle: {
-      name: 'TwoDAorta',
-      parameter: 'Aorta',
-      reference: '2.1-3.5cm',
+      name: "TwoDAorta",
+      parameter: "Aorta",
+      reference: "2.1-3.5cm",
     },
     right: {
-      name: 'TwoDRvot',
-      parameter: 'RVOT',
-      reference: '2.0-3.0cm',
+      name: "TwoDRvot",
+      parameter: "RVOT",
+      reference: "2.0-3.0cm",
     },
   },
   {
     left: {
-      name: 'TwoDSv',
-      parameter: 'SV',
-      reference: '50-90mL',
+      name: "TwoDSv",
+      parameter: "SV",
+      reference: "50-90mL",
     },
     middle: {
-      name: 'TwoDLa',
-      parameter: 'LA',
-      reference: '2.0-3.5 cm',
+      name: "TwoDLa",
+      parameter: "LA",
+      reference: "2.0-3.5 cm",
     },
     right: {
-      name: 'TwoDIvcDiameterExp',
-      parameter: 'IVC Diameter (Exp.)',
+      name: "TwoDIvcDiameterExp",
+      parameter: "IVC Diameter (Exp.)",
     },
   },
   {
     left: {
-      name: 'TwoDEpss',
-      parameter: 'EPSS',
-      reference: '<1.0',
+      name: "TwoDEpss",
+      parameter: "EPSS",
+      reference: "<1.0",
     },
     middle: {
-      name: 'TwoDLaVolIndex',
-      parameter: 'LA Vol. Index',
-      reference: '16-34 ml/m2',
+      name: "TwoDLaVolIndex",
+      parameter: "LA Vol. Index",
+      reference: "16-34 ml/m2",
     },
     right: {
-      name: 'TwoDIvcDiameterInsp',
-      parameter: 'IVC Diameter (Insp.)',
-      reference: '1.2-2.1cm',
+      name: "TwoDIvcDiameterInsp",
+      parameter: "IVC Diameter (Insp.)",
+      reference: "1.2-2.1cm",
     },
   },
   {
     left: {
-      name: 'TwoDHeartRate',
-      parameter: 'HEART RATE',
-      reference: '60-100 bpm',
+      name: "TwoDHeartRate",
+      parameter: "HEART RATE",
+      reference: "60-100 bpm",
     },
     middle: {
-      name: 'TwoDRa',
-      parameter: 'RA',
-      reference: '2.8-4.0 cm',
+      name: "TwoDRa",
+      parameter: "RA",
+      reference: "2.8-4.0 cm",
     },
     right: {
-      name: 'TwoDIvcCollapsibility',
-      parameter: 'IVC COLLAPSIBILITY',
-      reference: '> 50%',
+      name: "TwoDIvcCollapsibility",
+      parameter: "IVC COLLAPSIBILITY",
+      reference: "> 50%",
     },
   },
 ];
 
 const dopplerRows = [
   {
-    label: 'Mitral',
-    fieldPrefix: 'DopplerMitral',
+    label: "Mitral",
+    fieldPrefix: "DopplerMitral",
   },
   {
-    label: 'Tricuspid',
-    fieldPrefix: 'DopplerTricuspid',
+    label: "Tricuspid",
+    fieldPrefix: "DopplerTricuspid",
   },
   {
-    label: 'Pulmonic',
-    fieldPrefix: 'DopplerPulmonic',
+    label: "Pulmonic",
+    fieldPrefix: "DopplerPulmonic",
   },
   {
-    label: 'Aorta',
-    fieldPrefix: 'DopplerAorta',
+    label: "Aorta",
+    fieldPrefix: "DopplerAorta",
   },
   {
-    label: 'LVOT',
-    fieldPrefix: 'DopplerLvot',
+    label: "LVOT",
+    fieldPrefix: "DopplerLvot",
   },
 ];
 
 const spectralRows: SpectralRow[] = [
   {
-    mitral: 'Deceleration Time',
-    mitralName: 'SpectralDecelerationTime',
+    mitral: "Deceleration Time",
+    mitralName: "SpectralDecelerationTime",
     tissue: "Lat E'",
-    tissueName: 'SpectralLatE',
-    pulmonary: 'Pvs/Pvd',
-    pulmonaryName: 'SpectralPvsPvd',
+    tissueName: "SpectralLatE",
+    pulmonary: "Pvs/Pvd",
+    pulmonaryName: "SpectralPvsPvd",
   },
   {
-    mitral: 'IVRT',
-    mitralName: 'SpectralIvrt',
+    mitral: "IVRT",
+    mitralName: "SpectralIvrt",
     tissue: "Lat a'",
-    tissueName: 'SpectralLatA',
-    pulmonary: 'Peak AR vel.',
-    pulmonaryName: 'SpectralPeakArVel',
+    tissueName: "SpectralLatA",
+    pulmonary: "Peak AR vel.",
+    pulmonaryName: "SpectralPeakArVel",
   },
   {
-    mitral: '',
-    tissue: 'Med E',
-    tissueName: 'SpectralMedE',
-    pulmonary: 'a Duration',
-    pulmonaryName: 'SpectralADuration',
+    mitral: "",
+    tissue: "Med E",
+    tissueName: "SpectralMedE",
+    pulmonary: "a Duration",
+    pulmonaryName: "SpectralADuration",
   },
   {
-    mitral: '',
+    mitral: "",
     tissue: "Med A'",
-    tissueName: 'SpectralMedA',
-    pulmonary: '',
+    tissueName: "SpectralMedA",
+    pulmonary: "",
   },
   {
-    mitral: '',
-    tissue: '',
-    pulmonary: '',
+    mitral: "",
+    tissue: "",
+    pulmonary: "",
   },
 ];
 
@@ -428,19 +428,19 @@ const ExamDetailsFields = ({
       name="DateOfExamination"
       readOnly
       type="hidden"
-      value={dateOfExamination ? dateOfExamination.format('YYYY-MM-DD') : ''}
+      value={dateOfExamination ? dateOfExamination.format("YYYY-MM-DD") : ""}
     />
     <input
       name="RequestingPhysician"
       readOnly
       type="hidden"
-      value={requestingPhysician ?? ''}
+      value={requestingPhysician ?? ""}
     />
     <input
       name="Cardiologist"
       readOnly
       type="hidden"
-      value={cardiologist ?? ''}
+      value={cardiologist ?? ""}
     />
 
     <div>
@@ -472,7 +472,7 @@ const ExamDetailsFields = ({
         id="requesting-physician"
         optionFilterProp="label"
         options={requestingPhysicians.map((doctor) => ({
-          label: doctor.Name ?? '',
+          label: doctor.Name ?? "",
           value: doctor.Id,
         }))}
         showSearch
@@ -494,7 +494,7 @@ const ExamDetailsFields = ({
         id="cardiologist"
         optionFilterProp="label"
         options={cardiologists.map((doctor) => ({
-          label: doctor.Name ?? '',
+          label: doctor.Name ?? "",
           value: doctor.Id,
         }))}
         showSearch
@@ -782,14 +782,14 @@ const EcgFields = ({
       className="mb-3 w-full"
       id="ecg-keywords"
       options={keywords.map((keyword) => ({
-        label: keyword.Legend ?? keyword.Description ?? '',
-        value: keyword.Description ?? '',
+        label: keyword.Legend ?? keyword.Description ?? "",
+        value: keyword.Description ?? "",
       }))}
       value={keywordValue}
       onChange={onKeywordChange}
       onSelect={onKeywordAppend}
       onKeyDown={(event) => {
-        if (event.key !== 'Tab') {
+        if (event.key !== "Tab") {
           return;
         }
 
@@ -797,11 +797,11 @@ const EcgFields = ({
         onKeywordAppend(keywordValue);
       }}
       filterOption={(inputValue, option) =>
-        (option?.value ?? '')
+        (option?.value ?? "")
           .toString()
           .toUpperCase()
           .includes(inputValue.toUpperCase()) ||
-        (option?.label ?? '')
+        (option?.label ?? "")
           .toString()
           .toUpperCase()
           .includes(inputValue.toUpperCase())
@@ -830,6 +830,7 @@ const CardiologyResult = () => {
     exam?: string;
     chargeId?: string;
     resultId?: string | number;
+    standalone?: boolean | string;
   };
   const searchResultId = Number(search.resultId ?? 0);
   const searchChargeId = Number(search.chargeId ?? 0);
@@ -837,8 +838,8 @@ const CardiologyResult = () => {
   const router = useRouter();
   const store = useAppStore();
   const formRef = useRef<HTMLFormElement>(null);
-  const [ecgKeyword, setEcgKeyword] = useState('');
-  const [ecgImpression, setEcgImpression] = useState('');
+  const [ecgKeyword, setEcgKeyword] = useState("");
+  const [ecgImpression, setEcgImpression] = useState("");
   const [dateOfExamination, setDateOfExamination] = useState<Dayjs | null>(
     dayjs(),
   );
@@ -849,24 +850,24 @@ const CardiologyResult = () => {
   const [chargeId, setChargeId] = useState(
     Number.isFinite(searchChargeId) && searchChargeId > 0 ? searchChargeId : 0,
   );
-  const [chargeDescription, setChargeDescription] = useState('');
+  const [chargeDescription, setChargeDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [showFinalize, setShowFinalize] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
-  const [finalizedBy, setFinalizedBy] = useState('');
-  const [dateFinalized, setDateFinalized] = useState('');
+  const [finalizedBy, setFinalizedBy] = useState("");
+  const [dateFinalized, setDateFinalized] = useState("");
   const [requestingPhysician, setRequestingPhysician] = useState<
     number | undefined
   >();
   const [cardiologist, setCardiologist] = useState<number | undefined>();
 
   const appointmentDetails = useQuery({
-    queryKey: ['cardiology-result-appointment', Id],
+    queryKey: ["cardiology-result-appointment", Id],
     queryFn: async () => {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetAppointmentDetails',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetAppointmentDetails",
         parameters: {
           Id,
         },
@@ -878,10 +879,10 @@ const CardiologyResult = () => {
   });
 
   const cardioKeywords = useQuery({
-    queryKey: ['cardio-keywords'],
+    queryKey: ["cardio-keywords"],
     queryFn: async () => {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetCardioKeywords',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetCardioKeywords",
         parameters: {},
       });
 
@@ -889,15 +890,15 @@ const CardiologyResult = () => {
         ? (res.parameters.lst as CardioKeyword[])
         : [];
     },
-    enabled: exam === 'ecg',
+    enabled: exam === "ecg",
     refetchOnWindowFocus: false,
   });
 
   const twoDEchoResult = useQuery({
-    queryKey: ['cardiology-2decho-result', resultId],
+    queryKey: ["cardiology-2decho-result", resultId],
     queryFn: async () => {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetCardiology2DEchoResult',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetCardiology2DEchoResult",
         parameters: {
           Id: resultId,
         },
@@ -905,15 +906,15 @@ const CardiologyResult = () => {
 
       return res?.parameters?.lst?.[0] as CardiologyResultRecord | undefined;
     },
-    enabled: exam === '2decho' && resultId > 0,
+    enabled: exam === "2decho" && resultId > 0,
     refetchOnWindowFocus: false,
   });
 
   const treadmillResult = useQuery({
-    queryKey: ['cardiology-treadmill-result', resultId],
+    queryKey: ["cardiology-treadmill-result", resultId],
     queryFn: async () => {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetCardiologyTreadmillResult',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetCardiologyTreadmillResult",
         parameters: {
           Id: resultId,
         },
@@ -921,15 +922,15 @@ const CardiologyResult = () => {
 
       return res?.parameters?.lst?.[0] as CardiologyResultRecord | undefined;
     },
-    enabled: exam === 'treadmill' && resultId > 0,
+    enabled: exam === "treadmill" && resultId > 0,
     refetchOnWindowFocus: false,
   });
 
   const ecgResult = useQuery({
-    queryKey: ['cardiology-ecg-result', resultId],
+    queryKey: ["cardiology-ecg-result", resultId],
     queryFn: async () => {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetCardiologyECGResult',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetCardiologyECGResult",
         parameters: {
           Id: resultId,
         },
@@ -937,15 +938,15 @@ const CardiologyResult = () => {
 
       return res?.parameters?.lst?.[0] as CardiologyResultRecord | undefined;
     },
-    enabled: exam === 'ecg' && resultId > 0,
+    enabled: exam === "ecg" && resultId > 0,
     refetchOnWindowFocus: false,
   });
 
   const requestingPhysicians = useQuery({
-    queryKey: ['cardiology-result-requesting-physicians'],
+    queryKey: ["cardiology-result-requesting-physicians"],
     queryFn: async () => {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetDoctors',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetDoctors",
         parameters: {},
       });
 
@@ -957,10 +958,10 @@ const CardiologyResult = () => {
   });
 
   const cardiologists = useQuery({
-    queryKey: ['cardiology-result-cardiologists', store.branchCode],
+    queryKey: ["cardiology-result-cardiologists", store.branchCode],
     queryFn: async () => {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetListOfCardiologist',
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetListOfCardiologist",
         parameters: {
           BranchCode: store.branchCode,
         },
@@ -987,20 +988,20 @@ const CardiologyResult = () => {
   }, [searchChargeId, searchResultId]);
 
   const activeResultData =
-    exam === '2decho'
+    exam === "2decho"
       ? twoDEchoResult.data
-      : exam === 'treadmill'
+      : exam === "treadmill"
         ? treadmillResult.data
-        : exam === 'ecg'
+        : exam === "ecg"
           ? ecgResult.data
           : undefined;
 
   const activeResultIsFetched =
-    exam === '2decho'
+    exam === "2decho"
       ? twoDEchoResult.isFetched
-      : exam === 'treadmill'
+      : exam === "treadmill"
         ? treadmillResult.isFetched
-        : exam === 'ecg'
+        : exam === "ecg"
           ? ecgResult.isFetched
           : false;
 
@@ -1009,17 +1010,17 @@ const CardiologyResult = () => {
       return;
     }
 
-    if (exam === '2decho') {
+    if (exam === "2decho") {
       await twoDEchoResult.refetch();
       return;
     }
 
-    if (exam === 'treadmill') {
+    if (exam === "treadmill") {
       await treadmillResult.refetch();
       return;
     }
 
-    if (exam === 'ecg') {
+    if (exam === "ecg") {
       await ecgResult.refetch();
     }
   };
@@ -1027,16 +1028,16 @@ const CardiologyResult = () => {
   const age = [
     appointmentDetails.data?.AgeYears
       ? `${appointmentDetails.data.AgeYears}Y`
-      : '',
+      : "",
     appointmentDetails.data?.AgeMonths
       ? `${appointmentDetails.data.AgeMonths}M`
-      : '',
+      : "",
     appointmentDetails.data?.AgeDays
       ? `${appointmentDetails.data.AgeDays}D`
-      : '',
+      : "",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   const getNumberOrUndefined = (value: unknown) => {
     const numericValue = Number(value);
@@ -1048,14 +1049,14 @@ const CardiologyResult = () => {
 
   const getFormValue = (fieldName: string, value: unknown) => {
     if (value instanceof Date) {
-      return dayjs(value).format('YYYY-MM-DD');
+      return dayjs(value).format("YYYY-MM-DD");
     }
 
     const textValue =
-      value === null || value === undefined ? '' : String(value);
+      value === null || value === undefined ? "" : String(value);
 
     return reportTextFields.has(fieldName)
-      ? decodeReportLineBreaks(textValue) ?? ''
+      ? decodeReportLineBreaks(textValue) ?? ""
       : textValue;
   };
 
@@ -1082,11 +1083,11 @@ const CardiologyResult = () => {
     if (!exam) {
       setResultId(0);
       setChargeId(0);
-      setChargeDescription('');
+      setChargeDescription("");
       setIsFinalized(false);
-      setFinalizedBy('');
-      setDateFinalized('');
-      setEcgImpression('');
+      setFinalizedBy("");
+      setDateFinalized("");
+      setEcgImpression("");
       return;
     }
 
@@ -1099,30 +1100,30 @@ const CardiologyResult = () => {
     if (!result) {
       setResultId(0);
       setIsFinalized(false);
-      setFinalizedBy('');
-      setDateFinalized('');
-      if (exam === 'ecg') {
-        setEcgImpression('');
+      setFinalizedBy("");
+      setDateFinalized("");
+      if (exam === "ecg") {
+        setEcgImpression("");
       }
       return;
     }
 
     setResultId(Number(result.Id ?? 0));
     setChargeId(Number(result.ChargeId ?? result.fk_Charges_Id ?? 0));
-    setChargeDescription(String(result.ChargeDescription ?? ''));
+    setChargeDescription(String(result.ChargeDescription ?? ""));
     setDateOfExamination(
       result.DateOfExamination ? dayjs(result.DateOfExamination) : dayjs(),
     );
     setRequestingPhysician(getNumberOrUndefined(result.RequestingPhysician));
     setCardiologist(getNumberOrUndefined(result.Cardiologist));
     setEcgImpression(
-      exam === 'ecg' ? getFormValue('Impression', result.Impression) : '',
+      exam === "ecg" ? getFormValue("Impression", result.Impression) : "",
     );
-    setFinalizedBy(String(result.FinalizedBy ?? ''));
+    setFinalizedBy(String(result.FinalizedBy ?? ""));
     setDateFinalized(
-      String(result.DateFinalized ?? result.FinalizedDate ?? ''),
+      String(result.DateFinalized ?? result.FinalizedDate ?? ""),
     );
-    setIsFinalized(String(result.FinalizedBy ?? '').trim() !== '');
+    setIsFinalized(String(result.FinalizedBy ?? "").trim() !== "");
     setNativeFormValues(result);
   }, [activeResultData, activeResultIsFetched, exam]);
 
@@ -1131,8 +1132,8 @@ const CardiologyResult = () => {
 
     if (!exam || (chargeId === 0 && resultId === 0)) {
       notification.info({
-        message: 'Please click the charges result first.',
-        placement: 'topRight',
+        message: "Please click the charges result first.",
+        placement: "topRight",
         duration: 3,
       });
       return;
@@ -1142,10 +1143,10 @@ const CardiologyResult = () => {
     const data: Record<string, FormDataEntryValue> = {};
 
     formData.forEach((value, key) => {
-      if (key !== 'exam') {
+      if (key !== "exam") {
         data[key] =
-          typeof value === 'string' && reportTextFields.has(key)
-            ? encodeReportLineBreaks(value) ?? ''
+          typeof value === "string" && reportTextFields.has(key)
+            ? encodeReportLineBreaks(value) ?? ""
             : value;
       }
     });
@@ -1160,7 +1161,7 @@ const CardiologyResult = () => {
         ChargeId: chargeId,
         ChargeDescription: chargeDescription,
         DateOfExamination: dateOfExamination
-          ? dateOfExamination.format('YYYY-MM-DD')
+          ? dateOfExamination.format("YYYY-MM-DD")
           : data.DateOfExamination,
         RequestingPhysician: requestingPhysician ?? 0,
         Cardiologist: cardiologist ?? 0,
@@ -1175,7 +1176,7 @@ const CardiologyResult = () => {
 
         notification.success({
           message: `${examLabels[exam]} result successfully saved!`,
-          placement: 'topRight',
+          placement: "topRight",
           duration: 3,
         });
 
@@ -1184,14 +1185,14 @@ const CardiologyResult = () => {
       } else {
         notification.error({
           message: res?.message ?? `Unable to save ${examLabels[exam]} result.`,
-          placement: 'topRight',
+          placement: "topRight",
           duration: 3,
         });
       }
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
     } finally {
@@ -1202,14 +1203,14 @@ const CardiologyResult = () => {
   const handleFinalizeResult = async (values: any) => {
     if (!exam || resultId === 0) {
       notification.info({
-        message: 'Please click the charges result first.',
-        placement: 'topRight',
+        message: "Please click the charges result first.",
+        placement: "topRight",
         duration: 3,
       });
       return;
     }
 
-    const mode = isFinalized ? 'U' : 'F';
+    const mode = isFinalized ? "U" : "F";
     const endpoint =
       `${finalizeResultEndpoints[exam]}` +
       `?Username=${encodeURIComponent(values.Username)}` +
@@ -1227,33 +1228,33 @@ const CardiologyResult = () => {
       if (res?.status === 1) {
         notification.success({
           message:
-            mode === 'U'
-              ? 'Result successfully un-finalized!'
-              : 'Result successfully finalized!',
-          placement: 'topRight',
+            mode === "U"
+              ? "Result successfully un-finalized!"
+              : "Result successfully finalized!",
+          placement: "topRight",
           duration: 3,
         });
 
         await refetchActiveResult();
         setChargesKey(Math.random().toString());
 
-        if (mode === 'U') {
+        if (mode === "U") {
           setIsFinalized(false);
-          setFinalizedBy('');
-          setDateFinalized('');
+          setFinalizedBy("");
+          setDateFinalized("");
         }
       } else {
         notification.error({
           message:
             res?.message ?? `Unable to finalize ${examLabels[exam]} result.`,
-          placement: 'topRight',
+          placement: "topRight",
           duration: 3,
         });
       }
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
     } finally {
@@ -1265,27 +1266,27 @@ const CardiologyResult = () => {
     if (!exam || !isFinalized || resultId === 0) {
       const message =
         !exam || resultId === 0
-          ? 'Please click the charges result first.'
+          ? "Please click the charges result first."
           : `Please finalize the ${examLabels[exam]} result before printing.`;
 
       notification.info({
         message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
       return;
     }
 
-    axios.defaults.headers.common['Authorization'] =
-      'Bearer ' + store.tokenIdWebCims;
+    axios.defaults.headers.common["Authorization"] =
+      "Bearer " + store.tokenIdWebCims;
 
     try {
       setIsPrinting(true);
 
       const response = await axios({
-        url: apiUrl + '/api/GenerateReport',
-        method: 'GET',
-        responseType: 'blob',
+        url: apiUrl + "/api/GenerateReport",
+        method: "GET",
+        responseType: "blob",
         params: {
           ReportName: printReportNames[exam],
           AppointmentId: resultId,
@@ -1294,13 +1295,13 @@ const CardiologyResult = () => {
       });
 
       const pdfBlob = new Blob([response.data], {
-        type: 'application/pdf',
+        type: "application/pdf",
       });
       const data = window.URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
 
-      a.setAttribute('href', data);
-      a.setAttribute('target', '_blank');
+      a.setAttribute("href", data);
+      a.setAttribute("target", "_blank");
       a.click();
     } catch (error: any) {
       let message = `Unable to print ${examLabels[exam]} result.`;
@@ -1318,7 +1319,7 @@ const CardiologyResult = () => {
 
       notification.error({
         message,
-        placement: 'topRight',
+        placement: "topRight",
         duration: 3,
       });
     } finally {
@@ -1338,7 +1339,7 @@ const CardiologyResult = () => {
     selectedResultId: number;
   }) => {
     router.navigate({
-      to: '/cardiologyresult/$Id',
+      to: "/cardiologyresult/$Id",
       params: {
         Id: appointmentId.toString(),
       },
@@ -1346,6 +1347,7 @@ const CardiologyResult = () => {
         exam: selectedExam,
         chargeId: selectedChargeId,
         resultId: selectedResultId,
+        standalone: search.standalone,
       },
     });
   };
@@ -1362,9 +1364,9 @@ const CardiologyResult = () => {
     selectedResultId: number;
   }) => {
     const basePath =
-      import.meta.env.BASE_URL === '/'
-        ? ''
-        : import.meta.env.BASE_URL.replace(/\/$/, '');
+      import.meta.env.BASE_URL === "/"
+        ? ""
+        : import.meta.env.BASE_URL.replace(/\/$/, "");
     const searchParams = new URLSearchParams({
       exam: selectedExam,
       chargeId: selectedChargeId.toString(),
@@ -1379,19 +1381,19 @@ const CardiologyResult = () => {
     setDateOfExamination(dayjs());
     setRequestingPhysician(undefined);
     setCardiologist(undefined);
-    setEcgKeyword('');
-    setEcgImpression('');
+    setEcgKeyword("");
+    setEcgImpression("");
     setIsFinalized(false);
-    setFinalizedBy('');
-    setDateFinalized('');
+    setFinalizedBy("");
+    setDateFinalized("");
   };
 
   const getChargeDetails = async (
     appointmentId: number,
     selectedChargeId: number,
   ) => {
-    const res = await PostData('GetRecords', {
-      sp: 'udp_GetChargesByAppointmentIdForResult',
+    const res = await PostData("GetRecords", {
+      sp: "udp_GetChargesByAppointmentIdForResult",
       parameters: {
         AppointmentId: appointmentId,
       },
@@ -1408,11 +1410,11 @@ const CardiologyResult = () => {
   const handleOpenExistingResult = async (
     data: ExistingCardiologyResultRecord,
   ) => {
-    const resultWindow = window.open('', '_blank');
+    const resultWindow = window.open("", "_blank");
 
     if (resultWindow) {
       resultWindow.opener = null;
-      resultWindow.document.title = 'Opening cardiology result...';
+      resultWindow.document.title = "Opening cardiology result...";
       resultWindow.document.body.innerHTML =
         '<p style="font-family: sans-serif;">Opening cardiology result...</p>';
     }
@@ -1428,8 +1430,8 @@ const CardiologyResult = () => {
     if (!appointmentId || !selectedChargeId || !selectedResultId) {
       resultWindow?.close();
       notification.info({
-        message: 'Unable to open selected cardiology result.',
-        placement: 'topRight',
+        message: "Unable to open selected cardiology result.",
+        placement: "topRight",
         duration: 3,
       });
       return;
@@ -1450,8 +1452,8 @@ const CardiologyResult = () => {
       if (!selectedExam) {
         resultWindow?.close();
         notification.error({
-          message: 'Unable to identify the cardiology result type.',
-          placement: 'topRight',
+          message: "Unable to identify the cardiology result type.",
+          placement: "topRight",
           duration: 3,
         });
         return;
@@ -1467,13 +1469,13 @@ const CardiologyResult = () => {
       if (resultWindow) {
         resultWindow.location.href = url;
       } else {
-        window.open(url, '_blank', 'noopener,noreferrer');
+        window.open(url, "_blank", "noopener,noreferrer");
       }
     } catch (error: any) {
       resultWindow?.close();
       notification.error({
-        message: error.message ?? 'Unable to open selected cardiology result.',
-        placement: 'topRight',
+        message: error.message ?? "Unable to open selected cardiology result.",
+        placement: "topRight",
         duration: 3,
       });
     }
@@ -1487,15 +1489,15 @@ const CardiologyResult = () => {
 
     if (!appointmentId || !selectedChargeId || !selectedExam) {
       notification.info({
-        message: 'Unable to open selected cardiology charge.',
-        placement: 'topRight',
+        message: "Unable to open selected cardiology charge.",
+        placement: "topRight",
         duration: 3,
       });
       return;
     }
 
     setChargeId(selectedChargeId);
-    setChargeDescription(data.Description ?? '');
+    setChargeDescription(data.Description ?? "");
 
     if (selectedResultId > 0) {
       setResultId(selectedResultId);
@@ -1522,7 +1524,7 @@ const CardiologyResult = () => {
     setEcgImpression((current) =>
       current ? `${current}\n${cleanKeyword}` : cleanKeyword,
     );
-    setEcgKeyword('');
+    setEcgKeyword("");
   };
 
   return (
@@ -1587,7 +1589,7 @@ const CardiologyResult = () => {
       </div> */}
 
       <Divider className="print:hidden">
-        Cardiology Department Result{exam ? ` (${examLabels[exam]})` : ''}
+        Cardiology Department Result{exam ? ` (${examLabels[exam]})` : ""}
       </Divider>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -1599,8 +1601,8 @@ const CardiologyResult = () => {
               defaultActiveKey="1"
               items={[
                 {
-                  label: 'Charges',
-                  key: '1',
+                  label: "Charges",
+                  key: "1",
                   children: (
                     <ChargesPerPatient
                       AppointmentId={appointmentDetails.data?.Id}
@@ -1611,8 +1613,8 @@ const CardiologyResult = () => {
                   ),
                 },
                 {
-                  label: 'Existing Results',
-                  key: '2',
+                  label: "Existing Results",
+                  key: "2",
                   children: (
                     <ExistingCadioResults
                       PatientId={
@@ -1659,9 +1661,9 @@ const CardiologyResult = () => {
                   onDateOfExaminationChange={setDateOfExamination}
                   onRequestingPhysicianChange={setRequestingPhysician}
                 />
-                {exam === '2decho' && <TwoDEchoFields />}
-                {exam === 'treadmill' && <TreadmillFields />}
-                {exam === 'ecg' && (
+                {exam === "2decho" && <TwoDEchoFields />}
+                {exam === "treadmill" && <TreadmillFields />}
+                {exam === "ecg" && (
                   <EcgFields
                     keywords={cardioKeywords.data ?? []}
                     keywordValue={ecgKeyword}
@@ -1709,7 +1711,7 @@ const CardiologyResult = () => {
                     disabled={resultId === 0 || isSaving}
                     onClick={() => setShowFinalize(true)}
                   >
-                    {isFinalized ? 'Un-Finalize Result' : 'Finalize Result'}
+                    {isFinalized ? "Un-Finalize Result" : "Finalize Result"}
                   </Button>
                   <Button
                     type="primary"

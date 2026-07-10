@@ -1,10 +1,15 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import useAppStore from '../../store';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../hooks/userAuth';
 import { notification } from 'antd';
 import Header from '../../components/Header';
-import { TCounters, TQCounters } from '../../types';
+import {
+  TCounters,
+  TCurrentDepartment,
+  TQCalling,
+  TQCounters,
+} from '../../types';
 import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
 import dayjs from 'dayjs';
 import Calling2 from '../../components/calling2';
@@ -15,29 +20,22 @@ export const Route = createFileRoute('/_authenticated/queuing/$Code')({
   component: () => <Queuing />,
 });
 
+const delay = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 const Queuing = () => {
-  const [isCalling, setIsCalling] = useState(false);
-  const [currentCounter, setCurrentCounter] = useState<any | undefined>();
-  const [randomNo, setRandonNo] = useState(
-    Math.floor(Math.random() * 999999) + 1,
-  );
+  const [, setIsCalling] = useState(false);
+  const isGettingCallsRef = useRef(false);
+  const stopCallingRef = useRef(false);
   const { Code } = Route.useParams();
   const auth = useAuth();
   const store = useAppStore();
   const router = useRouter();
   const [Counters, setCounters] = useState<TCounters[] | undefined>([]);
-  const [Counter1, setCounter1] = useState<string | undefined>('');
-  const [Counter2, setCounter2] = useState<string | undefined>('');
-  const [Counter3, setCounter3] = useState<string | undefined>('');
-  const [Counter4, setCounter4] = useState<string | undefined>('');
-  const [Cashier, setCashier] = useState<string | undefined>('');
+  const [queueCounters, setQueueCounters] = useState<TCurrentDepartment[]>([]);
+  const [currentCounterIndex, setCurrentCounterIndex] = useState(0);
 
-  // const [Departments, setDepartments] = useState([]);
-  const [ProcessQ, setProcessQ] = useState(false);
-  const [ProcessedDept] = useState<string[]>([]);
-  // const [QCalling, setQCalling] = useState([]);
-
-  const handleGetCounterValues = async () => {
+  const handleGetCounterValues = useCallback(async () => {
     const res = await PostData('GetRecords', {
       sp: 'udp_GetReceptionCounters',
       parameters: { Grp: Code },
@@ -45,9 +43,9 @@ const Queuing = () => {
     if (res) {
       setCounters(res.parameters.lst);
     }
-  };
+  }, [Code]);
 
-  const handleGetDepartments = async () => {
+  const handleGetDepartments = useCallback(async () => {
     const res = await PostData('GetRecords', {
       sp: 'udp_GetPatientPerCounter2',
       parameters: {
@@ -58,163 +56,120 @@ const Queuing = () => {
       },
     });
     if (res) {
-      setProcessQ(true);
-      setCurrentCounter('');
-      const x = res.parameters.lst;
-      for (const e of x) {
-        setCurrentCounter(e);
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-      }
-      setProcessQ(false);
-      setRandonNo(Math.floor(Math.random() * 999999) + 1);
+      setQueueCounters(res.parameters.lst ?? []);
     }
-  };
-
-  console.log('currentCounter', Counters);
-
-  const handleSetCounterValues = () => {
-    Counters?.map((v: TCounters) => {
-      if (v.Code === 'counter1') {
-        setCounter1(v.CurrentQ);
-      } else if (v.Code === 'counter2') {
-        setCounter2(v.CurrentQ);
-      } else if (v.Code === 'counter3') {
-        setCounter3(v.CurrentQ);
-      } else if (v.Code === 'counter4') {
-        setCounter4(v.CurrentQ);
-      } else if (v.Code === 'cashier') {
-        setCashier(v.CurrentQ);
-      }
-    });
-  };
-
-  useEffect(() => {
-    handleGetDepartments();
-  }, [randomNo]);
+  }, [Code, store.branchCode]);
 
   useEffect(() => {
     store.setHideSideBar('Y');
-    const interval = setInterval(() => {
-      handleGetCounterValues();
-    }, 5000);
-    return () => clearInterval(interval);
-    console.log(Counter1);
-    console.log(Counter2);
-    console.log(Counter3);
-    console.log(Counter4);
-    console.log(Cashier);
-    console.log(ProcessQ);
-    console.log(ProcessedDept);
+
+    handleGetCounterValues();
+    handleGetDepartments();
+
+    const counterInterval = setInterval(handleGetCounterValues, 5000);
+    const departmentInterval = setInterval(handleGetDepartments, 15000);
+
+    return () => {
+      clearInterval(counterInterval);
+      clearInterval(departmentInterval);
+    };
   }, []);
 
-  // const handleCall = () => {
-  //   QCalling.forEach(async (v: TQCalling) => {
-  //     setIsCalling(true);
-  //     console.log(v);
-  //     const speech = new SpeechSynthesisUtterance();
-  //     const voices = window.speechSynthesis.getVoices();
-  //     speech.voice = voices[0]; // change voice
-  //     speech.rate = 0.7;
-  //     if (v.Station !== "2") {
-  //       console.log("xxxxxxxxxxx");
-  //       speech.text = "Patient " + v.QNo + " please proceed to " + v.Counter;
-  //     } else {
-  //       speech.text = "Patient " + v.QNo + " please proceed to STATION 2";
-  //     }
-  //     window.speechSynthesis.speak(speech);
-  //     window.speechSynthesis.speak(speech);
-  //     await PostData("UpdateQCalling", {
-  //       QNo: v.QNo,
-  //       Counter: v.Counter,
-  //     });
-
-  //     await new Promise((resolve) => setTimeout(resolve, 2000));
-  //   });
-  //   setIsCalling(false);
-
-  //   // var i = 0;
-  //   // const myLoop = () => {
-  //   //   //  create a loop function
-  //   //   setTimeout(async function () {
-  //   //     //  call a 3s setTimeout when the loop is called
-  //   //     const counter: TQCalling = QCalling[i];
-  //   //     const speech = new SpeechSynthesisUtterance();
-  //   //     const voices = window.speechSynthesis.getVoices();
-  //   //     speech.voice = voices[0]; // change voice
-  //   //     speech.rate = 0.7;
-  //   //     if (counter.Station !== "2") {
-  //   //       speech.text =
-  //   //         "Patient " + counter.QNo + " please proceed to " + counter.Counter;
-  //   //     } else {
-  //   //       speech.text =
-  //   //         "Patient " + counter.QNo + " please proceed to STATION 2";
-  //   //     }
-  //   //     window.speechSynthesis.speak(speech);
-  //   //     window.speechSynthesis.speak(speech);
-  //   //     // window.speechSynthesis.speak(speech);
-  //   //     i++; //  increment the counter
-  //   //     const res = await PostData("UpdateQCalling", {
-  //   //       QNo: counter.QNo,
-  //   //       Counter: counter.Counter,
-  //   //     });
-  //   //     if (res) {
-  //   //     }
-  //   //     if (i < QCalling.length) {
-  //   //       //  if the counter < 10, call the loop function
-  //   //       myLoop(); //  ..  again which will trigger another
-  //   //     } //  ..  setTimeout()
-  //   //   }, 1000);
-  //   // };
-  //   // myLoop();
-  // };
-
-  const handleGetQCalling = async () => {
-    const res = await PostData('GetRecords', {
-      sp: 'udp_GetQCalling',
-      parameters: {},
-    });
-    if (res) {
-      setIsCalling(true);
-      const q = res.parameters.lst;
-      setIsCalling(true);
-      q.forEach(async (f: any) => {
-        const speech = new SpeechSynthesisUtterance();
-        const voices = window.speechSynthesis.getVoices();
-        speech.voice = voices[0]; // change voice
-        speech.rate = 0.7;
-        if (f.Station !== '2') {
-          speech.text = 'Patient ' + f.QNo + ' please proceed to ' + f.Counter;
-        } else {
-          speech.text = 'Patient ' + f.QNo + ' please proceed to STATION 2';
-        }
-        window.speechSynthesis.speak(speech);
-        window.speechSynthesis.speak(speech);
-        const res = await PostData('UpdateQCalling', {
-          QNo: f.QNo,
-          Counter: f.Counter,
-        });
-        if (res) {
-        }
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      setIsCalling(false);
+  useEffect(() => {
+    if (queueCounters.length <= 1) {
+      setCurrentCounterIndex(0);
+      return;
     }
+
+    const interval = setInterval(() => {
+      setCurrentCounterIndex(
+        (currentIndex) => (currentIndex + 1) % queueCounters.length,
+      );
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [queueCounters.length]);
+
+  const speak = useCallback(async (text: string) => {
+    if (
+      typeof window === 'undefined' ||
+      !('speechSynthesis' in window) ||
+      typeof SpeechSynthesisUtterance === 'undefined'
+    ) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const speech = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+
+      if (voices.length > 0) {
+        speech.voice = voices[0];
+      }
+
+      speech.rate = 0.7;
+      speech.onend = () => resolve();
+      speech.onerror = () => resolve();
+      window.speechSynthesis.speak(speech);
+    });
+  }, []);
+
+  const getCallText = (qCalling: TQCalling) => {
+    if (qCalling.Station !== '2') {
+      return `Patient ${qCalling.QNo} please proceed to ${qCalling.Counter}`;
+    }
+
+    return `Patient ${qCalling.QNo} please proceed to STATION 2`;
   };
 
-  useEffect(() => {
-    if (!isCalling) {
-      handleGetQCalling();
+  const handleGetQCalling = useCallback(async () => {
+    if (isGettingCallsRef.current) {
+      return;
     }
-  }, [isCalling]);
-  // useEffect(() => {
-  //   handleCall();
-  // }, []);
+
+    isGettingCallsRef.current = true;
+
+    try {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetQCalling',
+        parameters: {},
+      });
+
+      const callingList: TQCalling[] = res?.parameters?.lst ?? [];
+      setIsCalling(callingList.length > 0);
+
+      for (const qCalling of callingList) {
+        if (stopCallingRef.current) {
+          break;
+        }
+
+        await speak(getCallText(qCalling));
+        await delay(750);
+      }
+    } finally {
+      isGettingCallsRef.current = false;
+    }
+  }, [speak]);
 
   useEffect(() => {
-    handleSetCounterValues();
-  }, [Counters]);
+    stopCallingRef.current = false;
+
+    const pollCalling = async () => {
+      while (!stopCallingRef.current) {
+        await handleGetQCalling();
+        await delay(2500);
+      }
+    };
+
+    pollCalling();
+
+    return () => {
+      stopCallingRef.current = true;
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [handleGetQCalling]);
 
   useEffect(() => {
     if (!auth.isWithAccess(13)) {
@@ -264,8 +219,8 @@ const Queuing = () => {
         </div>
         <div className="col-span-8 bg-green-500 p-4 min-h-screen">
           <>
-            {currentCounter && (
-              <QPatients CurrentDepartment={currentCounter!} />
+            {queueCounters[currentCounterIndex] && (
+              <QPatients CurrentDepartment={queueCounters[currentCounterIndex]} />
             )}
           </>
         </div>

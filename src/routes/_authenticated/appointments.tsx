@@ -33,12 +33,7 @@ export const Route = createFileRoute('/_authenticated/appointments')({
   component: () => <Appointments />,
 });
 
-type DateRangePreset =
-  | 'today'
-  | '1-week'
-  | '2-weeks'
-  | '1-month'
-  | '3-months';
+type DateRangePreset = 'today' | '1-week' | '2-weeks' | '1-month' | '3-months';
 
 const DEFAULT_DATE_RANGE: DateRangePreset = 'today';
 
@@ -99,8 +94,7 @@ const Appointments = () => {
   const router = useRouter();
   const TypeOfAppointment = form.getFieldValue('TypeOfAppointment');
   const patientNameFilter = Form.useWatch('PatientName', form);
-  const hasPatientNameFilter =
-    !isNullOrUndefinedOrBlank(patientNameFilter);
+  const hasPatientNameFilter = !isNullOrUndefinedOrBlank(patientNameFilter);
 
   const handleWithAccess = async () => {
     const res = await auth.isWithAccess(15);
@@ -347,8 +341,7 @@ const Appointments = () => {
     try {
       const TypeOfAppointment = form.getFieldValue('TypeOfAppointment');
       const PatientName = form.getFieldValue('PatientName');
-      const hasPatientName =
-        !isNullOrUndefinedOrBlank(PatientName);
+      const hasPatientName = !isNullOrUndefinedOrBlank(PatientName);
       const dateRange = getDateRange(form.getFieldValue('DateRange'));
 
       const res = await PostData('GetRecords', {
@@ -357,9 +350,7 @@ const Appointments = () => {
           BranchCode: store.branchCode,
           DateFrom: hasPatientName ? null : dateRange.DateFrom,
           DateTo: hasPatientName ? null : dateRange.DateTo,
-          PatientName: isNullOrUndefinedOrBlank(PatientName)
-            ? ''
-            : PatientName,
+          PatientName: isNullOrUndefinedOrBlank(PatientName) ? '' : PatientName,
           TypeOfAppointment,
         },
       });
@@ -387,20 +378,16 @@ const Appointments = () => {
             name="TypeOfAppointment"
             label="Type of Appointment"
             className="col-span-2"
-            rules={[
-              { required: true, message: 'Please select type of appointment!' },
-            ]}
+            // rules={[
+            //   { required: true, message: 'Please select type of appointment!' },
+            // ]}
           >
             <Select onChange={handleTypeChange}>
               <Select.Option value="D">Diagnostic</Select.Option>
               <Select.Option value="H">Hemodialysis/ASC</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item
-            name="DateRange"
-            label="Date Range"
-            className="col-span-2"
-          >
+          <Form.Item name="DateRange" label="Date Range" className="col-span-2">
             <Select
               disabled={hasPatientNameFilter}
               options={dateRangeOptions}
@@ -414,9 +401,7 @@ const Appointments = () => {
           >
             <Input
               onChange={(event) => {
-                const hasValue = !isNullOrUndefinedOrBlank(
-                  event.target.value,
-                );
+                const hasValue = !isNullOrUndefinedOrBlank(event.target.value);
 
                 form.setFieldValue(
                   'DateRange',

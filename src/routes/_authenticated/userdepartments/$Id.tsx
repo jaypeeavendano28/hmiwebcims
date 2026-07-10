@@ -1,11 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { Form, Input, notification, Transfer } from 'antd';
-import { useEffect, useState } from 'react';
-import { PostData } from '../../../helpers';
-import { TUserDeparments, TUsers } from '../../../types';
-import { TransferDirection } from 'antd/es/transfer';
+import { createFileRoute } from "@tanstack/react-router";
+import { Form, Input, notification, Transfer } from "antd";
+import { useEffect, useState } from "react";
+import { PostData } from "../../../helpers";
+import { TUserDeparments, TUsers } from "../../../types";
+import { TransferDirection } from "antd/es/transfer";
 
-export const Route = createFileRoute('/_authenticated/userdepartments/$Id')({
+export const Route = createFileRoute("/_authenticated/userdepartments/$Id")({
   component: () => <UserDepartment />,
 });
 
@@ -17,8 +17,8 @@ const UserDepartment = () => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
   const handleInitialized = async () => {
-    let res = await PostData('GetRecords', {
-      sp: 'udp_GetDepartments',
+    let res = await PostData("GetRecords", {
+      sp: "udp_GetDepartments",
       parameters: {},
     });
 
@@ -28,8 +28,8 @@ const UserDepartment = () => {
       setDepartments(res.parameters.lst);
     }
 
-    res = await PostData('GetRecords', {
-      sp: 'udp_GetUserDepartments',
+    res = await PostData("GetRecords", {
+      sp: "udp_GetUserDepartments",
       parameters: { UserId: Id },
     });
 
@@ -44,8 +44,8 @@ const UserDepartment = () => {
   };
 
   const handleGetUserDetails = async () => {
-    const res = await PostData('GetRecords', {
-      sp: 'udp_GetUserDetailsById',
+    const res = await PostData("GetRecords", {
+      sp: "udp_GetUserDetailsById",
       parameters: {
         Id: Id,
       },
@@ -73,7 +73,7 @@ const UserDepartment = () => {
   ) => {
     console.log({ lst: moveKeys, Direction: direction, Id: Id });
 
-    const res = await PostData('SaveUserDepartment', {
+    const res = await PostData("SaveUserDepartment", {
       lst: moveKeys,
       Direction: direction,
       Id: Id,
@@ -83,10 +83,10 @@ const UserDepartment = () => {
         handleInitialized();
         notification.success({
           message:
-            direction === 'right'
-              ? 'Successfully added!'
-              : 'Successfully removed!',
-          placement: 'topRight',
+            direction === "right"
+              ? "Successfully added!"
+              : "Successfully removed!",
+          placement: "topRight",
           duration: 3,
         });
       }
@@ -119,7 +119,7 @@ const UserDepartment = () => {
         filterOption={filterOption}
         rowKey={(record) => record.Id}
         dataSource={departments}
-        titles={['List of Departments', 'Added Departments']}
+        titles={["List of Departments", "Added Departments"]}
         targetKeys={targetKeys}
         selectedKeys={selectedKeys}
         onChange={onChange}

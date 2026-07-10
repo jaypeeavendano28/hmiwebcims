@@ -1,6 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { App, Button, Divider, Input, List, Modal, Popover } from "antd";
+import {
+  App,
+  Button,
+  Divider,
+  Form,
+  Input,
+  List,
+  Modal,
+  Popover,
+  Select,
+} from "antd";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import VirtualList from "rc-virtual-list";
@@ -10,6 +20,7 @@ import { isNullOrUndefinedOrBlank, PostData } from "../../helpers";
 import useAppStore from "../../store";
 import {
   TAppointments,
+  TAppointmentType,
   TCharges,
   TPatientInformation,
   TQNo,
@@ -21,6 +32,10 @@ export const Route = createFileRoute("/_authenticated/appointmentdetails/new")({
 });
 
 const patientResultsHeight = 360;
+
+type TNewAppointmentValues = TPatientInformation & {
+  AppointmentType?: string;
+};
 
 function NewAppointment() {
   const router = useRouter();
@@ -48,6 +63,20 @@ function NewAppointment() {
     refetchOnWindowFocus: false,
     staleTime: 0,
     enabled: searchQuery.trim().length > 0,
+  });
+
+  const appointmentTypes = useQuery({
+    queryKey: ["appointmentType"],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetAppointmentType",
+        parameters: {},
+      });
+
+      return (res?.parameters?.lst ?? []) as TAppointmentType[];
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 
   const filteredPatients = useMemo(() => {
@@ -215,16 +244,20 @@ function NewAppointment() {
     return undefined;
   };
 
-  const handleSave = async (values: TPatientInformation) => {
+  const handleSave = async (values: TNewAppointmentValues) => {
     let appointmentPatientId = patientId;
+    const patientValues = { ...values };
+    delete patientValues.AppointmentType;
 
     if (appointmentPatientId === 0) {
       const patientRes = await PostData("SavePatientProfile", {
-        ...values,
+        ...patientValues,
         BranchCode: store.branchCode,
-        DateOfBirth: dayjs(values.DateOfBirth).format("YYYY-MM-DD"),
+        DateOfBirth: dayjs(patientValues.DateOfBirth).format("YYYY-MM-DD"),
         PatientId: 0,
-        Company: isNullOrUndefinedOrBlank(values.Company) ? 0 : values.Company,
+        Company: isNullOrUndefinedOrBlank(patientValues.Company)
+          ? 0
+          : patientValues.Company,
       });
 
       if (!patientRes || patientRes.status !== 1) {
@@ -239,11 +272,13 @@ function NewAppointment() {
       appointmentPatientId = Number(patientRes.parameters.Id);
     } else {
       const patientRes = await PostData("SavePatientProfile", {
-        ...values,
+        ...patientValues,
         BranchCode: store.branchCode,
-        DateOfBirth: dayjs(values.DateOfBirth).format("YYYY-MM-DD"),
+        DateOfBirth: dayjs(patientValues.DateOfBirth).format("YYYY-MM-DD"),
         PatientId: patientId,
-        Company: isNullOrUndefinedOrBlank(values.Company) ? 0 : values.Company,
+        Company: isNullOrUndefinedOrBlank(patientValues.Company)
+          ? 0
+          : patientValues.Company,
       });
 
       if (!patientRes || patientRes.status !== 1) {
@@ -265,7 +300,7 @@ function NewAppointment() {
     const appointmentValues: TAppointments = {
       Date: new Date(),
       IsSeniorOrPwd: "N",
-      AppointmentType: getAppointmentType(),
+      AppointmentType: values.AppointmentType,
       CivilStatus: values.CivilStatus,
       Occupation: values.Occupation,
       HmoCompany: values.Company,
@@ -393,6 +428,32 @@ function NewAppointment() {
           submitText="Save Appointment"
           handleCloseModal={() => undefined}
           onSubmit={handleSave}
+          formHeader={
+            <div className="grid md:grid-cols-2 gap-4">
+              <Form.Item
+                name="AppointmentType"
+                label="Appointment Type"
+                initialValue={getAppointmentType()}
+                rules={[
+                  {
+                    required: true,
+                    message: "Appointment type is required!",
+                  },
+                ]}
+              >
+                <Select
+                  showSearch
+                  allowClear
+                  loading={appointmentTypes.isLoading}
+                  optionFilterProp="label"
+                  options={appointmentTypes.data?.map((type) => ({
+                    value: type.Code,
+                    label: type.Description,
+                  }))}
+                />
+              </Form.Item>
+            </div>
+          }
         />
       </div>
 

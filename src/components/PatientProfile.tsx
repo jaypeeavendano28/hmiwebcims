@@ -12,7 +12,7 @@ import {
   Popover,
   App,
 } from 'antd';
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, ReactNode, useEffect, useRef, useState } from 'react';
 import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
 import { THmoCompany, TPatientInformation, TSettings } from '../types';
 import useAppStore from '../store';
@@ -45,6 +45,7 @@ type Props = {
   embedded?: boolean;
   submitText?: string;
   onSubmit?: (values: TPatientInformation) => void | Promise<void>;
+  formHeader?: ReactNode;
 };
 // const isDev = import.meta.env.DEV;
 // const prodApi = import.meta.env.VITE_PROD_API;
@@ -57,6 +58,7 @@ const PatientProfile: FC<Props> = ({
   embedded = false,
   submitText = 'Submit',
   onSubmit,
+  formHeader,
 }) => {
   // const [patientId, setPatientId] = useState(Id);
   // const [picture, setPicture] = useState<string | null>(null);
@@ -443,6 +445,7 @@ const PatientProfile: FC<Props> = ({
     <div className={embedded ? '' : 'cardBackGround'}>
       {!embedded && <Divider>Patient Profile</Divider>}
       <Form form={form} layout="vertical" onFinish={handleSubmitForm}>
+        {formHeader}
         <div className="col-span-2">
           <div className="grid md:grid-cols-2 gap-4">
             <Form.Item name="Id" label="Patient Id">

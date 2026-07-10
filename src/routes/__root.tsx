@@ -1,4 +1,8 @@
-import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import {
+  Outlet,
+  createRootRouteWithContext,
+  useRouterState,
+} from "@tanstack/react-router";
 import { AuthContext } from "../hooks/userAuth";
 import Sider from "../components/Sider";
 import { Layout } from "antd";
@@ -17,6 +21,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   const store = useAppStore();
+  const search = useRouterState({
+    select: (state) => state.location.search,
+  }) as { standalone?: boolean | string };
+  const isStandalone =
+    search.standalone === true || search.standalone === "true";
+  const hideSidebar = store.hideSideBar === "Y" || isStandalone;
 
   useEffect(() => {
     store.setCollapsed(false);
@@ -24,7 +34,7 @@ function RootComponent() {
   return (
     <div>
       <Layout style={{ minHeight: "100vh" }}>
-        {store.hideSideBar === "N" && <Sider />}
+        {!hideSidebar && <Sider />}
 
         {/* store.collapsed  ? { marginLeft: 0 } : { marginLeft: 200 } */}
         <Layout
@@ -39,7 +49,7 @@ function RootComponent() {
           {/* : { margin: "24px 16px 0", overflow: "initial" } */}
           <Layout.Content
             style={
-              store.hideSideBar === "Y"
+              hideSidebar
                 ? { margin: 0 }
                 : { margin: "24px 16px 0", overflow: "initial" }
             }

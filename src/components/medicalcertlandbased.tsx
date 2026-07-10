@@ -90,10 +90,7 @@ export default function MedicalCertificateLand({ AppointmentId }: Props) {
           });
         } else {
           form.setFieldsValue({
-            DateOfExpiration: dayjs(appointmentDetails.data?.Date).add(
-              3,
-              'month',
-            ),
+            DateOfExpiration: dayjs().add(3, 'month'),
             SatisfactoryHearing: 'Y',
             SatisfactorySight: 'Y',
             SatisfactoryColorVision: 'Y',
