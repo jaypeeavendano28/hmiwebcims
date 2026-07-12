@@ -57,6 +57,7 @@ type ProcedureStatusFormValues = {
 
 const procedureStatusOptions = ['DONE', 'TO FOLLOW', 'DEFERRED'];
 const resultCounterCodes = ['LAB', 'XRAY', 'ULT', 'CARDIO'];
+const allQueueDetailsOption = 0;
 
 const PatientsPerCounter: FC<Props> = ({
   CounterCode,
@@ -312,7 +313,11 @@ const PatientsPerCounter: FC<Props> = ({
         } else if (data.Status === 'A') {
           setSelectedRecord(activeRecord);
           setShowModal(false);
-          openProcedureWorkspace(activeRecord, resultWindow);
+          if (activeRecord.AllProcedures) {
+            openProcedureSelectionWorkspace(activeRecord, resultWindow);
+          } else {
+            openProcedureWorkspace(activeRecord, resultWindow);
+          }
         }
         await refreshPatientQueries();
         queryClient.invalidateQueries({
@@ -525,6 +530,75 @@ const PatientsPerCounter: FC<Props> = ({
         break;
       case 'ULT':
         handleUltrasoundResult(data, resultWindow);
+        break;
+      default:
+        resultWindow?.close();
+    }
+  };
+
+  const openProcedureSelectionWorkspace = (
+    data: any,
+    resultWindow?: Window | null,
+  ) => {
+    const appointmentId = data.fk_Appointments_Id?.toString();
+
+    if (!appointmentId) {
+      resultWindow?.close();
+      return;
+    }
+
+    const search = {
+      standalone: true,
+    };
+
+    switch (data.CounterCode ?? CounterCode) {
+      case 'LAB':
+        openResultLocation(
+          {
+            to: '/laboratoryresults/$Id',
+            params: {
+              Id: appointmentId,
+            },
+            search,
+          },
+          resultWindow,
+        );
+        break;
+      case 'XRAY':
+        openResultLocation(
+          {
+            to: '/xrayresult/$Id',
+            params: {
+              Id: appointmentId,
+            },
+            search,
+          },
+          resultWindow,
+        );
+        break;
+      case 'CARDIO':
+        openResultLocation(
+          {
+            to: '/cardiologyresult/$Id',
+            params: {
+              Id: appointmentId,
+            },
+            search,
+          },
+          resultWindow,
+        );
+        break;
+      case 'ULT':
+        openResultLocation(
+          {
+            to: '/ultrasound/$Id',
+            params: {
+              Id: appointmentId,
+            },
+            search,
+          },
+          resultWindow,
+        );
         break;
       default:
         resultWindow?.close();
@@ -1037,11 +1111,14 @@ const PatientsPerCounter: FC<Props> = ({
         }}
         onOk={() => {
           if (selectedQueueDetailId === undefined) return;
+          const isAllProcedures =
+            selectedQueueDetailId === allQueueDetailsOption;
           setShowProcedureModal(false);
           void handleCall({
             ...selectedRecord,
             Status: 'C',
-            QueueDetailId: selectedQueueDetailId,
+            QueueDetailId: isAllProcedures ? undefined : selectedQueueDetailId,
+            AllProcedures: isAllProcedures,
           });
         }}
       >
@@ -1051,6 +1128,14 @@ const PatientsPerCounter: FC<Props> = ({
           onChange={(event) => setSelectedQueueDetailId(event.target.value)}
         >
           <Space direction="vertical" className="w-full">
+            <Radio value={allQueueDetailsOption}>
+              <div>
+                <div>All procedures</div>
+                <div className="text-xs font-normal text-gray-500">
+                  Call every pending procedure for this queue
+                </div>
+              </div>
+            </Radio>
             {pendingQueueDetails.map((detail) => {
               const detailId =
                 detail.QueueDetailId ?? (detail as any).queueDetailId;
