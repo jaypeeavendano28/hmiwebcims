@@ -1,10 +1,11 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Button, Divider, Form, Image, Input, notification } from "antd";
+import { Button, Form, Input, notification } from "antd";
 import { PostData } from "../../helpers";
-import { useEffect, useRef, useState } from "react";
-import { TDoctors, TMedtechs } from "../../types";
+import { useEffect, useState } from "react";
+import { TMedtechs } from "../../types";
 import axios from "axios";
 import useAppStore from "../../store";
+import SignatureBuilder from "../../components/SignatureBuilder";
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + "/api";
 const devApi = import.meta.env.VITE_DEV_API + "/api";
@@ -19,15 +20,10 @@ const MedtechProfile = () => {
   const [form] = Form.useForm();
   const store = useAppStore();
   const [picture, setPicture] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement | null>(null);
+  const medtechName = Form.useWatch("Name", form);
+  const medtechLicenseNo = Form.useWatch("LicenseNo", form);
+  const medtechTitle = Form.useWatch("Title", form);
 
-  function blobToBase64(blob: any) {
-    return new Promise((resolve, _) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-  }
   const handleUploadPicture = async (image: any) => {
     try {
       const fd = new FormData();
@@ -38,76 +34,54 @@ const MedtechProfile = () => {
       axios.defaults.headers.common["Authorization"] = ("Bearer " +
         store.tokenIdWebCims) as string;
 
-      await axios({
+      const res = await axios({
         method: "post",
         url: apiUrl + "/UploadMedtechSignature",
         data: fd,
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      })
-        .then((res: any) => {
-          if (res.data.status === 1) {
-            notification.success({
-              message: "Successfully saved!",
-              placement: "topRight",
-              duration: 3,
-            });
-          } else {
-            notification.error({
-              message: res.data.message,
-              placement: "topRight",
-              duration: 3,
-            });
-          }
-        })
-        .catch((err) => {
-          console.log(err);
+      });
+
+      if (res.data.status === 1) {
+        setPicture(image);
+        notification.success({
+          message: "Successfully saved!",
+          placement: "topRight",
+          duration: 3,
         });
+        return true;
+      }
+
+      notification.error({
+        message: res.data.message,
+        placement: "topRight",
+        duration: 3,
+      });
+      return false;
     } catch (error) {
       console.log(error);
+      return false;
     }
   };
-  const onFilePicked = async (files: any) => {
-    if (files[0] === undefined) return false;
-
-    let filename = files[0].name;
-    if (filename.lastIndexOf(".") <= 0) {
-      notification.error({
-        message: "Invalid image file!",
-        placement: "topRight",
-        duration: 3,
-      });
-      return;
-    }
-
-    if (files[0].size >= 2000000) {
-      notification.error({
-        message: "File must not be greater than 2MB!",
-        placement: "topRight",
-        duration: 3,
-      });
-      return;
-    }
-    setPicture(URL.createObjectURL(files?.[0]));
-
-    const p = await blobToBase64(files?.[0]);
-    if (p) {
-      handleUploadPicture(p);
-    }
-  };
-  const handleSubmitForm = async (values: TDoctors) => {
+  const saveMedtechProfile = async (
+    values: TMedtechs,
+    showSuccessNotification = true
+  ) => {
     try {
       const res = await PostData("SaveMedtech", { ...values, Type: "M" });
       if (res) {
         if (res.status === 1) {
           setId(res.parameters.Id);
-          notification.success({
-            message: "Successfully saved!",
-            placement: "topRight",
-            duration: 3,
-          });
+          if (showSuccessNotification) {
+            notification.success({
+              message: "Successfully saved!",
+              placement: "topRight",
+              duration: 3,
+            });
+          }
           form.setFieldValue("Id", res.parameters.Id);
+          return true;
         } else {
           notification.error({
             message: res.message,
@@ -123,6 +97,31 @@ const MedtechProfile = () => {
         duration: 3,
       });
     }
+    return false;
+  };
+
+  const handleSubmitForm = async (values: TMedtechs) => {
+    await saveMedtechProfile(values);
+  };
+
+  const handleSaveSignature = async (image: string) => {
+    try {
+      const values = await form.validateFields();
+      const saved = await saveMedtechProfile(values, false);
+
+      if (!saved) {
+        return false;
+      }
+
+      return handleUploadPicture(image);
+    } catch (error: any) {
+      notification.error({
+        message: error.message ?? "Please complete the profile before saving signature.",
+        placement: "topRight",
+        duration: 3,
+      });
+      return false;
+    }
   };
   const handleGetMedtechProfile = async () => {
     try {
@@ -136,6 +135,7 @@ const MedtechProfile = () => {
           Id: x.Id,
           Name: x.Name,
           LicenseNo: x.LicenseNo,
+          Title: x.Title ?? "MEDICAL TECHNOLOGIST",
         });
 
         res = await PostData("GetRecords", {
@@ -155,15 +155,13 @@ const MedtechProfile = () => {
     }
   };
 
-  const handleSelectImage = () => {
-    fileInput.current?.click();
-  };
   useEffect(() => {
     if (Id === "0") {
       form.setFieldsValue({
         Id: "0",
         Sonologist: false,
         Pathologist: false,
+        Title: "MEDICAL TECHNOLOGIST",
       });
     } else {
       handleGetMedtechProfile();
@@ -193,6 +191,13 @@ const MedtechProfile = () => {
             <Form.Item name="LicenseNo" label="License No.">
               <Input />
             </Form.Item>
+            <Form.Item
+              name="Title"
+              label="Position/Title"
+              normalize={(v) => v.toUpperCase()}
+            >
+              <Input />
+            </Form.Item>
 
             <div className="flex justify-end">
               <Button type="primary" htmlType="submit">
@@ -202,35 +207,21 @@ const MedtechProfile = () => {
           </Form>
         </div>
         <div>
-          <Divider>Signature</Divider>
-          <div className="flex justify-center">
-            <Image
-              // size={128}
-              // width={200}
-              // src="https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png"
-              src={picture as string}
-              preview={false}
-            />
-          </div>
-
-          <div className="flex justify-center mt-2">
-            <Button
-              type="primary"
-              onClick={() => handleSelectImage()}
-              disabled={Id === "0"}
-            >
-              Upload from computer
-            </Button>
-          </div>
+          <SignatureBuilder
+            currentImage={picture}
+            disabled={Id === "0"}
+            fullName={medtechName}
+            licenseNo={medtechLicenseNo}
+            positionTitle={medtechTitle}
+            defaultTitle="MEDICAL TECHNOLOGIST"
+            onLicenseNoChange={(value) =>
+              form.setFieldValue("LicenseNo", value)
+            }
+            onTitleChange={(value) => form.setFieldValue("Title", value)}
+            onSave={handleSaveSignature}
+          />
         </div>
       </div>
-      <input
-        style={{ display: "none" }}
-        ref={fileInput}
-        type="file"
-        accept=".jpg"
-        onChange={(e) => onFilePicked(e.target.files)}
-      />
     </div>
   );
 };

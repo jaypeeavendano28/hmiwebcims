@@ -5,17 +5,27 @@ import {
   Button,
   DatePicker,
   Divider,
+  Form,
+  Input,
+  InputNumber,
   Modal,
   notification,
+  Popconfirm,
   Select,
+  Space,
+  Table,
   Tabs,
 } from "antd";
 import axios from "axios";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { PostData } from "../../helpers";
+import { PostData, blobToDataUrl } from "../../helpers";
 import useAppStore from "../../store";
-import type { TAppointments, TDoctors } from "../../types";
+import type {
+  TAppointmentVitalSigns,
+  TAppointments,
+  TDoctors,
+} from "../../types";
 import ChargesPerPatient from "../../components/ChargesPerPatient";
 import { ExistingCadioResults } from "../../components/ExistingCardioResult";
 import FinalizeForm from "../../components/FinalizeForm";
@@ -53,6 +63,11 @@ type CardioKeyword = {
   Id: number;
   Description?: string;
   Legend?: string;
+};
+
+type CardioKeywordFormValues = {
+  Legend?: string;
+  Description?: string;
 };
 
 type CardiologyResultRecord = Record<
@@ -126,17 +141,25 @@ const saveResultEndpoints: Record<Exam, string> = {
   ecg: "SaveCardiologyECGResult",
 };
 
-const finalizeResultEndpoints: Record<Exam, string> = {
-  "2decho": "FinalizedCardiology2DEchoResult",
-  treadmill: "FinalizedCardiologyTreadmillResult",
-  ecg: "FinalizedCardiologyECGResult",
-};
-
 const printReportNames: Record<Exam, string> = {
   "2decho": "2decho.rdl",
   treadmill: "treadmill.rdl",
   ecg: "ecg.rdl",
 };
+
+const onlineResultTypes: Record<Exam, string> = {
+  "2decho": "CARDIO-2DECHO",
+  treadmill: "CARDIO-TREADMILL",
+  ecg: "CARDIO-ECG",
+};
+
+const onlineResultDescriptions: Record<Exam, string> = {
+  "2decho": "2D Echo Result",
+  treadmill: "Treadmill Result",
+  ecg: "ECG Result",
+};
+
+const onlineResultDepartmentId = 1022;
 
 const normalizeExam = (exam?: string): Exam | undefined => {
   if (exam === "treadmill" || exam === "ecg" || exam === "2decho") {
@@ -760,6 +783,7 @@ type EcgFieldsProps = {
   onKeywordChange: (value: string) => void;
   onKeywordAppend: (value: string) => void;
   onImpressionChange: (value: string) => void;
+  onManageKeywords: () => void;
 };
 
 const EcgFields = ({
@@ -769,6 +793,7 @@ const EcgFields = ({
   onKeywordChange,
   onKeywordAppend,
   onImpressionChange,
+  onManageKeywords,
 }: EcgFieldsProps) => (
   <div className="w-full">
     <label
@@ -777,36 +802,41 @@ const EcgFields = ({
     >
       Keywords
     </label>
-    <AutoComplete
-      allowClear
-      className="mb-3 w-full"
-      id="ecg-keywords"
-      options={keywords.map((keyword) => ({
-        label: keyword.Legend ?? keyword.Description ?? "",
-        value: keyword.Description ?? "",
-      }))}
-      value={keywordValue}
-      onChange={onKeywordChange}
-      onSelect={onKeywordAppend}
-      onKeyDown={(event) => {
-        if (event.key !== "Tab") {
-          return;
-        }
+    <div className="mb-3 flex gap-2">
+      <AutoComplete
+        allowClear
+        className="w-full"
+        id="ecg-keywords"
+        options={keywords.map((keyword) => ({
+          label: keyword.Legend ?? keyword.Description ?? "",
+          value: keyword.Description || keyword.Legend || "",
+        }))}
+        value={keywordValue}
+        onChange={onKeywordChange}
+        onSelect={onKeywordAppend}
+        onKeyDown={(event) => {
+          if (event.key !== "Tab") {
+            return;
+          }
 
-        event.preventDefault();
-        onKeywordAppend(keywordValue);
-      }}
-      filterOption={(inputValue, option) =>
-        (option?.value ?? "")
-          .toString()
-          .toUpperCase()
-          .includes(inputValue.toUpperCase()) ||
-        (option?.label ?? "")
-          .toString()
-          .toUpperCase()
-          .includes(inputValue.toUpperCase())
-      }
-    />
+          event.preventDefault();
+          onKeywordAppend(keywordValue);
+        }}
+        filterOption={(inputValue, option) =>
+          (option?.value ?? "")
+            .toString()
+            .toUpperCase()
+            .includes(inputValue.toUpperCase()) ||
+          (option?.label ?? "")
+            .toString()
+            .toUpperCase()
+            .includes(inputValue.toUpperCase())
+        }
+      />
+      <Button htmlType="button" onClick={onManageKeywords}>
+        Manage
+      </Button>
+    </div>
 
     <label
       className="mb-1 block text-sm font-semibold text-slate-700"
@@ -838,8 +868,11 @@ const CardiologyResult = () => {
   const router = useRouter();
   const store = useAppStore();
   const formRef = useRef<HTMLFormElement>(null);
+  const [vitalSignsForm] = Form.useForm<TAppointmentVitalSigns>();
+  const [keywordForm] = Form.useForm<CardioKeywordFormValues>();
   const [ecgKeyword, setEcgKeyword] = useState("");
   const [ecgImpression, setEcgImpression] = useState("");
+  const [keywordSearch, setKeywordSearch] = useState("");
   const [dateOfExamination, setDateOfExamination] = useState<Dayjs | null>(
     dayjs(),
   );
@@ -852,10 +885,16 @@ const CardiologyResult = () => {
   );
   const [chargeDescription, setChargeDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingVitalSigns, setIsSavingVitalSigns] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [showFinalize, setShowFinalize] = useState(false);
+  const [showKeywordModal, setShowKeywordModal] = useState(false);
+  const [editingKeywordId, setEditingKeywordId] = useState(0);
+  const [isOnlineResultShown, setIsOnlineResultShown] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
+  const [isSavingKeyword, setIsSavingKeyword] = useState(false);
+  const [deletingKeywordId, setDeletingKeywordId] = useState(0);
   const [finalizedBy, setFinalizedBy] = useState("");
   const [dateFinalized, setDateFinalized] = useState("");
   const [requestingPhysician, setRequestingPhysician] = useState<
@@ -878,12 +917,43 @@ const CardiologyResult = () => {
     refetchOnWindowFocus: false,
   });
 
+  const appointmentVitalSigns = useQuery({
+    queryKey: ["cardiology-result-vital-signs", Id],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetAppointmentVitalSigns",
+        parameters: {
+          AppointmentId: Id,
+        },
+      });
+
+      const vitalSigns = res?.parameters?.lst?.[0] as
+        | TAppointmentVitalSigns
+        | undefined;
+
+      vitalSignsForm.setFieldsValue({
+        HeightCm: vitalSigns?.HeightCm ?? null,
+        WeightKg: vitalSigns?.WeightKg ?? null,
+        Bsa: vitalSigns?.Bsa ?? null,
+        Bp: vitalSigns?.Bp ?? "",
+        Hr: vitalSigns?.Hr ?? "",
+      });
+
+      return vitalSigns;
+    },
+    enabled: getPositiveNumber(Id) > 0,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
   const cardioKeywords = useQuery({
-    queryKey: ["cardio-keywords"],
+    queryKey: ["cardio-keywords", keywordSearch],
     queryFn: async () => {
       const res = await PostData("GetRecords", {
         sp: "udp_GetCardioKeywords",
-        parameters: {},
+        parameters: {
+          Search: keywordSearch,
+        },
       });
 
       return Array.isArray(res?.parameters?.lst)
@@ -1025,6 +1095,25 @@ const CardiologyResult = () => {
     }
   };
 
+  const refreshOnlineResultStatus = async (
+    nextResultId = resultId,
+    nextExam = exam,
+  ) => {
+    const id = getPositiveNumber(nextResultId);
+
+    if (!nextExam || id <= 0) {
+      setIsOnlineResultShown(false);
+      return;
+    }
+
+    const res = await PostData("GetPdfFileStatus", {
+      ResultId: id,
+      ResultType: onlineResultTypes[nextExam],
+    });
+
+    setIsOnlineResultShown(Boolean(res?.parameters?.Shown));
+  };
+
   const age = [
     appointmentDetails.data?.AgeYears
       ? `${appointmentDetails.data.AgeYears}Y`
@@ -1084,6 +1173,7 @@ const CardiologyResult = () => {
       setResultId(0);
       setChargeId(0);
       setChargeDescription("");
+      setIsOnlineResultShown(false);
       setIsFinalized(false);
       setFinalizedBy("");
       setDateFinalized("");
@@ -1099,6 +1189,7 @@ const CardiologyResult = () => {
 
     if (!result) {
       setResultId(0);
+      setIsOnlineResultShown(false);
       setIsFinalized(false);
       setFinalizedBy("");
       setDateFinalized("");
@@ -1108,7 +1199,8 @@ const CardiologyResult = () => {
       return;
     }
 
-    setResultId(Number(result.Id ?? 0));
+    const nextResultId = Number(result.Id ?? 0);
+    setResultId(nextResultId);
     setChargeId(Number(result.ChargeId ?? result.fk_Charges_Id ?? 0));
     setChargeDescription(String(result.ChargeDescription ?? ""));
     setDateOfExamination(
@@ -1124,6 +1216,7 @@ const CardiologyResult = () => {
       String(result.DateFinalized ?? result.FinalizedDate ?? ""),
     );
     setIsFinalized(String(result.FinalizedBy ?? "").trim() !== "");
+    void refreshOnlineResultStatus(nextResultId, exam);
     setNativeFormValues(result);
   }, [activeResultData, activeResultIsFetched, exam]);
 
@@ -1172,6 +1265,7 @@ const CardiologyResult = () => {
 
         if (Number.isFinite(savedId) && savedId > 0) {
           setResultId(savedId);
+          await refreshOnlineResultStatus(savedId, exam);
         }
 
         notification.success({
@@ -1200,7 +1294,31 @@ const CardiologyResult = () => {
     }
   };
 
-  const handleFinalizeResult = async (values: any) => {
+  const fetchResultPdf = async () => {
+    if (!exam || resultId === 0) {
+      throw new Error("Please click the charges result first.");
+    }
+
+    axios.defaults.headers.common["Authorization"] =
+      "Bearer " + store.tokenIdWebCims;
+
+    const response = await axios({
+      url: apiUrl + "/api/GenerateReport",
+      method: "GET",
+      responseType: "blob",
+      params: {
+        ReportName: printReportNames[exam],
+        AppointmentId: resultId,
+        BranchCode: store.branchCode,
+      },
+    });
+
+    return new Blob([response.data], {
+      type: "application/pdf",
+    });
+  };
+
+  const handleOnlineResult = async (values: any) => {
     if (!exam || resultId === 0) {
       notification.info({
         message: "Please click the charges result first.",
@@ -1210,43 +1328,51 @@ const CardiologyResult = () => {
       return;
     }
 
-    const mode = isFinalized ? "U" : "F";
-    const endpoint =
-      `${finalizeResultEndpoints[exam]}` +
-      `?Username=${encodeURIComponent(values.Username)}` +
-      `&Password=${encodeURIComponent(values.Password)}` +
-      `&Mode=${mode}`;
-
     setShowFinalize(false);
     setIsFinalizing(true);
 
     try {
-      const res = await PostData(endpoint, {
-        Id: resultId,
-      });
+      let res;
+
+      if (isOnlineResultShown) {
+        res = await PostData("UnshowPdfFile", {
+          ResultId: resultId,
+          ResultType: onlineResultTypes[exam],
+          Username: values.Username,
+          Password: values.Password,
+        });
+      } else {
+        const pdf = await blobToDataUrl(await fetchResultPdf());
+
+        res = await PostData("UploadPdfFile", {
+          ResultId: resultId,
+          ResultType: onlineResultTypes[exam],
+          fk_Appointments_Id: Number(Id),
+          fk_Departments_Id: onlineResultDepartmentId,
+          Description: onlineResultDescriptions[exam],
+          ShowInCompanyPortal: "Y",
+          Pdf: pdf,
+          Username: values.Username,
+          Password: values.Password,
+        });
+      }
 
       if (res?.status === 1) {
         notification.success({
-          message:
-            mode === "U"
-              ? "Result successfully un-finalized!"
-              : "Result successfully finalized!",
+          message: isOnlineResultShown
+            ? "Result hidden from online results."
+            : "Result shown to online results.",
           placement: "topRight",
           duration: 3,
         });
 
-        await refetchActiveResult();
+        await refreshOnlineResultStatus(resultId, exam);
         setChargesKey(Math.random().toString());
-
-        if (mode === "U") {
-          setIsFinalized(false);
-          setFinalizedBy("");
-          setDateFinalized("");
-        }
       } else {
         notification.error({
           message:
-            res?.message ?? `Unable to finalize ${examLabels[exam]} result.`,
+            res?.message ??
+            `Unable to update online result for ${examLabels[exam]}.`,
           placement: "topRight",
           duration: 3,
         });
@@ -1263,40 +1389,19 @@ const CardiologyResult = () => {
   };
 
   const handlePrint = async () => {
-    if (!exam || !isFinalized || resultId === 0) {
-      const message =
-        !exam || resultId === 0
-          ? "Please click the charges result first."
-          : `Please finalize the ${examLabels[exam]} result before printing.`;
-
+    if (!exam || resultId === 0) {
       notification.info({
-        message,
+        message: "Please click the charges result first.",
         placement: "topRight",
         duration: 3,
       });
       return;
     }
 
-    axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
-
     try {
       setIsPrinting(true);
 
-      const response = await axios({
-        url: apiUrl + "/api/GenerateReport",
-        method: "GET",
-        responseType: "blob",
-        params: {
-          ReportName: printReportNames[exam],
-          AppointmentId: resultId,
-          BranchCode: store.branchCode,
-        },
-      });
-
-      const pdfBlob = new Blob([response.data], {
-        type: "application/pdf",
-      });
+      const pdfBlob = await fetchResultPdf();
       const data = window.URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
 
@@ -1383,6 +1488,7 @@ const CardiologyResult = () => {
     setCardiologist(undefined);
     setEcgKeyword("");
     setEcgImpression("");
+    setIsOnlineResultShown(false);
     setIsFinalized(false);
     setFinalizedBy("");
     setDateFinalized("");
@@ -1514,6 +1620,65 @@ const CardiologyResult = () => {
     });
   };
 
+  const getVitalSignsParameterValue = (value: unknown) =>
+    value === null || value === undefined ? "" : String(value);
+
+  const handleSaveVitalSigns = async (values: TAppointmentVitalSigns) => {
+    const appointmentId = getPositiveNumber(Id);
+
+    if (appointmentId === 0) {
+      notification.error({
+        message: "Unable to identify the appointment.",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
+    setIsSavingVitalSigns(true);
+
+    try {
+      const res = await PostData("GetRecords", {
+        sp: "udp_SaveAppointmentVitalSigns",
+        parameters: {
+          AppointmentId: appointmentId,
+          HeightCm: getVitalSignsParameterValue(values.HeightCm),
+          WeightKg: getVitalSignsParameterValue(values.WeightKg),
+          Bsa: getVitalSignsParameterValue(values.Bsa),
+          Bp: values.Bp ?? "",
+          Hr: values.Hr ?? "",
+          AddedUpdatedBy: store.username ?? "",
+        },
+      });
+
+      if (res?.status === 1) {
+        notification.success({
+          message: "Vital signs successfully saved!",
+          placement: "topRight",
+          duration: 3,
+        });
+        await appointmentVitalSigns.refetch();
+      } else {
+        notification.error({
+          message: res?.message ?? "Unable to save vital signs.",
+          placement: "topRight",
+          duration: 3,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to save vital signs.";
+
+      notification.error({
+        message,
+        placement: "topRight",
+        duration: 3,
+      });
+    } finally {
+      setIsSavingVitalSigns(false);
+    }
+  };
+
   const appendEcgKeyword = (keyword: string) => {
     const cleanKeyword = keyword.trim();
 
@@ -1525,6 +1690,119 @@ const CardiologyResult = () => {
       current ? `${current}\n${cleanKeyword}` : cleanKeyword,
     );
     setEcgKeyword("");
+  };
+
+  const handleOpenKeywordModal = () => {
+    setShowKeywordModal(true);
+    setKeywordSearch("");
+    setEditingKeywordId(0);
+    keywordForm.resetFields();
+    void cardioKeywords.refetch();
+  };
+
+  const handleNewKeyword = () => {
+    setEditingKeywordId(0);
+    keywordForm.resetFields();
+  };
+
+  const handleEditKeyword = (keyword: CardioKeyword) => {
+    setEditingKeywordId(keyword.Id);
+    keywordForm.setFieldsValue({
+      Legend: keyword.Legend ?? "",
+      Description: keyword.Description ?? "",
+    });
+  };
+
+  const handleSaveKeyword = async (values: CardioKeywordFormValues) => {
+    const legend = values.Legend?.trim() ?? "";
+    const description = values.Description?.trim() ?? "";
+
+    if (!legend && !description) {
+      notification.error({
+        message: "Please enter a legend or description.",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
+    setIsSavingKeyword(true);
+
+    try {
+      const res = await PostData("SaveCardioKeyword", {
+        Id: editingKeywordId,
+        Legend: legend,
+        Description: description,
+      });
+
+      if (res?.status === 1) {
+        notification.success({
+          message: "Keyword successfully saved!",
+          placement: "topRight",
+          duration: 3,
+        });
+        handleNewKeyword();
+        await cardioKeywords.refetch();
+      } else {
+        notification.error({
+          message: res?.message ?? "Unable to save keyword.",
+          placement: "topRight",
+          duration: 3,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to save keyword.";
+
+      notification.error({
+        message,
+        placement: "topRight",
+        duration: 3,
+      });
+    } finally {
+      setIsSavingKeyword(false);
+    }
+  };
+
+  const handleDeleteKeyword = async (keyword: CardioKeyword) => {
+    setDeletingKeywordId(keyword.Id);
+
+    try {
+      const res = await PostData("DeleteCardioKeyword", {
+        Id: keyword.Id,
+      });
+
+      if (res?.status === 1) {
+        notification.success({
+          message: "Keyword successfully deleted!",
+          placement: "topRight",
+          duration: 3,
+        });
+
+        if (editingKeywordId === keyword.Id) {
+          handleNewKeyword();
+        }
+
+        await cardioKeywords.refetch();
+      } else {
+        notification.error({
+          message: res?.message ?? "Unable to delete keyword.",
+          placement: "topRight",
+          duration: 3,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to delete keyword.";
+
+      notification.error({
+        message,
+        placement: "topRight",
+        duration: 3,
+      });
+    } finally {
+      setDeletingKeywordId(0);
+    }
   };
 
   return (
@@ -1550,28 +1828,141 @@ const CardiologyResult = () => {
         </Space>
       </div> */}
 
-      <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
-        <div>
-          <p className="text-slate-500">Name</p>
-          <p className="font-semibold text-slate-900">
-            {appointmentDetails.data?.Name}
-          </p>
+      <div className="border-b border-slate-200 pb-3">
+        <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
+          <div>
+            <p className="text-slate-500">Name</p>
+            <p className="font-semibold text-slate-900">
+              {appointmentDetails.data?.Name}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-500">Age</p>
+            <p className="font-semibold text-slate-900">{age}</p>
+          </div>
+          <div>
+            <p className="text-slate-500">Sex</p>
+            <p className="font-semibold text-slate-900">
+              {appointmentDetails.data?.Sex}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-500">Appointment No.</p>
+            <p className="font-semibold text-slate-900">
+              {appointmentDetails.data?.AppointmentNo}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-slate-500">Age</p>
-          <p className="font-semibold text-slate-900">{age}</p>
+      </div>
+
+      <div className="my-3 print:hidden">
+        <div className="mb-2 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-semibold uppercase text-slate-500">
+            Vital Signs
+          </span>
+          <div className="h-px flex-1 bg-slate-200" />
         </div>
-        <div>
-          <p className="text-slate-500">Sex</p>
-          <p className="font-semibold text-slate-900">
-            {appointmentDetails.data?.Sex}
-          </p>
+
+        <div className="border border-slate-200 bg-slate-50 px-3 py-3">
+          <Form
+            form={vitalSignsForm}
+            layout="vertical"
+            onFinish={handleSaveVitalSigns}
+          >
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_120px]">
+              <Form.Item
+                label="Height (cm)"
+                name="HeightCm"
+                className="!mb-0"
+              >
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  precision={2}
+                  size="small"
+                />
+              </Form.Item>
+
+              <Form.Item
+                label="Weight (kg)"
+                name="WeightKg"
+                className="!mb-0"
+              >
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  precision={2}
+                  size="small"
+                />
+              </Form.Item>
+
+              <Form.Item label="BSA" name="Bsa" className="!mb-0">
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  precision={2}
+                  size="small"
+                />
+              </Form.Item>
+
+              <Form.Item label="BP" name="Bp" className="!mb-0">
+                <Input maxLength={50} size="small" />
+              </Form.Item>
+
+              <Form.Item label="HR" name="Hr" className="!mb-0">
+                <Input maxLength={50} size="small" />
+              </Form.Item>
+
+              <div className="flex items-end">
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={isSavingVitalSigns}
+                  disabled={appointmentVitalSigns.isFetching}
+                  className="w-full"
+                  size="small"
+                >
+                  Update
+                </Button>
+              </div>
+            </div>
+          </Form>
         </div>
-        <div>
-          <p className="text-slate-500">Appointment No.</p>
-          <p className="font-semibold text-slate-900">
-            {appointmentDetails.data?.AppointmentNo}
-          </p>
+      </div>
+
+      <div className="hidden border-b border-slate-200 pb-3 print:block">
+        <div className="grid grid-cols-5 gap-3 text-sm">
+          <div>
+            <p className="text-slate-500">Height (cm)</p>
+            <p className="font-semibold text-slate-900">
+              {appointmentVitalSigns.data?.HeightCm ?? "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-500">Weight (kg)</p>
+            <p className="font-semibold text-slate-900">
+              {appointmentVitalSigns.data?.WeightKg ?? "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-500">BSA</p>
+            <p className="font-semibold text-slate-900">
+              {appointmentVitalSigns.data?.Bsa ?? "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-500">BP</p>
+            <p className="font-semibold text-slate-900">
+              {appointmentVitalSigns.data?.Bp ?? "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-500">HR</p>
+            <p className="font-semibold text-slate-900">
+              {appointmentVitalSigns.data?.Hr ?? "-"}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -1671,6 +2062,7 @@ const CardiologyResult = () => {
                     onKeywordChange={setEcgKeyword}
                     onKeywordAppend={appendEcgKeyword}
                     onImpressionChange={setEcgImpression}
+                    onManageKeywords={handleOpenKeywordModal}
                   />
                 )}
 
@@ -1700,7 +2092,7 @@ const CardiologyResult = () => {
                     type="primary"
                     htmlType="submit"
                     loading={isSaving}
-                    disabled={isFinalized || isFinalizing}
+                    disabled={isFinalized || isOnlineResultShown || isFinalizing}
                   >
                     Submit
                   </Button>
@@ -1711,15 +2103,15 @@ const CardiologyResult = () => {
                     disabled={resultId === 0 || isSaving}
                     onClick={() => setShowFinalize(true)}
                   >
-                    {isFinalized ? "Un-Finalize Result" : "Finalize Result"}
+                    {isOnlineResultShown
+                      ? "Unshow Online Result"
+                      : "Show to Online Results"}
                   </Button>
                   <Button
                     type="primary"
                     htmlType="button"
                     loading={isPrinting}
-                    disabled={
-                      !isFinalized || resultId === 0 || isSaving || isFinalizing
-                    }
+                    disabled={resultId === 0 || isSaving || isFinalizing}
                     onClick={handlePrint}
                   >
                     Print
@@ -1736,7 +2128,117 @@ const CardiologyResult = () => {
         footer={false}
         onCancel={() => setShowFinalize(false)}
       >
-        <FinalizeForm handleFinalizeResult={handleFinalizeResult} />
+        <FinalizeForm
+          handleFinalizeResult={handleOnlineResult}
+          title={
+            isOnlineResultShown
+              ? "Unshow Online Result"
+              : "Show to Online Results"
+          }
+          submitText={isOnlineResultShown ? "Unshow" : "Show"}
+        />
+      </Modal>
+      <Modal
+        open={showKeywordModal}
+        destroyOnClose
+        footer={null}
+        title="Cardio Keywords"
+        width={900}
+        onCancel={() => {
+          setShowKeywordModal(false);
+          setKeywordSearch("");
+          handleNewKeyword();
+        }}
+      >
+        <Form
+          form={keywordForm}
+          layout="vertical"
+          onFinish={handleSaveKeyword}
+        >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Form.Item name="Legend" label="Legend">
+              <Input allowClear />
+            </Form.Item>
+            <Form.Item name="Description" label="Description">
+              <Input.TextArea allowClear autoSize={{ minRows: 1, maxRows: 4 }} />
+            </Form.Item>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button htmlType="button" onClick={handleNewKeyword}>
+              New
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isSavingKeyword}
+            >
+              {editingKeywordId > 0 ? "Update" : "Save"}
+            </Button>
+          </div>
+        </Form>
+        <Divider />
+        <Input.Search
+          allowClear
+          className="mb-3"
+          placeholder="Search legend or description"
+          enterButton="Search"
+          onSearch={(value) => setKeywordSearch(value.trim())}
+          onChange={(event) => {
+            if (!event.target.value) {
+              setKeywordSearch("");
+            }
+          }}
+        />
+        <Table<CardioKeyword>
+          rowKey="Id"
+          dataSource={cardioKeywords.data ?? []}
+          loading={cardioKeywords.isFetching}
+          size="small"
+          pagination={{ pageSize: 8 }}
+          columns={[
+            {
+              title: "Legend",
+              dataIndex: "Legend",
+              key: "Legend",
+            },
+            {
+              title: "Description",
+              dataIndex: "Description",
+              key: "Description",
+            },
+            {
+              title: "Action",
+              key: "action",
+              width: 150,
+              render: (_, keyword) => (
+                <Space>
+                  <Button
+                    htmlType="button"
+                    size="small"
+                    onClick={() => handleEditKeyword(keyword)}
+                  >
+                    Edit
+                  </Button>
+                  <Popconfirm
+                    title="Delete keyword?"
+                    okText="Yes"
+                    cancelText="No"
+                    onConfirm={() => handleDeleteKeyword(keyword)}
+                  >
+                    <Button
+                      danger
+                      htmlType="button"
+                      size="small"
+                      loading={deletingKeywordId === keyword.Id}
+                    >
+                      Delete
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              ),
+            },
+          ]}
+        />
       </Modal>
     </div>
   );

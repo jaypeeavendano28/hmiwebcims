@@ -45,6 +45,23 @@ const LaboratoryTemplateDetails = () => {
       return;
     }
 
+    const selectedAnalyteId = Number(values.fk_Analytes_Id ?? 0);
+    const duplicateAnalyte = details.some(
+      (detail: any) =>
+        selectedAnalyteId > 0 &&
+        Number(detail.fk_Analytes_Id) === selectedAnalyteId &&
+        Number(detail.Id) !== Number(rowId)
+    );
+
+    if (duplicateAnalyte) {
+      notification.error({
+        message: "Test/Analyte already exists in this template!",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     const valuesToSave = {
       ...values,

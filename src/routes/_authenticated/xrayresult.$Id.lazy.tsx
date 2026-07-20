@@ -1,5 +1,9 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
+import {
+  PostData,
+  blobToDataUrl,
+  isNullOrUndefinedOrBlank,
+} from "../../helpers";
 import { TAppointments, TRadiologyResult } from "../../types";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -25,6 +29,9 @@ const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + "/api/";
 const devApi = import.meta.env.VITE_DEV_API + "/api/";
 const apiUrl = isDev ? devApi : prodApi;
+const onlineResultType = "XRAY";
+const onlineResultDepartmentId = 1001;
+const onlineResultDescription = "Radiology Result";
 export const Route = createLazyFileRoute("/_authenticated/xrayresult/$Id")({
   component: () => <XrayResult />,
 });
@@ -58,6 +65,7 @@ const XrayResult = () => {
   const [chargeDescription, setChargeDescription] = useState("");
   const [chargeId, setChargeId] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isOnlineResultShown, setIsOnlineResultShown] = useState(false);
   const [Radiologist, setRadiologist] = useState([]);
   const [radtechs, setRadTechs] = useState([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
@@ -76,6 +84,22 @@ const XrayResult = () => {
   const [appointmentDetails, setAppointmentDetails] = useState<
     TAppointments | undefined
   >();
+
+  const refreshOnlineResultStatus = async (nextResultId = ResultId) => {
+    const id = Number(nextResultId ?? 0);
+
+    if (!Number.isFinite(id) || id <= 0) {
+      setIsOnlineResultShown(false);
+      return;
+    }
+
+    const res = await PostData("GetPdfFileStatus", {
+      ResultId: id,
+      ResultType: onlineResultType,
+    });
+
+    setIsOnlineResultShown(Boolean(res?.parameters?.Shown));
+  };
 
   const handleGetAppointmentDetails = async () => {
     let res = await PostData("GetRecords", {
@@ -119,6 +143,7 @@ const XrayResult = () => {
           setIsSaving(false);
           setResultId(res.parameters.Id);
           setResultNo(res.parameters.ResultNo);
+          await refreshOnlineResultStatus(res.parameters.Id);
           setKey(Math.random().toString());
         } else {
           setIsProcessing(false);
@@ -138,32 +163,54 @@ const XrayResult = () => {
       });
     }
   };
-  const handleFinalizeResult = async (v: any) => {
+  const handleOnlineResult = async (v: any) => {
     setShowFinalize(false);
+    if (ResultId === 0) {
+      notification.error({
+        message: "Please save the result first.",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
     setIsProcessing(true);
-    const res = await PostData("FinalizeResult", {
-      ResultId: ResultId,
-      Table: "RAD",
-      Username: v.Username,
-      Password: v.Password,
-      Mode: isFinalized ? "U" : "F",
-    });
 
     try {
+      let res;
+      if (isOnlineResultShown) {
+        res = await PostData("UnshowPdfFile", {
+          ResultId: ResultId,
+          ResultType: onlineResultType,
+          Username: v.Username,
+          Password: v.Password,
+        });
+      } else {
+        const pdf = await blobToDataUrl(await fetchResultPdf());
+        res = await PostData("UploadPdfFile", {
+          ResultId: ResultId,
+          ResultType: onlineResultType,
+          fk_Appointments_Id: appointmentDetails?.Id,
+          fk_Departments_Id: onlineResultDepartmentId,
+          Description: chargeDescription.trim() || onlineResultDescription,
+          ShowInCompanyPortal: "Y",
+          Pdf: pdf,
+          Username: v.Username,
+          Password: v.Password,
+        });
+      }
+
       if (res) {
         setIsProcessing(false);
         if (res.status === 1) {
           notification.success({
-            message: isFinalized
-              ? "Result successfully un-finalized!"
-              : "Result successfully finalized!",
+            message: isOnlineResultShown
+              ? "Result hidden from online results."
+              : "Result shown to online results.",
             placement: "topRight",
             duration: 3,
           });
-          if (!isFinalized) {
-            handlePrint(false);
-          }
-          handleOpenResult(ResultId);
+          await refreshOnlineResultStatus(ResultId);
         } else {
           notification.error({
             message: res.message,
@@ -179,6 +226,46 @@ const XrayResult = () => {
         placement: "topRight",
         duration: 3,
       });
+    }
+  };
+  const handleDeleteResult = async () => {
+    try {
+      setIsProcessing(true);
+      const res = await PostData("DeleteResult", {
+        Id: ResultId,
+        Table: "XRAY",
+      });
+
+      if (res?.status === 1) {
+        notification.success({
+          message: "Result successfully deleted!",
+          placement: "topRight",
+          duration: 3,
+        });
+        setAllowSave(false);
+        setChargeId(0);
+        setChargeDescription("");
+        setResultId(0);
+        setResultNo("");
+        setIsFinalized(false);
+        setIsOnlineResultShown(false);
+        form.resetFields();
+        setKey(Math.random().toString());
+      } else {
+        notification.error({
+          message: res?.message ?? "Unable to delete result.",
+          placement: "topRight",
+          duration: 3,
+        });
+      }
+    } catch (error: any) {
+      notification.error({
+        message: error.message,
+        placement: "topRight",
+        duration: 3,
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
   const handleInitialize = async () => {
@@ -210,30 +297,29 @@ const XrayResult = () => {
       setRadTechs(res.parameters.lst);
     }
   };
-  const handlePrint = async (isPrint: Boolean = false) => {
-    setIsProcessing(true);
-    const isDownload = false;
-    const Finalized = isNullOrUndefinedOrBlank(
-      form.getFieldValue("FinalizedBy"),
-    )
-      ? "Y"
-      : "N";
+  const fetchResultPdf = async () => {
     const url =
-      apiUrl + "radiologyresult/" + ResultId + "/xray.rdl/" + Finalized;
+      apiUrl + "radiologyresult/" + ResultId + "/xray.rdl/N";
     axios.defaults.headers.common["Authorization"] =
       "Bearer " + store.tokenIdWebCims;
-    try {
-      await axios({
-        url: url, //your url
-        method: "GET",
-        responseType: "blob",
-      }).then((response: any) => {
-        let newBlob;
-        if (isDownload === false) {
-          newBlob = new Blob([response.data], {
-            type: "application/pdf",
-          });
 
+    const response = await axios({
+      url: url,
+      method: "GET",
+      responseType: "blob",
+    });
+
+    return new Blob([response.data], {
+      type: "application/pdf",
+    });
+  };
+
+  const handlePrint = async (isPrint: boolean = false) => {
+    setIsProcessing(true);
+    const isDownload = false;
+    try {
+      const newBlob = await fetchResultPdf();
+        if (isDownload === false) {
           const data = window.URL.createObjectURL(newBlob);
 
           const a = document.createElement("a");
@@ -246,12 +332,12 @@ const XrayResult = () => {
 
           setIsProcessing(false);
         } else {
-          newBlob = new Blob([response.data], {
+          const downloadBlob = new Blob([newBlob], {
             type: "application/excel",
           });
           const a = document.createElement("a");
           document.body.appendChild(a);
-          const url = window.URL.createObjectURL(newBlob);
+          const url = window.URL.createObjectURL(downloadBlob);
           a.href = url;
           a.download = "download.xls";
           a.click();
@@ -261,12 +347,16 @@ const XrayResult = () => {
           }, 0);
           setIsProcessing(false);
         }
-      });
     } catch (error: any) {
       setIsProcessing(false);
-      let errorString = error.response.data;
-      errorString = JSON.parse(await error.response.data.text());
-      return { Status: 0, Message: errorString.Message };
+      const errorMessage = error.response?.data?.text
+        ? JSON.parse(await error.response.data.text()).Message
+        : error.message;
+      notification.error({
+        message: errorMessage,
+        placement: "topRight",
+        duration: 3,
+      });
     }
   };
   const handleGetTemplate = async (e: any) => {
@@ -338,6 +428,7 @@ const XrayResult = () => {
       } else {
         setIsFinalized(false);
       }
+      await refreshOnlineResultStatus(r.Id);
     }
   };
   const handleNewResult = async (v: any) => {
@@ -355,6 +446,7 @@ const XrayResult = () => {
       setResultNo("");
       setResultId(0);
       setIsFinalized(false);
+      setIsOnlineResultShown(false);
     } else {
       handleOpenResult(v.ResultId);
       setResultId(v.ResultId);
@@ -662,7 +754,7 @@ const XrayResult = () => {
                     htmlType="submit"
                     // disabled={IsSaving || ReportStatus === "F"}
 
-                    disabled={!allowSave || isFinalized}
+                    disabled={!allowSave || isFinalized || isOnlineResultShown}
                     loading={isProcessing || IsSaving}
                   >
                     Submit
@@ -674,7 +766,7 @@ const XrayResult = () => {
                     }}
                     loading={isProcessing}
                     // disabled={IsSaving || ReportStatus === "F"}
-                    disabled={ResultId === 0 || !isFinalized}
+                    disabled={ResultId === 0}
                   >
                     Print
                   </Button>
@@ -690,10 +782,14 @@ const XrayResult = () => {
                       setChargeDescription("");
                       setResultId(0);
                       setResultNo("");
+                      setIsOnlineResultShown(false);
                       form.resetFields();
                     }}
                   >
-                    <Button disabled={!allowSave} type="primary">
+                    <Button
+                      disabled={!allowSave || isOnlineResultShown}
+                      type="primary"
+                    >
                       Cancel Changes
                     </Button>
                   </Popconfirm>
@@ -705,16 +801,26 @@ const XrayResult = () => {
                     loading={isProcessing}
                     disabled={ResultId === 0}
                   >
-                    {isFinalized ? "Un-Finalize Result" : "Finalize Result"}
+                    {isOnlineResultShown
+                      ? "Unshow Online Result"
+                      : "Show to Online Results"}
                   </Button>
 
-                  <Button
-                    type="primary"
-                    danger
-                    disabled={ResultId === 0 || isFinalized}
+                  <Popconfirm
+                    title="Delete Result"
+                    okText="Yes"
+                    cancelText="No"
+                    onConfirm={handleDeleteResult}
                   >
-                    Delete Result
-                  </Button>
+                    <Button
+                      type="primary"
+                      danger
+                      loading={isProcessing}
+                      disabled={ResultId === 0 || isFinalized}
+                    >
+                      Delete Result
+                    </Button>
+                  </Popconfirm>
                 </Space>
               </div>
             </Form.Item>
@@ -732,7 +838,15 @@ const XrayResult = () => {
         onCancel={() => setShowFinalize(false)}
         footer={false}
       >
-        <FinalizeForm handleFinalizeResult={handleFinalizeResult} />
+        <FinalizeForm
+          handleFinalizeResult={handleOnlineResult}
+          title={
+            isOnlineResultShown
+              ? "Unshow Online Result"
+              : "Show to Online Results"
+          }
+          submitText={isOnlineResultShown ? "Unshow" : "Show"}
+        />
       </Modal>
     </div>
   );

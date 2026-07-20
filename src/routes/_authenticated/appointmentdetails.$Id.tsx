@@ -9,10 +9,12 @@ import {
   AutoComplete,
   Avatar,
   Button,
+  Collapse,
   DatePicker,
   Dropdown,
   Form,
   Input,
+  InputNumber,
   Modal,
   Popconfirm,
   Popover,
@@ -27,6 +29,7 @@ import { PDFDocument } from 'pdf-lib';
 import { Link } from '@tanstack/react-router';
 import {
   TAppointmentType,
+  TAppointmentVitalSigns,
   TAppointments,
   TCharges,
   THmoCompany,
@@ -143,6 +146,8 @@ export const AppointmentDetails = ({
   const store = useAppStore();
   const [form] = Form.useForm();
   const [form2] = Form.useForm();
+  const [vitalSignsForm] = Form.useForm<TAppointmentVitalSigns>();
+  const [isSavingVitalSigns, setIsSavingVitalSigns] = useState(false);
   const [showPatients, setShowPatient] = useState(false);
   const [Id, setId] = useState(initialAppointmentId);
   const [PatientId, setPatientId] = useState<number>(initialPatientId);
@@ -319,6 +324,34 @@ export const AppointmentDetails = ({
         return res.parameters.lst;
       }
     },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const appointmentVitalSigns = useQuery({
+    queryKey: ['appointmentVitalSigns', Id],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetAppointmentVitalSigns',
+        parameters: {
+          AppointmentId: Id,
+        },
+      });
+      const vitalSigns = res?.parameters?.lst?.[0] as
+        | TAppointmentVitalSigns
+        | undefined;
+
+      vitalSignsForm.setFieldsValue({
+        HeightCm: vitalSigns?.HeightCm ?? null,
+        WeightKg: vitalSigns?.WeightKg ?? null,
+        Bsa: vitalSigns?.Bsa ?? null,
+        Bp: vitalSigns?.Bp ?? '',
+        Hr: vitalSigns?.Hr ?? '',
+      });
+
+      return vitalSigns;
+    },
+    enabled: Id !== '0',
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
@@ -823,6 +856,64 @@ export const AppointmentDetails = ({
       }
     }
   };
+
+  const getVitalSignsParameterValue = (value: unknown) =>
+    value === null || value === undefined ? '' : String(value);
+
+  const handleSaveVitalSigns = async (values: TAppointmentVitalSigns) => {
+    if (Id === '0') {
+      notification.error({
+        message: 'Please save the appointment first.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    setIsSavingVitalSigns(true);
+
+    try {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_SaveAppointmentVitalSigns',
+        parameters: {
+          AppointmentId: Id,
+          HeightCm: getVitalSignsParameterValue(values.HeightCm),
+          WeightKg: getVitalSignsParameterValue(values.WeightKg),
+          Bsa: getVitalSignsParameterValue(values.Bsa),
+          Bp: values.Bp ?? '',
+          Hr: values.Hr ?? '',
+          AddedUpdatedBy: store.username ?? '',
+        },
+      });
+
+      if (res?.status === 1) {
+        notification.success({
+          message: 'Vital signs successfully saved!',
+          placement: 'topRight',
+          duration: 3,
+        });
+        await appointmentVitalSigns.refetch();
+      } else {
+        notification.error({
+          message: res?.message ?? 'Unable to save vital signs.',
+          placement: 'topRight',
+          duration: 3,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to save vital signs.';
+
+      notification.error({
+        message,
+        placement: 'topRight',
+        duration: 3,
+      });
+    } finally {
+      setIsSavingVitalSigns(false);
+    }
+  };
+
   const handleUploadPatientPicture = async (image: any) => {
     try {
       const fd = new FormData();
@@ -1882,6 +1973,85 @@ export const AppointmentDetails = ({
                 </div>
               </Form>
             </div>
+          </section>
+
+          <section className="border-t-2 border-emerald-500 bg-white shadow-sm">
+            <Collapse
+              bordered={false}
+              defaultActiveKey={['vital-signs']}
+              items={[
+                {
+                  key: 'vital-signs',
+                  label: (
+                    <span className="font-semibold text-slate-700">
+                      Vital Signs
+                    </span>
+                  ),
+                  children: (
+                    <Form
+                      form={vitalSignsForm}
+                      layout="vertical"
+                      onFinish={handleSaveVitalSigns}
+                    >
+                      <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-5">
+                        <Form.Item
+                          label="Height (cm)"
+                          name="HeightCm"
+                          className="!mb-0"
+                        >
+                          <InputNumber
+                            className="w-full"
+                            min={0}
+                            precision={2}
+                          />
+                        </Form.Item>
+
+                        <Form.Item
+                          label="Weight (kg)"
+                          name="WeightKg"
+                          className="!mb-0"
+                        >
+                          <InputNumber
+                            className="w-full"
+                            min={0}
+                            precision={2}
+                          />
+                        </Form.Item>
+
+                        <Form.Item label="BSA" name="Bsa" className="!mb-0">
+                          <InputNumber
+                            className="w-full"
+                            min={0}
+                            precision={2}
+                          />
+                        </Form.Item>
+
+                        <Form.Item label="BP" name="Bp" className="!mb-0">
+                          <Input maxLength={50} />
+                        </Form.Item>
+
+                        <Form.Item label="HR" name="Hr" className="!mb-0">
+                          <Input maxLength={50} />
+                        </Form.Item>
+                      </div>
+
+                      <div className="mt-4 flex justify-end border-t pt-4">
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          loading={isSavingVitalSigns}
+                          disabled={
+                            Id === '0' || appointmentVitalSigns.isFetching
+                          }
+                        >
+                          Save Vital Signs
+                        </Button>
+                      </div>
+                    </Form>
+                  ),
+                },
+              ]}
+            />
           </section>
 
           {!createOnly && (

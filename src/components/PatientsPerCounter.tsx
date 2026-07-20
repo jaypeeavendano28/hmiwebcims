@@ -39,6 +39,7 @@ type Props = {
   Name: string;
   IsMobile: boolean;
   Compact?: boolean;
+  ItemId?: number;
 };
 
 const statusTagColors: Record<string, string> = {
@@ -70,6 +71,7 @@ const PatientsPerCounter: FC<Props> = ({
   Name,
   IsMobile,
   Compact = false,
+  ItemId,
 }) => {
   const [showRequest, setShowRequest] = useState(false);
   const router = useRouter();
@@ -165,7 +167,15 @@ const PatientsPerCounter: FC<Props> = ({
     refetchOnWindowFocus: true,
   });
 
-  const listOfPatients = patients.data ?? [];
+  const selectedItemId = Number(ItemId);
+  const hasItemFilter = Number.isFinite(selectedItemId) && selectedItemId > 0;
+  const rawListOfPatients = patients.data ?? [];
+  const listOfPatients = hasItemFilter
+    ? rawListOfPatients.filter(
+        (patient: any) =>
+          Number(patient.ItemId ?? patient.fk_Items_Id) === selectedItemId,
+      )
+    : rawListOfPatients;
 
   const refreshPatientQueries = async () => {
     await Promise.all([
@@ -230,6 +240,7 @@ const PatientsPerCounter: FC<Props> = ({
         QueueDetailId: queueDetailId || undefined,
         Status: values.Status,
         StatusRemarks: values.StatusRemarks,
+        QCounter: statusRecord?.CounterCode ?? CounterCode,
       });
 
       if (res?.status === 1) {

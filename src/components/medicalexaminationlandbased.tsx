@@ -3,6 +3,7 @@ import {
   App,
   AutoComplete,
   Card,
+  Checkbox,
   DatePicker,
   FloatButton,
   Form,
@@ -39,6 +40,33 @@ const bmiResultOptions = [
   { value: 'OBESE CLASS II' },
   { value: 'OBESE CLASS III' },
 ];
+
+type SummaryResultValue = 'P' | 'W' | undefined;
+
+function SummaryResultCheckboxes({
+  value,
+  onChange,
+}: {
+  value?: SummaryResultValue;
+  onChange?: (value: SummaryResultValue) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-x-3 gap-y-1">
+      <Checkbox
+        checked={value === 'P'}
+        onChange={(event) => onChange?.(event.target.checked ? 'P' : undefined)}
+      >
+        PASSED
+      </Checkbox>
+      <Checkbox
+        checked={value === 'W'}
+        onChange={(event) => onChange?.(event.target.checked ? 'W' : undefined)}
+      >
+        WITH SIGNIFICANT FINDINGS
+      </Checkbox>
+    </div>
+  );
+}
 
 export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
   const { notification } = App.useApp();
@@ -1268,10 +1296,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
               name="BasicDoh"
               label="Basic DOH Mandatory Medical Examination"
             >
-              <Radio.Group>
-                <Radio value="P">PASSED</Radio>
-                <Radio value="W">WITH SIGNIFICANT FINDINGS</Radio>
-              </Radio.Group>
+              <SummaryResultCheckboxes />
             </Form.Item>
             <Form.Item name="BasicDohRem" label="Remarks">
               <Input />
@@ -1282,10 +1307,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
               name="AdditionalLabTest"
               label="Additional Laboratory Test"
             >
-              <Radio.Group>
-                <Radio value="P">PASSED</Radio>
-                <Radio value="W">WITH SIGNIFICANT FINDINGS</Radio>
-              </Radio.Group>
+              <SummaryResultCheckboxes />
             </Form.Item>
             <Form.Item name="AdditionalLabTestRem" label="Remarks">
               <Input />
@@ -1296,10 +1318,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
               name="HostCountry"
               label="Host Country Medical and Laboratory Requirements"
             >
-              <Radio.Group>
-                <Radio value="P">PASSED</Radio>
-                <Radio value="W">WITH SIGNIFICANT FINDINGS</Radio>
-              </Radio.Group>
+              <SummaryResultCheckboxes />
             </Form.Item>
             <Form.Item name="HostCountryRem" label="Remarks">
               <Input />

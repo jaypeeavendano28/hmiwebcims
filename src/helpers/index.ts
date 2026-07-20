@@ -28,6 +28,14 @@ export const PostData = async (endPoint: string, parameters: any) => {
   }
 };
 
+export const blobToDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result ?? ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
 export const WithAccess = async (parameters: any) => {
   const res = await axios.post(apiUrl + 'GetRecords', parameters, {
     headers: {

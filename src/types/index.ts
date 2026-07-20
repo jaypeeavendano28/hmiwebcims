@@ -110,6 +110,7 @@ export type TItems = {
   HmiShrType?: string; // P = percentage, D = Decimal
   Incentives?: number;
   IncentivesType?: string; // P = percentage, F = Fixed
+  fk_LabResultTemplateId?: number;
 };
 
 export type TDepartments = {
@@ -336,6 +337,22 @@ export type TAppointments = {
   ChargeStatusSetBy?: string;
   ChargeStatusRemarks?: string;
   Descriptions?: string;
+};
+
+export type TAppointmentVitalSigns = {
+  Id?: number;
+  fk_Appointments_Id?: number;
+  HeightCm?: number | string | null;
+  WeightKg?: number | string | null;
+  Bsa?: number | string | null;
+  Bp?: string | null;
+  Hr?: string | null;
+  AddedBy?: string | null;
+  DateAdded?: string | null;
+  UpdatedBy?: string | null;
+  DateUpdated?: string | null;
+  DeletedBy?: string | null;
+  DateDeleted?: string | null;
 };
 
 export type TQueueDetail = {
@@ -821,6 +838,7 @@ export type TLaboratoryResultMain = {
   Remarks?: string;
   TestPrinciple?: string;
   fk_LaboratoryResultTemplates_Id?: number;
+  fk_tblChargesMain_ChargeId?: number;
   LabNo?: string;
   DateCollected?: Date;
 };
@@ -837,6 +855,8 @@ export type TLaboratoryResultDetails = {
   ConventionalFrom?: number;
   ConventionalTo?: number;
   Conversion?: number;
+  ConversionOperation?: string;
+  ConversionRounding?: string;
   ResultSi?: string;
   ResultConventional?: string;
   IsBold?: string;
@@ -844,6 +864,7 @@ export type TLaboratoryResultDetails = {
   IsIndented?: string;
   Sequence?: number;
   Test?: string;
+  Suffix?: string;
   IsWithResult?: string;
   DeletedBy?: string;
   DateDeleted?: string;
@@ -868,6 +889,9 @@ export type TMedtechs = {
   fk_tblBranches_Code?: string;
   Name?: string;
   LicenseNo?: string;
+  Title?: string;
+  Type?: string;
+  Department?: string;
   AddedBy?: string;
   DateAdded?: string;
   UpdatedBy?: string;

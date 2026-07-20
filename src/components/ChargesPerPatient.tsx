@@ -1,5 +1,3 @@
-import { Column } from "primereact/column";
-import { DataTable } from "primereact/datatable";
 import { FC, useEffect, useState } from "react";
 import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
 import {
@@ -13,6 +11,8 @@ import {
   Tooltip,
 } from "antd";
 import { BiEdit, BiNotepad } from "react-icons/bi";
+import { BsCalendar3, BsCheckCircleFill, BsCircleFill } from "react-icons/bs";
+import dayjs from "dayjs";
 
 type Props = {
   AppointmentId?: number;
@@ -30,6 +30,65 @@ const ChargesPerPatient: FC<Props> = ({
   const [form] = Form.useForm();
   const [showModal, setShowModal] = useState(false);
   const [charges, setCharges] = useState([]);
+  const filteredCharges = charges.filter((c: any) => Counter === c.QCounter);
+
+  console.log(charges);
+
+  const getStatusDetails = (status?: unknown) => {
+    const statusText = String(status ?? "").trim();
+    const normalizedStatus = statusText.toUpperCase();
+
+    if (normalizedStatus === "DONE") {
+      return {
+        label: "Done",
+        icon: <BsCheckCircleFill className="text-teal-600" />,
+        textClassName: "text-slate-700",
+      };
+    }
+
+    if (normalizedStatus === "TO FOLLOW") {
+      return {
+        label: "To Follow",
+        icon: <BsCircleFill className="text-slate-500" size={9} />,
+        textClassName: "text-slate-600",
+      };
+    }
+
+    if (normalizedStatus === "DEFERRED") {
+      return {
+        label: "Deferred",
+        icon: <BsCircleFill className="text-rose-500" size={9} />,
+        textClassName: "text-rose-600",
+      };
+    }
+
+    return {
+      label: statusText || "N/A",
+      icon: <BsCircleFill className="text-slate-300" size={9} />,
+      textClassName: "text-slate-400",
+    };
+  };
+
+  const formatStatusDate = (value?: unknown) => {
+    const statusDateText = String(value ?? "").trim();
+    if (isNullOrUndefinedOrBlank(statusDateText)) return "";
+
+    const statusDate = dayjs(statusDateText);
+    return statusDate.isValid()
+      ? statusDate.format("MM/DD/YYYY h:mm A")
+      : statusDateText;
+  };
+
+  const isPackageCharge = (value?: unknown) => {
+    const packageValue = String(value ?? "")
+      .trim()
+      .toUpperCase();
+
+    return (
+      packageValue === "Y" || packageValue === "TRUE" || packageValue === "1"
+    );
+  };
+
   const handleGetCharges = async () => {
     try {
       const res = await PostData("GetRecords", {
@@ -38,7 +97,7 @@ const ChargesPerPatient: FC<Props> = ({
           AppointmentId: AppointmentId,
         },
       });
-
+      console.log("udp_GetChargesByAppointmentIdForResult", res);
       if (res) {
         setCharges(res.parameters.lst);
       }
@@ -49,12 +108,12 @@ const ChargesPerPatient: FC<Props> = ({
   const actionBodyTemplate = (data: any) => {
     //  store.setItemDetails(data);
     return (
-      <Space>
+      <Space size={2} className="justify-end">
         {Counter === data.QCounter && (
           <Tooltip title="Set Status">
             <Button
               type="link"
-              className="!h-auto !p-0"
+              className="!h-6 !w-6 !p-0 !text-slate-600 hover:!text-blue-600"
               icon={<BiEdit size={16} />}
               onClick={() => {
                 setSelectedRow(data);
@@ -72,21 +131,24 @@ const ChargesPerPatient: FC<Props> = ({
           </Tooltip>
         )}
 
-        {Counter === data.QCounter && Counter !== "LAB" && (
-          <>
-            <Tooltip title="Result">
-              <BiNotepad
-                size={16}
-                className="cursor-pointer"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  handleNewResult!(data);
-                }}
-              />
-            </Tooltip>
-          </>
-        )}
+        {Counter === data.QCounter &&
+          handleNewResult &&
+          !isPackageCharge(data.IsPackage) && (
+            <>
+              <Tooltip title="Result">
+                <Button
+                  type="link"
+                  className="!h-6 !w-6 !p-0 !text-slate-600 hover:!text-blue-600"
+                  icon={<BiNotepad size={16} />}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleNewResult(data);
+                  }}
+                />
+              </Tooltip>
+            </>
+          )}
       </Space>
     );
   };
@@ -97,6 +159,7 @@ const ChargesPerPatient: FC<Props> = ({
         Id: selectedRow.Id,
         Status: v.Status,
         StatusRemarks: v.StatusRemarks,
+        QCounter: Counter ?? selectedRow.QCounter,
       });
 
       if (res) {
@@ -129,33 +192,75 @@ const ChargesPerPatient: FC<Props> = ({
   }, [AppointmentId, Key]);
   return (
     <div>
-      <DataTable
-        value={charges.filter((c: any) => Counter === c.QCounter)}
-        // paginator
-        // rows={10}
-        // rowsPerPageOptions={[10, 25, 50]}
-        emptyMessage="No Records!"
-        stripedRows
-        size="small"
-      >
-        <Column
-          field="action"
-          header="Action"
-          body={(data: any) => actionBodyTemplate(data)}
-        ></Column>
-        <Column field="Description" header="Description"></Column>
-        <Column field="Status" header="Status"></Column>
-        <Column field="StatusDate" header="Status set Date"></Column>
-        <Column field="StatusSetBy" header="Status Set By"></Column>
-        <Column field="StatusRemarks" header="Status Remarks"></Column>
-        {/* <Column field="Gross" header="Gross"></Column>
-        <Column field="HmoAmount" header="Hmo"></Column>
-        <Column field="CashPayment" header="Cash Payment"></Column>
-        <Column field="Net" header="Net"></Column>
-        <Column field="PaymentType" header="Payment Type"></Column>
-        <Column field="ResultId" header="ResultId"></Column>
-        <Column field="QCounter" header="Q Counter"></Column> */}
-      </DataTable>
+      <div className="overflow-hidden rounded border border-slate-200 bg-white text-xs shadow-sm">
+        <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(92px,0.9fr)_56px] items-center gap-2 bg-slate-100 px-3 py-2 text-[10px] font-bold uppercase text-slate-600">
+          <span>Examination</span>
+          <span>Status</span>
+          <span className="text-right">Action</span>
+        </div>
+
+        {filteredCharges.length === 0 ? (
+          <div className="px-3 py-6 text-center text-xs font-medium text-slate-400">
+            No Records!
+          </div>
+        ) : (
+          filteredCharges.map((charge: any, index) => {
+            const statusDetails = getStatusDetails(charge.Status);
+            const statusDate = formatStatusDate(charge.StatusDate);
+
+            return (
+              <div
+                key={charge.Id ?? `${charge.Description}-${index}`}
+                className={`grid grid-cols-[minmax(0,1.1fr)_minmax(92px,0.9fr)_56px] items-start gap-2 border-t border-slate-100 px-3 py-3 ${
+                  index % 2 === 0 ? "bg-white" : "bg-slate-50"
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-[11px] font-bold uppercase text-sky-800">
+                    {charge.Description || "-"}
+                  </div>
+                  {charge.PackageName && (
+                    <div className="mt-1 truncate text-[10px] font-semibold uppercase text-slate-500">
+                      {charge.PackageName}
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <div
+                    className={`flex items-center gap-1.5 text-[11px] font-semibold ${statusDetails.textClassName}`}
+                  >
+                    {statusDetails.icon}
+                    <span className="truncate">{statusDetails.label}</span>
+                  </div>
+                  {statusDate && (
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400">
+                      <BsCalendar3 size={10} />
+                      <span className="truncate">{statusDate}</span>
+                    </div>
+                  )}
+                  {charge.StatusSetBy && (
+                    <div className="mt-1 truncate text-[10px] text-slate-400">
+                      {charge.StatusSetBy}
+                    </div>
+                  )}
+                  {charge.StatusRemarks && (
+                    <Tooltip title={charge.StatusRemarks}>
+                      <div className="mt-1 truncate text-[10px] font-medium text-amber-600">
+                        {charge.StatusRemarks}
+                      </div>
+                    </Tooltip>
+                  )}
+                </div>
+
+                <div className="flex justify-end">
+                  {actionBodyTemplate(charge)}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
       <Modal
         open={showModal}
         destroyOnClose

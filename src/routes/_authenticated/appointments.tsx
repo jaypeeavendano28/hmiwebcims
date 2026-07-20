@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/userAuth';
 import { useEffect, useState } from 'react';
 import {
   Button,
+  DatePicker,
   Divider,
   Form,
   Input,
@@ -17,6 +18,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { PostData, apiUrl, isNullOrUndefinedOrBlank } from '../../helpers';
 import useAppStore from '../../store';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import { DataTable } from 'primereact/datatable';
 import { TAppointments } from '../../types';
 import { Column } from 'primereact/column';
@@ -34,8 +36,15 @@ export const Route = createFileRoute('/_authenticated/appointments')({
 });
 
 type DateRangePreset = 'today' | '1-week' | '2-weeks' | '1-month' | '3-months';
+type DateRangeValue = [Dayjs, Dayjs];
+type FormDateRangeValue =
+  | [Dayjs | null | undefined, Dayjs | null | undefined]
+  | null
+  | undefined;
 
 const DEFAULT_DATE_RANGE: DateRangePreset = 'today';
+const DATE_QUERY_FORMAT = 'YYYYMMDD';
+const DATE_DISPLAY_FORMAT = 'MM/DD/YYYY';
 
 const dateRangeOptions: { value: DateRangePreset; label: string }[] = [
   { value: 'today', label: 'Today' },
@@ -45,37 +54,39 @@ const dateRangeOptions: { value: DateRangePreset; label: string }[] = [
   { value: '3-months', label: 'Last 3 Months' },
 ];
 
-const getDateRange = (preset?: DateRangePreset) => {
+const getDateRange = (
+  preset: DateRangePreset = DEFAULT_DATE_RANGE,
+): DateRangeValue => {
   const today = dayjs();
 
   switch (preset) {
     case '1-week':
-      return {
-        DateFrom: today.subtract(1, 'week').format('YYYYMMDD'),
-        DateTo: today.format('YYYYMMDD'),
-      };
+      return [today.subtract(1, 'week'), today];
     case '2-weeks':
-      return {
-        DateFrom: today.subtract(2, 'week').format('YYYYMMDD'),
-        DateTo: today.format('YYYYMMDD'),
-      };
+      return [today.subtract(2, 'week'), today];
     case '1-month':
-      return {
-        DateFrom: today.subtract(1, 'month').format('YYYYMMDD'),
-        DateTo: today.format('YYYYMMDD'),
-      };
+      return [today.subtract(1, 'month'), today];
     case '3-months':
-      return {
-        DateFrom: today.subtract(3, 'month').format('YYYYMMDD'),
-        DateTo: today.format('YYYYMMDD'),
-      };
+      return [today.subtract(3, 'month'), today];
     case 'today':
     default:
-      return {
-        DateFrom: today.format('YYYYMMDD'),
-        DateTo: today.format('YYYYMMDD'),
-      };
+      return [today, today];
   }
+};
+
+const dateRangePresets = dateRangeOptions.map(({ value, label }) => ({
+  label,
+  value: () => getDateRange(value),
+}));
+
+const formatDateRange = (value: FormDateRangeValue) => {
+  const dateFrom = value?.[0];
+  const dateTo = value?.[1];
+
+  return {
+    DateFrom: dateFrom?.format(DATE_QUERY_FORMAT),
+    DateTo: dateTo?.format(DATE_QUERY_FORMAT),
+  };
 };
 
 const Appointments = () => {
@@ -319,30 +330,37 @@ const Appointments = () => {
   };
   const handleTypeChange = (value: string) => {
     Cookies.set('TypeOfAppointment', value);
-    handleSearch();
+    form.setFieldValue('TypeOfAppointment', value);
+    void handleSearch();
   };
 
-  const handleDateRangeChange = (value: DateRangePreset) => {
+  const handleDateRangeChange = (value: FormDateRangeValue) => {
+    if (!value?.[0] || !value?.[1]) {
+      return;
+    }
+
     form.setFieldValue('DateRange', value);
-    handleSearch();
+    void handleSearch(value);
   };
 
   useEffect(() => {
     handleWithAccess();
     form.setFieldsValue({
-      DateRange: DEFAULT_DATE_RANGE,
+      DateRange: getDateRange(),
       TypeOfAppointment: Cookies.get('TypeOfAppointment'),
     });
     q.invalidateQueries({
       queryKey: ['appointments'],
     });
   }, []);
-  const handleSearch = async () => {
+  const handleSearch = async (dateRangeOverride?: FormDateRangeValue) => {
     try {
       const TypeOfAppointment = form.getFieldValue('TypeOfAppointment');
       const PatientName = form.getFieldValue('PatientName');
       const hasPatientName = !isNullOrUndefinedOrBlank(PatientName);
-      const dateRange = getDateRange(form.getFieldValue('DateRange'));
+      const dateRange = formatDateRange(
+        dateRangeOverride ?? form.getFieldValue('DateRange') ?? getDateRange(),
+      );
 
       const res = await PostData('GetRecords', {
         sp: 'udp_GetAppointments',
@@ -388,10 +406,13 @@ const Appointments = () => {
             </Select>
           </Form.Item>
           <Form.Item name="DateRange" label="Date Range" className="col-span-2">
-            <Select
+            <DatePicker.RangePicker
+              allowClear={false}
+              className="!w-full"
               disabled={hasPatientNameFilter}
-              options={dateRangeOptions}
+              format={DATE_DISPLAY_FORMAT}
               onChange={handleDateRangeChange}
+              presets={dateRangePresets}
             />
           </Form.Item>
           <Form.Item
@@ -405,7 +426,7 @@ const Appointments = () => {
 
                 form.setFieldValue(
                   'DateRange',
-                  hasValue ? undefined : DEFAULT_DATE_RANGE,
+                  hasValue ? undefined : getDateRange(),
                 );
                 q.invalidateQueries({
                   queryKey: ['appointments'],

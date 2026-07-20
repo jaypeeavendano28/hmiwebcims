@@ -1,10 +1,11 @@
 import { createLazyFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Divider, Form, Input, Radio, Select, Switch } from "antd";
+import { DatePicker, Divider, Form, Input, Radio, Select, Switch } from "antd";
 import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
 import useAppStore from "../../store";
 import { useEffect, useState } from "react";
 import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import Loading from "../../components/loading";
@@ -16,10 +17,18 @@ export const Route = createLazyFileRoute(
 });
 
 type DateRangePreset = "today" | "1-week" | "2-weeks" | "1-month" | "3-months";
+type DateRangeValue = [Dayjs, Dayjs];
+type FormDateRangeValue =
+  | [Dayjs | null | undefined, Dayjs | null | undefined]
+  | null
+  | undefined;
 
 type QueueSearch = {
   IsMobile?: boolean | string;
   DateRange?: DateRangePreset;
+  DateFrom?: string;
+  DateTo?: string;
+  SearchText?: string;
   PatientName?: string;
   MemberNo?: string;
   DepartmentId?: number | string;
@@ -27,14 +36,26 @@ type QueueSearch = {
 };
 
 type QueueFilterFormValues = {
-  DateRange?: DateRangePreset;
-  PatientName?: string;
-  MemberNo?: string;
+  DateRange?: FormDateRangeValue;
+  SearchText?: string;
   DepartmentId?: number;
   QueueStatus: "done" | "not-done";
 };
 
+type DepartmentItemFilterProps = {
+  DepartmentId?: number;
+  value?: number;
+  onChange: (value?: number) => void;
+};
+
+type DepartmentProcedureItem = {
+  Id: number;
+  Description: string;
+};
+
 const DEFAULT_DATE_RANGE: DateRangePreset = "today";
+const DATE_QUERY_FORMAT = "YYYYMMDD";
+const DATE_DISPLAY_FORMAT = "MM/DD/YYYY";
 
 const dateRangeOptions: { value: DateRangePreset; label: string }[] = [
   { value: "today", label: "Today" },
@@ -47,37 +68,122 @@ const dateRangeOptions: { value: DateRangePreset; label: string }[] = [
 const isDateRangePreset = (value: unknown): value is DateRangePreset =>
   dateRangeOptions.some((option) => option.value === value);
 
-const getDateRange = (preset?: DateRangePreset) => {
+const getDateRange = (
+  preset: DateRangePreset = DEFAULT_DATE_RANGE,
+): DateRangeValue => {
   const today = dayjs();
 
   switch (preset) {
     case "1-week":
-      return {
-        DateFrom: today.subtract(1, "week").format("YYYYMMDD"),
-        DateTo: today.format("YYYYMMDD"),
-      };
+      return [today.subtract(1, "week"), today];
     case "2-weeks":
-      return {
-        DateFrom: today.subtract(2, "week").format("YYYYMMDD"),
-        DateTo: today.format("YYYYMMDD"),
-      };
+      return [today.subtract(2, "week"), today];
     case "1-month":
-      return {
-        DateFrom: today.subtract(1, "month").format("YYYYMMDD"),
-        DateTo: today.format("YYYYMMDD"),
-      };
+      return [today.subtract(1, "month"), today];
     case "3-months":
-      return {
-        DateFrom: today.subtract(3, "month").format("YYYYMMDD"),
-        DateTo: today.format("YYYYMMDD"),
-      };
+      return [today.subtract(3, "month"), today];
     case "today":
     default:
-      return {
-        DateFrom: today.format("YYYYMMDD"),
-        DateTo: today.format("YYYYMMDD"),
-      };
+      return [today, today];
   }
+};
+
+const dateRangePresets = dateRangeOptions.map(({ value, label }) => ({
+  label,
+  value: () => getDateRange(value),
+}));
+
+const parseDateQueryValue = (value?: string) => {
+  if (!value || !/^\d{8}$/.test(value)) {
+    return undefined;
+  }
+
+  const parsed = dayjs(
+    `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`,
+  );
+
+  return parsed.isValid() && parsed.format(DATE_QUERY_FORMAT) === value
+    ? parsed
+    : undefined;
+};
+
+const getDateRangeFromSearch = (search: QueueSearch): DateRangeValue => {
+  const dateFrom = parseDateQueryValue(search.DateFrom);
+  const dateTo = parseDateQueryValue(search.DateTo);
+
+  if (dateFrom && dateTo) {
+    return [dateFrom, dateTo];
+  }
+
+  if (isDateRangePreset(search.DateRange)) {
+    return getDateRange(search.DateRange);
+  }
+
+  return getDateRange();
+};
+
+const getDateRangeFromQueryValues = (
+  dateFrom: string,
+  dateTo: string,
+): DateRangeValue | undefined => {
+  const parsedDateFrom = parseDateQueryValue(dateFrom);
+  const parsedDateTo = parseDateQueryValue(dateTo);
+
+  if (!parsedDateFrom || !parsedDateTo) {
+    return undefined;
+  }
+
+  return [parsedDateFrom, parsedDateTo];
+};
+
+const formatDateRange = (value: FormDateRangeValue) => {
+  const dateFrom = value?.[0];
+  const dateTo = value?.[1];
+
+  return {
+    DateFrom: dateFrom?.format(DATE_QUERY_FORMAT),
+    DateTo: dateTo?.format(DATE_QUERY_FORMAT),
+  };
+};
+
+const DepartmentItemFilter = ({
+  DepartmentId,
+  value,
+  onChange,
+}: DepartmentItemFilterProps) => {
+  const procedureItems = useQuery<DepartmentProcedureItem[]>({
+    queryKey: ["departmentProcedureItems", DepartmentId],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetProcedureItemsByDepartment",
+        parameters: {
+          DepartmentId,
+        },
+      });
+
+      return res?.parameters.lst ?? [];
+    },
+    enabled: Number(DepartmentId) > 0,
+    refetchOnWindowFocus: false,
+  });
+
+  return (
+    <Select
+      allowClear
+      showSearch
+      size="small"
+      className="min-w-[220px]"
+      loading={procedureItems.isFetching}
+      placeholder="All exam/procedure"
+      optionFilterProp="label"
+      value={value}
+      onChange={(selectedValue) => onChange(selectedValue)}
+      options={(procedureItems.data ?? []).map((item) => ({
+        value: item.Id,
+        label: item.Description,
+      }))}
+    />
+  );
 };
 
 const RegisteredPatients = () => {
@@ -85,38 +191,42 @@ const RegisteredPatients = () => {
 
   const [station] = Route.useParams().station;
   const [expandedRows, setExpandedRows] = useState(null);
+  const [departmentItemFilters, setDepartmentItemFilters] = useState<
+    Record<string, number | undefined>
+  >({});
   const store = useAppStore();
   const router = useRouter();
   const search = Route.useSearch() as QueueSearch;
   const IsMobile = search.IsMobile === true || search.IsMobile === "true";
-  const Name = search.PatientName?.trim() ?? "";
-  const MemberNo = search.MemberNo?.trim() ?? "";
+  const SearchText = (
+    search.SearchText ??
+    search.PatientName ??
+    search.MemberNo ??
+    ""
+  ).trim();
+  const Name = SearchText;
+  const MemberNo = "";
   const parsedDepartmentId = Number(search.DepartmentId);
   const DepartmentId =
     Number.isFinite(parsedDepartmentId) && parsedDepartmentId > 0
       ? parsedDepartmentId
       : undefined;
   const isAllAuthorizedDepartments = DepartmentId === undefined;
-  const hasSearchTerm =
-    !isNullOrUndefinedOrBlank(Name) || !isNullOrUndefinedOrBlank(MemberNo);
-  const DateRange = hasSearchTerm
-    ? undefined
-    : isDateRangePreset(search.DateRange)
-      ? search.DateRange
-      : DEFAULT_DATE_RANGE;
-  const selectedDateRange = getDateRange(DateRange);
-  const DateFrom = hasSearchTerm ? "" : selectedDateRange.DateFrom;
-  const DateTo = hasSearchTerm ? "" : selectedDateRange.DateTo;
+  const hasSearchTerm = !isNullOrUndefinedOrBlank(SearchText);
+  const selectedDateRange = getDateRangeFromSearch(search);
+  const DateFrom = hasSearchTerm
+    ? ""
+    : selectedDateRange[0].format(DATE_QUERY_FORMAT);
+  const DateTo = hasSearchTerm
+    ? ""
+    : selectedDateRange[1].format(DATE_QUERY_FORMAT);
   const isDone = IsMobile || search.QueueStatus === "done";
 
   const queryClient = useQueryClient();
 
   const [form] = Form.useForm();
-  const patientNameFilter = Form.useWatch("PatientName", form);
-  const memberNoFilter = Form.useWatch("MemberNo", form);
-  const hasPatientFilter =
-    !isNullOrUndefinedOrBlank(patientNameFilter) ||
-    !isNullOrUndefinedOrBlank(memberNoFilter);
+  const searchTextFilter = Form.useWatch("SearchText", form);
+  const hasPatientFilter = !isNullOrUndefinedOrBlank(searchTextFilter);
 
   const departments = useQuery({
     queryKey: ["queueDepartments", store.userId],
@@ -153,7 +263,6 @@ const RegisteredPatients = () => {
       "patientPerCounter",
       store.branchCode,
       station,
-      DateRange,
       DateFrom,
       DateTo,
       isDone,
@@ -229,6 +338,9 @@ const RegisteredPatients = () => {
         MemberNo={MemberNo}
         IsMobile={IsMobile}
         Compact={compact}
+        ItemId={
+          data.DepartmentId ? departmentItemFilters[data.DepartmentId] : undefined
+        }
       />
     );
   };
@@ -236,19 +348,22 @@ const RegisteredPatients = () => {
   const rowExpansionTemplate = (data: any) => renderDepartmentPatients(data);
 
   const updateFilterSearch = (values: QueueFilterFormValues) => {
+    const dateRange = formatDateRange(values.DateRange);
+
     setExpandedRows(null);
     void router.navigate({
       to: ".",
       replace: true,
       search: (previous) => ({
         ...previous,
-        DateRange: values.DateRange,
-        PatientName: isNullOrUndefinedOrBlank(values.PatientName)
+        DateRange: undefined,
+        DateFrom: dateRange.DateFrom,
+        DateTo: dateRange.DateTo,
+        SearchText: isNullOrUndefinedOrBlank(values.SearchText)
           ? undefined
-          : values.PatientName,
-        MemberNo: isNullOrUndefinedOrBlank(values.MemberNo)
-          ? undefined
-          : values.MemberNo,
+          : values.SearchText,
+        PatientName: undefined,
+        MemberNo: undefined,
         DepartmentId: values.DepartmentId ?? "all",
         QueueStatus: values.QueueStatus,
       }),
@@ -259,14 +374,9 @@ const RegisteredPatients = () => {
     changedValues: Partial<QueueFilterFormValues>,
     values: QueueFilterFormValues,
   ) => {
-    if (
-      Object.prototype.hasOwnProperty.call(changedValues, "PatientName") ||
-      Object.prototype.hasOwnProperty.call(changedValues, "MemberNo")
-    ) {
-      const hasNameOrMember =
-        !isNullOrUndefinedOrBlank(values.PatientName) ||
-        !isNullOrUndefinedOrBlank(values.MemberNo);
-      const nextDateRange = hasNameOrMember ? undefined : DEFAULT_DATE_RANGE;
+    if (Object.prototype.hasOwnProperty.call(changedValues, "SearchText")) {
+      const hasSearchValue = !isNullOrUndefinedOrBlank(values.SearchText);
+      const nextDateRange = hasSearchValue ? undefined : getDateRange();
 
       form.setFieldValue("DateRange", nextDateRange);
       updateFilterSearch({
@@ -278,6 +388,10 @@ const RegisteredPatients = () => {
 
     updateFilterSearch(values);
   };
+
+  useEffect(() => {
+    setDepartmentItemFilters({});
+  }, [DateFrom, DateTo, DepartmentId, SearchText, isDone, IsMobile]);
 
   useEffect(() => {
     if (!departments.isSuccess) {
@@ -312,17 +426,21 @@ const RegisteredPatients = () => {
 
   useEffect(() => {
     form.setFieldsValue({
-      DateRange,
-      PatientName: search.PatientName ?? "",
-      MemberNo: search.MemberNo ?? "",
+      DateRange: hasSearchTerm
+        ? undefined
+        : getDateRangeFromQueryValues(DateFrom, DateTo),
+      SearchText,
       DepartmentId,
       QueueStatus: isDone ? "done" : "not-done",
     });
   }, [
-    DateRange,
+    DateFrom,
+    DateTo,
     DepartmentId,
     form,
+    hasSearchTerm,
     isDone,
+    SearchText,
     search.MemberNo,
     search.PatientName,
   ]);
@@ -348,9 +466,10 @@ const RegisteredPatients = () => {
       <Form
         form={form}
         initialValues={{
-          DateRange,
-          PatientName: search.PatientName ?? "",
-          MemberNo: search.MemberNo ?? "",
+          DateRange: hasSearchTerm
+            ? undefined
+            : getDateRangeFromQueryValues(DateFrom, DateTo),
+          SearchText,
           DepartmentId,
           QueueStatus: isDone ? "done" : "not-done",
         }}
@@ -363,21 +482,20 @@ const RegisteredPatients = () => {
             label="Date Range"
             className="md:col-span-2"
           >
-            <Select disabled={hasPatientFilter} options={dateRangeOptions} />
+            <DatePicker.RangePicker
+              allowClear={false}
+              className="!w-full"
+              disabled={hasPatientFilter}
+              format={DATE_DISPLAY_FORMAT}
+              presets={dateRangePresets}
+            />
           </Form.Item>
           <Form.Item
-            name="PatientName"
-            label="Patient Name"
-            className="md:col-span-2"
+            name="SearchText"
+            label="Search"
+            className="md:col-span-4"
           >
-            <Input allowClear />
-          </Form.Item>
-          <Form.Item
-            name="MemberNo"
-            label="Member No"
-            className="md:col-span-2"
-          >
-            <Input allowClear />
+            <Input allowClear placeholder="Patient name, member no, company" />
           </Form.Item>
           <Form.Item
             name="DepartmentId"
@@ -444,8 +562,18 @@ const RegisteredPatients = () => {
                   key={department.DepartmentId}
                   className="overflow-hidden rounded border border-gray-200"
                 >
-                  <div className="bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-700">
-                    {department.DepartmentName}
+                  <div className="flex items-center justify-between gap-3 bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-700">
+                    <span>{department.DepartmentName}</span>
+                    <DepartmentItemFilter
+                      DepartmentId={department.DepartmentId}
+                      value={departmentItemFilters[department.DepartmentId]}
+                      onChange={(value) =>
+                        setDepartmentItemFilters((previous) => ({
+                          ...previous,
+                          [department.DepartmentId]: value,
+                        }))
+                      }
+                    />
                   </div>
                   <div className="p-1">
                     {renderDepartmentPatients(department, true)}

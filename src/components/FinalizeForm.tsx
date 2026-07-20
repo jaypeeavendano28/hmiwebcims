@@ -3,8 +3,14 @@ import { Button, Divider, Form, Input } from "antd";
 
 type Props = {
   handleFinalizeResult: (v: any) => void;
+  title?: string;
+  submitText?: string;
 };
-const FinalizeForm: FC<Props> = ({ handleFinalizeResult }) => {
+const FinalizeForm: FC<Props> = ({
+  handleFinalizeResult,
+  title = "Finalize Result",
+  submitText = "Submit",
+}) => {
   const [form] = Form.useForm();
   const handleSubmitForm = async (v: any) => {
     handleFinalizeResult(v);
@@ -16,7 +22,7 @@ const FinalizeForm: FC<Props> = ({ handleFinalizeResult }) => {
   return (
     <>
       <div>
-        <Divider>FInalize Result</Divider>
+        <Divider>{title}</Divider>
         <Form form={form} layout="vertical" onFinish={handleSubmitForm}>
           <Form.Item
             name="Username"
@@ -44,7 +50,7 @@ const FinalizeForm: FC<Props> = ({ handleFinalizeResult }) => {
           </Form.Item>
           <div className="flex justify-end">
             <Button type="primary" htmlType="submit">
-              Submit
+              {submitText}
             </Button>
           </div>
         </Form>

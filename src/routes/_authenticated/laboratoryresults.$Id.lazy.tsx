@@ -1,11 +1,16 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { PostData, WithAccess, isNullOrUndefinedOrBlank } from "../../helpers";
+import { createLazyFileRoute, useRouter } from '@tanstack/react-router';
+import {
+  PostData,
+  WithAccess,
+  blobToDataUrl,
+  isNullOrUndefinedOrBlank,
+} from '../../helpers';
 import {
   TAppointments,
   TLaboratoryResultMain,
   TLaboratoryResultTemplates,
-} from "../../types";
-import { useEffect, useRef, useState } from "react";
+} from '../../types';
+import { useEffect, useRef, useState } from 'react';
 import {
   Button,
   DatePicker,
@@ -18,21 +23,24 @@ import {
   Space,
   Tabs,
   notification,
-} from "antd";
-import useAppStore from "../../store";
-import { round } from "lodash";
-import LabResult from "../../components/LabResult";
-import dayjs from "dayjs";
-import axios from "axios";
-import ChargesPerPatient from "../../components/ChargesPerPatient";
-import ExistingLabResults from "../../components/ExistingLabResults";
-import FinalizeForm from "../../components/FinalizeForm";
+} from 'antd';
+import useAppStore from '../../store';
+import { round } from 'lodash';
+import LabResult from '../../components/LabResult';
+import dayjs from 'dayjs';
+import axios from 'axios';
+import ChargesPerPatient from '../../components/ChargesPerPatient';
+import ExistingLabResults from '../../components/ExistingLabResults';
+import FinalizeForm from '../../components/FinalizeForm';
 const isDev = import.meta.env.DEV;
-const prodApi = import.meta.env.VITE_PROD_API + "/api/";
-const devApi = import.meta.env.VITE_DEV_API + "/api/";
+const prodApi = import.meta.env.VITE_PROD_API + '/api/';
+const devApi = import.meta.env.VITE_DEV_API + '/api/';
 const apiUrl = isDev ? devApi : prodApi;
+const onlineResultType = 'LAB';
+const onlineResultDepartmentId = 1000;
+const onlineResultDescription = 'Laboratory Result';
 export const Route = createLazyFileRoute(
-  "/_authenticated/laboratoryresults/$Id",
+  '/_authenticated/laboratoryresults/$Id',
 )({
   component: () => <LaboratoryResults />,
 });
@@ -58,7 +66,13 @@ const formItemLayout = {
     sm: { span: 18 },
   },
 };
-const DEFAULT_PATHOLOGIST_NAME = "DR. ALMUHAIMIN USMAN";
+const DEFAULT_REQUESTING_PHYSICIAN_ID = 1567;
+const DEFAULT_PATHOLOGIST_ID = 1603;
+const getPositiveNumber = (value: unknown) => {
+  const numericValue = Number(value ?? 0);
+
+  return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
+};
 
 const LaboratoryResults = () => {
   const [allowSave, setAllowSave] = useState(false);
@@ -66,6 +80,7 @@ const LaboratoryResults = () => {
   const [isFinalized, setIsFinalized] = useState(false);
   const [showFinalize, setShowFinalize] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isOnlineResultShown, setIsOnlineResultShown] = useState(false);
   // const [specimen, setSpecimen] = useState([]);
   const [branchDetails, setBranchDetails] = useState({});
   // const [Remarks, setRemarks] = useState([]);
@@ -73,11 +88,17 @@ const LaboratoryResults = () => {
   const [Pathologist, setPathologist] = useState<any[]>([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
   const [IsSaving, setIsSaving] = useState(false);
-  const [ResultNo, setResultNo] = useState("");
+  const [ResultNo, setResultNo] = useState('');
   const [ResultId, setResultId] = useState(0);
-  const [rowsCol1, setRowsCol1] = useState([]);
+  const [rowsCol1, setRowsCol1] = useState<any[]>([]);
+  const [analyteSuffixes, setAnalyteSuffixes] = useState<
+    Record<number, string>
+  >({});
+  const [analyteHighLowSettings, setAnalyteHighLowSettings] = useState<
+    Record<number, string>
+  >({});
   const [form] = Form.useForm();
-  const [form1] = Form.useForm();
+  const router = useRouter();
   const store = useAppStore();
   const [templates, setTemplates] = useState<
     TLaboratoryResultTemplates[] | undefined
@@ -86,24 +107,179 @@ const LaboratoryResults = () => {
   const search = Route.useSearch() as {
     templateId?: string | number;
     chargeId?: string | number;
+    standalone?: boolean | string;
   };
   const requestedTemplateId = Number(search.templateId ?? 0);
   const requestedChargeId = Number(search.chargeId ?? 0);
-  const selectedProcedureHandledRef = useRef("");
+  const selectedProcedureHandledRef = useRef('');
   const [appointmentDetails, setAppointmentDetails] = useState<
     TAppointments | undefined
   >();
+  const [selectedTemplateId, setSelectedTemplateId] = useState<
+    number | undefined
+  >(getPositiveNumber(requestedTemplateId) || undefined);
+  const selectedTemplate = templates?.find(
+    (template) => Number(template.Id) === Number(selectedTemplateId),
+  );
+  const hasSelectedTemplate = getPositiveNumber(selectedTemplateId) > 0;
+  const [chargeId, setChargeId] = useState(
+    getPositiveNumber(requestedChargeId),
+  );
+  const [chargeDescription, setChargeDescription] = useState('');
+  const age = appointmentDetails
+    ? `${appointmentDetails.AgeYears}Y${appointmentDetails.AgeMonths}M${appointmentDetails.AgeDays}D`
+    : '';
+
+  const getRowAnalyteId = (row: any) =>
+    getPositiveNumber(row?.TestId ?? row?.fk_Analytes_Id ?? row?.AnalyteId);
+
+  const getLaboratoryFlag = (row: any, resultValue = row?.ResultSi) => {
+    if (
+      String(row?.ShowHighLow ?? '').toUpperCase() !== 'Y' ||
+      isNullOrUndefinedOrBlank(row?.IsFrom) ||
+      isNullOrUndefinedOrBlank(row?.IsTo) ||
+      isNullOrUndefinedOrBlank(resultValue)
+    ) {
+      return '';
+    }
+
+    const result = Number(resultValue);
+    const low = Number(row.IsFrom);
+    const high = Number(row.IsTo);
+
+    if (
+      !Number.isFinite(result) ||
+      !Number.isFinite(low) ||
+      !Number.isFinite(high) ||
+      result <= 0
+    ) {
+      return '';
+    }
+
+    if (result < low) {
+      return 'L';
+    }
+
+    if (result > high) {
+      return 'H';
+    }
+
+    return '';
+  };
+
+  const attachAnalyteSuffixes = (
+    rows: any[],
+    suffixes = analyteSuffixes,
+    highLowSettings = analyteHighLowSettings,
+  ) =>
+    rows.map((row) => {
+      const analyteId = getRowAnalyteId(row);
+      const suffix =
+        String(row?.Suffix ?? '').trim() ||
+        suffixes[analyteId] ||
+        '';
+      const showHighLow =
+        String(row?.ShowHighLow ?? '').trim() ||
+        highLowSettings[analyteId] ||
+        '';
+      const nextRow = {
+        ...row,
+        ...(suffix ? { Suffix: suffix } : {}),
+        ...(showHighLow ? { ShowHighLow: showHighLow } : {}),
+      };
+
+      return {
+        ...nextRow,
+        Flag: getLaboratoryFlag(nextRow),
+      };
+    });
+
+  const handleGetAnalyteSuffixes = async () => {
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetTestAnalytes',
+      parameters: {
+        BranchCode: store.branchCode,
+      },
+    });
+
+    const analytes = res?.parameters?.lst ?? [];
+    const nextSuffixes = analytes.reduce(
+      (map: Record<number, string>, analyte: any) => {
+        const analyteId = getPositiveNumber(analyte.Id);
+        const suffix = String(analyte.Suffix ?? '').trim();
+
+        if (analyteId > 0 && suffix) {
+          map[analyteId] = suffix;
+        }
+
+        return map;
+      },
+      {},
+    );
+    const nextHighLowSettings = analytes.reduce(
+      (map: Record<number, string>, analyte: any) => {
+        const analyteId = getPositiveNumber(analyte.Id);
+        const showHighLow = String(analyte.ShowHighLow ?? '').trim();
+
+        if (analyteId > 0 && showHighLow) {
+          map[analyteId] = showHighLow;
+        }
+
+        return map;
+      },
+      {},
+    );
+
+    setAnalyteSuffixes(nextSuffixes);
+    setAnalyteHighLowSettings(nextHighLowSettings);
+  };
+
+  const refreshOnlineResultStatus = async (nextResultId = ResultId) => {
+    const id = getPositiveNumber(nextResultId);
+
+    if (id <= 0) {
+      setIsOnlineResultShown(false);
+      return;
+    }
+
+    const res = await PostData('GetPdfFileStatus', {
+      ResultId: id,
+      ResultType: onlineResultType,
+    });
+
+    setIsOnlineResultShown(Boolean(res?.parameters?.Shown));
+  };
+
+  const resetResultWorkspace = () => {
+    form.resetFields();
+    setRowsCol1([]);
+    setResultNo('');
+    setResultId(0);
+    setSelectedTemplateId(undefined);
+    setChargeId(0);
+    setChargeDescription('');
+    setIsFinalized(false);
+    setIsOnlineResultShown(false);
+    setAllowSave(false);
+  };
+
   const handleOpenResult = async (Id: number) => {
     setResultId(Id);
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetLabResultMain",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetLabResultMain',
       parameters: {
         Id: Id,
       },
     });
     if (res) {
       const x: TLaboratoryResultMain = res.parameters.lst[0];
-      form1.setFieldValue("Template", x.fk_LaboratoryResultTemplates_Id);
+      setSelectedTemplateId(
+        getPositiveNumber(x.fk_LaboratoryResultTemplates_Id) || undefined,
+      );
+      setChargeId(
+        getPositiveNumber(x.fk_tblChargesMain_ChargeId) ||
+          getPositiveNumber(requestedChargeId),
+      );
       form.setFieldsValue({
         ReportDate: dayjs(x.ReportDate),
         DateReceived: dayjs(x.DateReceived),
@@ -126,15 +302,21 @@ const LaboratoryResults = () => {
         setAllowSave(true);
       }
     }
-    res = await PostData("GetRecords", {
-      sp: "udp_GetLabResultMain",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetLabResultMain',
       parameters: {
         Id: Id,
       },
     });
     if (res) {
       const x: TLaboratoryResultMain = res.parameters.lst[0];
-      form1.setFieldValue("Template", x.fk_LaboratoryResultTemplates_Id);
+      setSelectedTemplateId(
+        getPositiveNumber(x.fk_LaboratoryResultTemplates_Id) || undefined,
+      );
+      setChargeId(
+        getPositiveNumber(x.fk_tblChargesMain_ChargeId) ||
+          getPositiveNumber(requestedChargeId),
+      );
       form.setFieldsValue({
         ReportDate: dayjs(x.ReportDate),
         DateReceived: dayjs(x.DateReceived),
@@ -149,19 +331,20 @@ const LaboratoryResults = () => {
         Remarks: x.Remarks,
       });
     }
-    res = await PostData("GetRecords", {
-      sp: "udp_GetLabResultDetails",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetLabResultDetails',
       parameters: {
         Id: Id,
       },
     });
     if (res) {
-      setRowsCol1(res.parameters.lst);
+      setRowsCol1(attachAnalyteSuffixes(res.parameters.lst ?? []));
     }
+    await refreshOnlineResultStatus(Id);
   };
   const handleGetAppointmentDetails = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetAppointmentDetails",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetAppointmentDetails',
       parameters: {
         Id: Id,
       },
@@ -170,8 +353,8 @@ const LaboratoryResults = () => {
       setAppointmentDetails(res.parameters.lst[0]);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetLaboratoryResultTemplates2",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetLaboratoryResultTemplates2',
       parameters: {
         BranchCode: store.branchCode,
         AppointmentId: Id,
@@ -181,72 +364,106 @@ const LaboratoryResults = () => {
       setTemplates(res.parameters.lst);
     }
   };
-  const handleNew = () => {
-    if (isNullOrUndefinedOrBlank(form1.getFieldValue("Template"))) {
+  const handleNew = async (
+    templateId?: string | number,
+    selectedChargeId?: string | number,
+  ) => {
+    const nextTemplateId = templateId ?? selectedTemplateId;
+    const nextChargeId =
+      getPositiveNumber(selectedChargeId) ||
+      chargeId ||
+      getPositiveNumber(requestedChargeId);
+
+    if (isNullOrUndefinedOrBlank(nextTemplateId)) {
       notification.error({
-        message: "Please select a template!",
-        placement: "topRight",
+        message: 'Unable to identify the laboratory template.',
+        placement: 'topRight',
         duration: 3,
       });
       return;
     }
-    handleLoadTemplate();
+    setSelectedTemplateId(getPositiveNumber(nextTemplateId) || undefined);
+    setChargeId(nextChargeId);
+    form.resetFields();
+    setRowsCol1([]);
+    await handleLoadTemplate(nextTemplateId, nextChargeId);
     form.resetFields();
     form.setFieldsValue({
       ReportDate: dayjs(),
       DateReceived: dayjs(),
-      TemplateId: form1.getFieldValue("Template"),
-      Pathologist: Pathologist.find(
-        (d: any) => d.Name === DEFAULT_PATHOLOGIST_NAME,
-      )?.Id,
+      TemplateId: nextTemplateId,
+      RequestingPhysician: DEFAULT_REQUESTING_PHYSICIAN_ID,
+      Pathologist: DEFAULT_PATHOLOGIST_ID,
     });
-    setResultNo("");
+    setResultNo('');
     setResultId(0);
     setIsFinalized(false);
+    setIsOnlineResultShown(false);
     setAllowSave(true);
   };
-  const handleLoadTemplate = async () => {
+  const handleLoadTemplate = async (
+    templateId?: string | number,
+    selectedChargeId?: string | number,
+  ) => {
+    const nextTemplateId = templateId ?? selectedTemplateId;
+    const nextChargeId =
+      getPositiveNumber(selectedChargeId) ||
+      chargeId ||
+      getPositiveNumber(requestedChargeId);
     setRowsCol1([]);
 
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetLaboratoryResultTemplate",
+    if (isNullOrUndefinedOrBlank(nextTemplateId)) {
+      return;
+    }
+
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetLaboratoryResultTemplate',
       parameters: {
-        TemplateId: form1.getFieldValue("Template"),
+        TemplateId: nextTemplateId,
         PatientId: appointmentDetails?.fk_PatientInformation_Id,
-        Barcode: "",
-        ChargeId: "",
+        Barcode: '',
+        ChargeId: nextChargeId || '',
         AppointmentId: appointmentDetails?.Id,
       },
     });
     if (res) {
-      setRowsCol1(res.parameters.lst);
+      setRowsCol1(attachAnalyteSuffixes(res.parameters.lst ?? []));
     }
   };
+  const getResultConventionalValue = (value: unknown) =>
+    isNullOrUndefinedOrBlank(value) ? value : String(value);
+
   const handleSaveResult = async (x: any) => {
     const data: any = [...rowsCol1];
     const index = data.findIndex((obj: any) => obj.Id === x.Id);
-    data[index].Flag = "";
-    if (
-      !isNullOrUndefinedOrBlank(data[index].IsFrom) &&
-      !isNullOrUndefinedOrBlank(data[index].IsTo)
-    ) {
-      if (data[index].ShowHighLow === "Y" && x.ResultSi > 0) {
-        if (x.ResultSi < data[index].IsFrom) {
-          data[index].Flag = "L";
-        } else if (x.ResultSi > data[index].IsTo) {
-          data[index].Flag = "H";
-        }
-      }
+    if (index < 0) {
+      return;
     }
+
+    data[index].Flag = getLaboratoryFlag(data[index], x.ResultSi);
 
     if (
       !isNullOrUndefinedOrBlank(data[index].Conversion) &&
       !isNullOrUndefinedOrBlank(x.ResultSi)
     ) {
-      if (Number(data[index].Conversion) > 0) {
-        data[index].ResultConventional = round(
-          Number(x.ResultSi) * Number(data[index].Conversion),
-          2,
+      const conversion = Number(data[index].Conversion);
+      const resultSi = Number(x.ResultSi);
+
+      if (conversion > 0 && Number.isFinite(resultSi)) {
+        const conversionOperation = String(
+          data[index].ConversionOperation ?? 'M',
+        ).toUpperCase();
+        const convertedResult =
+          conversionOperation === 'D'
+            ? resultSi / conversion
+            : resultSi * conversion;
+        const conversionRounding = String(
+          data[index].ConversionRounding ?? 'D',
+        ).toUpperCase();
+        const decimalPlaces = conversionRounding === 'W' ? 0 : 2;
+
+        data[index].ResultConventional = String(
+          round(convertedResult, decimalPlaces),
         );
       }
     }
@@ -262,39 +479,46 @@ const LaboratoryResults = () => {
         Main: {
           ...values,
           BranchCode: store.branchCode,
-          ReportDate: dayjs(new Date()).format("YYYY-MM-DD"),
-          DateReceived: dayjs(values.DateReceived).format("YYYY-MM-DD"),
+          ReportDate: dayjs(new Date()).format('YYYY-MM-DD'),
+          DateReceived: dayjs(values.DateReceived).format('YYYY-MM-DD'),
           fk_tblPatientInformation_PatientId:
             appointmentDetails?.fk_PatientInformation_Id,
           Id: ResultId,
-          fk_tblChargesMain_ChargeId: "",
-          fk_LaboratoryResultTemplates_Id: form1.getFieldValue("Template"),
+          fk_tblChargesMain_ChargeId:
+            chargeId || getPositiveNumber(requestedChargeId) || '',
+          fk_LaboratoryResultTemplates_Id: selectedTemplateId,
           Username: store.username,
           ResultNo: ResultNo,
           AdmissionId: appointmentDetails?.Id,
         },
-        Details: rowsCol1,
+        Details: rowsCol1.map((detail: any) => ({
+          ...detail,
+          ResultConventional: getResultConventionalValue(
+            detail.ResultConventional,
+          ),
+        })),
       };
       setIsProcessing(true);
-      const res = await PostData("SaveLaboratoryResultNew", valuesToSave);
+      const res = await PostData('SaveLaboratoryResultNew', valuesToSave);
       if (res) {
         setIsProcessing(false);
         if (res.result.status === 1) {
           notification.success({
-            message: "Successfully saved!",
-            placement: "topRight",
+            message: 'Successfully saved!',
+            placement: 'topRight',
             duration: 3,
           });
 
           setIsSaving(false);
           setResultId(res.result.parameters.ResultId);
           setResultNo(res.result.parameters.ResultNo);
+          await refreshOnlineResultStatus(res.result.parameters.ResultId);
           setKey(Math.random().toString());
         } else {
           setIsProcessing(false);
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -303,34 +527,48 @@ const LaboratoryResults = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
 
   const handleInitialize = async () => {
-    let res = await PostData("GetRecords", {
-      sp: "udp_GetDoctors",
+    let res = await PostData('GetRecords', {
+      sp: 'udp_GetDoctors',
       parameters: {},
     });
     if (res) {
-      setRequestingPhysician(res.parameters.lst);
+      const requestingPhysicians = res.parameters.lst;
+      setRequestingPhysician(requestingPhysicians);
+
+      if (
+        requestingPhysicians.some(
+          (doctor: any) =>
+            getPositiveNumber(doctor.Id) === DEFAULT_REQUESTING_PHYSICIAN_ID,
+        ) &&
+        isNullOrUndefinedOrBlank(form.getFieldValue('RequestingPhysician'))
+      ) {
+        form.setFieldValue(
+          'RequestingPhysician',
+          DEFAULT_REQUESTING_PHYSICIAN_ID,
+        );
+      }
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetListOfMedtechs",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetListOfMedtechs',
       parameters: {
         BranchCode: store.branchCode,
-        Type: "M",
+        Type: 'M',
       },
     });
     if (res) {
       setMedtechs(res.parameters.lst);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetListOfPathologist",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetListOfPathologist',
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -339,19 +577,19 @@ const LaboratoryResults = () => {
       const pathologists = res.parameters.lst;
       setPathologist(pathologists);
       const defaultPathologist = pathologists.find(
-        (d: any) => d.Name === DEFAULT_PATHOLOGIST_NAME,
+        (d: any) => getPositiveNumber(d.Id) === DEFAULT_PATHOLOGIST_ID,
       );
 
       if (
         defaultPathologist &&
-        isNullOrUndefinedOrBlank(form.getFieldValue("Pathologist"))
+        isNullOrUndefinedOrBlank(form.getFieldValue('Pathologist'))
       ) {
-        form.setFieldValue("Pathologist", defaultPathologist.Id);
+        form.setFieldValue('Pathologist', defaultPathologist.Id);
       }
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetBranchDetails",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetBranchDetails',
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -361,8 +599,8 @@ const LaboratoryResults = () => {
       console.log(branchDetails);
     }
 
-    res = await PostData("GetRecords", {
-      sp: "udp_GetSpecimen",
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetSpecimen',
       parameters: {},
     });
     if (res) {
@@ -373,7 +611,7 @@ const LaboratoryResults = () => {
   };
   const handleDeleteResult = async () => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: 33,
@@ -382,30 +620,30 @@ const LaboratoryResults = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-Laboratory Result-Delete",
-          placement: "topRight",
+          message: 'Access denied for module-Laboratory Result-Delete',
+          placement: 'topRight',
           duration: 3,
         });
       } else {
         try {
           setIsProcessing(true);
-          const res = await PostData("DeleteResult", {
+          const res = await PostData('DeleteResult', {
             Id: ResultId,
-            Table: "LAB",
+            Table: 'LAB',
           });
           if (res) {
             setIsProcessing(false);
             if (res.status === 1) {
               notification.success({
-                message: "Result successfully deleted!",
-                placement: "topRight",
+                message: 'Result successfully deleted!',
+                placement: 'topRight',
                 duration: 3,
               });
               location.reload();
             } else {
               notification.error({
                 message: res.message,
-                placement: "topRight",
+                placement: 'topRight',
                 duration: 3,
               });
             }
@@ -414,104 +652,133 @@ const LaboratoryResults = () => {
           setIsProcessing(false);
           notification.error({
             message: error.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
       }
     }
   };
-  const handlePrint = async (isPrint: Boolean = false) => {
-    setIsProcessing(true);
-    const isDownload = false;
-    const Finalized = isNullOrUndefinedOrBlank(
-      form.getFieldValue("FinalizedBy"),
-    )
-      ? "Y"
-      : "N";
-    const url =
-      apiUrl + "labresult/" + ResultId + "/clinicalchem.rdl/" + Finalized;
-    axios.defaults.headers.common["Authorization"] =
-      "Bearer " + store.tokenIdWebCims;
-    try {
-      await axios({
-        url: url, //your url
-        method: "GET",
-        responseType: "blob",
-      }).then((response: any) => {
-        let newBlob;
-        if (isDownload === false) {
-          newBlob = new Blob([response.data], {
-            type: "application/pdf",
-          });
+  const fetchResultPdf = async () => {
+    const url = apiUrl + 'labresult/' + ResultId + '/clinicalchem.rdl/N';
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
 
-          const data = window.URL.createObjectURL(newBlob);
-          if (isPrint === true) {
-            const a = document.createElement("a");
-
-            a.setAttribute("href", data);
-            a.setAttribute("target", "_blank");
-
-            a.click();
-          }
-
-          setIsProcessing(false);
-        } else {
-          newBlob = new Blob([response.data], {
-            type: "application/excel",
-          });
-          const a = document.createElement("a");
-          document.body.appendChild(a);
-          const url = window.URL.createObjectURL(newBlob);
-          a.href = url;
-          a.download = "download.xls";
-          a.click();
-          setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-          }, 0);
-
-          setIsProcessing(false);
-        }
-      });
-    } catch (error: any) {
-      setIsProcessing(false);
-      let errorString = error.response.data;
-      errorString = JSON.parse(await error.response.data.text());
-      return { Status: 0, Message: errorString.Message };
-    }
-  };
-  const handleFinalizeResult = async (v: any) => {
-    setShowFinalize(false);
-    setIsProcessing(true);
-    const res = await PostData("FinalizeResult", {
-      ResultId: ResultId,
-      Table: "LAB",
-      Username: v.Username,
-      Password: v.Password,
-      Mode: isFinalized ? "U" : "F",
+    const response = await axios({
+      url: url,
+      method: 'GET',
+      responseType: 'blob',
     });
 
+    return new Blob([response.data], {
+      type: 'application/pdf',
+    });
+  };
+
+  const getOnlineResultDescription = () =>
+    String(selectedTemplate?.Description ?? '').trim() ||
+    chargeDescription.trim() ||
+    onlineResultDescription;
+
+  const handlePrint = async (isPrint: boolean = false) => {
+    setIsProcessing(true);
+    const isDownload = false;
     try {
+      const newBlob = await fetchResultPdf();
+      let downloadBlob;
+      if (isDownload === false) {
+        const data = window.URL.createObjectURL(newBlob);
+        if (isPrint === true) {
+          const a = document.createElement('a');
+
+          a.setAttribute('href', data);
+          a.setAttribute('target', '_blank');
+
+          a.click();
+        }
+
+        setIsProcessing(false);
+      } else {
+        downloadBlob = new Blob([newBlob], {
+          type: 'application/excel',
+        });
+        const a = document.createElement('a');
+        document.body.appendChild(a);
+        const url = window.URL.createObjectURL(downloadBlob);
+        a.href = url;
+        a.download = 'download.xls';
+        a.click();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }, 0);
+
+        setIsProcessing(false);
+      }
+    } catch (error: any) {
+      setIsProcessing(false);
+      const errorMessage = error.response?.data?.text
+        ? JSON.parse(await error.response.data.text()).Message
+        : error.message;
+      notification.error({
+        message: errorMessage,
+        placement: 'topRight',
+        duration: 3,
+      });
+    }
+  };
+  const handleOnlineResult = async (v: any) => {
+    setShowFinalize(false);
+    if (ResultId === 0) {
+      notification.error({
+        message: 'Please save the result first.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      let res;
+      if (isOnlineResultShown) {
+        res = await PostData('UnshowPdfFile', {
+          ResultId: ResultId,
+          ResultType: onlineResultType,
+          Username: v.Username,
+          Password: v.Password,
+        });
+      } else {
+        const pdf = await blobToDataUrl(await fetchResultPdf());
+        res = await PostData('UploadPdfFile', {
+          ResultId: ResultId,
+          ResultType: onlineResultType,
+          fk_Appointments_Id: appointmentDetails?.Id,
+          fk_Departments_Id: onlineResultDepartmentId,
+          Description: getOnlineResultDescription(),
+          ShowInCompanyPortal: 'Y',
+          Pdf: pdf,
+          Username: v.Username,
+          Password: v.Password,
+        });
+      }
+
       if (res) {
         setIsProcessing(false);
         if (res.status === 1) {
           notification.success({
-            message: isFinalized
-              ? "Result successfully un-finalized!"
-              : "Result successfully finalized!",
-            placement: "topRight",
+            message: isOnlineResultShown
+              ? 'Result hidden from online results.'
+              : 'Result shown to online results.',
+            placement: 'topRight',
             duration: 3,
           });
-          handleOpenResult(ResultId);
-
-          if (!isFinalized) {
-            handlePrint(false);
-          }
+          await refreshOnlineResultStatus(ResultId);
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -520,29 +787,152 @@ const LaboratoryResults = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
+  const getTemplateIdFromCharge = (data: any) =>
+    getPositiveNumber(
+      data?.fk_LabResultTemplateId ??
+        data?.DirectLabTemplateId ??
+        data?.LabTemplateId ??
+        data?.TemplateId ??
+        data?.fk_LaboratoryResultTemplates_Id,
+    );
+
+  const getLabChargeResultTarget = async (selectedChargeId: number) => {
+    try {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetLabChargeResultTarget',
+        parameters: {
+          ChargeId: selectedChargeId,
+        },
+      });
+
+      return res?.parameters?.lst?.[0];
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
+  };
+
+  const navigateToLaboratoryResult = ({
+    appointmentId,
+    selectedChargeId,
+    selectedTemplateId,
+  }: {
+    appointmentId: number;
+    selectedChargeId: number;
+    selectedTemplateId: number;
+  }) => {
+    router.navigate({
+      to: '/laboratoryresults/$Id',
+      params: {
+        Id: appointmentId.toString(),
+      },
+      search: {
+        templateId: selectedTemplateId || undefined,
+        chargeId: selectedChargeId,
+        standalone: search.standalone,
+      },
+    });
+  };
+
+  const handleNewResult = async (data: any) => {
+    const appointmentId =
+      getPositiveNumber(data?.fk_Appointments_Id) ||
+      getPositiveNumber(data?.AppointmentId) ||
+      getPositiveNumber(Id);
+    const selectedChargeId =
+      getPositiveNumber(data?.Id) || getPositiveNumber(data?.ChargeId);
+    let nextTemplateId = getTemplateIdFromCharge(data);
+    let existingResultId = getPositiveNumber(data?.ResultId);
+    let nextChargeDescription = String(data?.Description ?? '');
+
+    if (!appointmentId || !selectedChargeId) {
+      notification.info({
+        message: 'Unable to open selected laboratory charge.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    if (nextTemplateId <= 0) {
+      const chargeTarget = await getLabChargeResultTarget(selectedChargeId);
+      nextTemplateId = getTemplateIdFromCharge(chargeTarget);
+      existingResultId =
+        getPositiveNumber(chargeTarget?.ResultId) || existingResultId;
+      nextChargeDescription =
+        String(chargeTarget?.Description ?? '') || nextChargeDescription;
+    }
+
+    const isChangingCharge = selectedChargeId !== getPositiveNumber(chargeId);
+
+    if (isChangingCharge || nextTemplateId <= 0) {
+      form.resetFields();
+      setRowsCol1([]);
+      setResultNo('');
+      setIsFinalized(false);
+      setIsOnlineResultShown(false);
+      setAllowSave(false);
+    }
+
+    setSelectedTemplateId(nextTemplateId > 0 ? nextTemplateId : undefined);
+    setChargeId(selectedChargeId);
+    setChargeDescription(nextChargeDescription);
+    setResultId(existingResultId);
+    if (existingResultId > 0) {
+      void refreshOnlineResultStatus(existingResultId);
+    } else {
+      setIsOnlineResultShown(false);
+    }
+
+    if (nextTemplateId <= 0) {
+      selectedProcedureHandledRef.current = `${appointmentId}:0:${selectedChargeId}`;
+      notification.info({
+        message: 'Unable to identify the laboratory template.',
+        placement: 'topRight',
+        duration: 3,
+      });
+    }
+
+    navigateToLaboratoryResult({
+      appointmentId,
+      selectedChargeId,
+      selectedTemplateId: nextTemplateId,
+    });
+  };
+
   useEffect(() => {
     handleGetAppointmentDetails();
     handleInitialize();
+    handleGetAnalyteSuffixes();
   }, []);
   useEffect(() => {
     if (
-      !appointmentDetails ||
-      !templates ||
-      !Number.isFinite(requestedTemplateId) ||
-      requestedTemplateId <= 0
+      Object.keys(analyteSuffixes).length === 0 &&
+      Object.keys(analyteHighLowSettings).length === 0
     ) {
       return;
     }
 
-    const selectedTemplate = templates.find(
-      (template) => Number(template.Id) === requestedTemplateId,
+    setRowsCol1((currentRows) =>
+      attachAnalyteSuffixes(
+        currentRows,
+        analyteSuffixes,
+        analyteHighLowSettings,
+      ),
     );
-    if (!selectedTemplate) {
+  }, [analyteHighLowSettings, analyteSuffixes]);
+  useEffect(() => {
+    const hasRequestedTemplate =
+      Number.isFinite(requestedTemplateId) && requestedTemplateId > 0;
+    const hasRequestedCharge =
+      Number.isFinite(requestedChargeId) && requestedChargeId > 0;
+
+    if (!appointmentDetails || (!hasRequestedTemplate && !hasRequestedCharge)) {
       return;
     }
 
@@ -550,23 +940,63 @@ const LaboratoryResults = () => {
     if (selectedProcedureHandledRef.current === procedureKey) {
       return;
     }
-    selectedProcedureHandledRef.current = procedureKey;
 
     const openSelectedProcedure = async () => {
-      form1.setFieldValue("Template", requestedTemplateId);
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetLabResultForAppointmentTemplate",
-        parameters: {
-          AppointmentId: Number(Id),
-          TemplateId: requestedTemplateId,
-        },
-      });
-      const existingResultId = Number(res?.parameters?.lst?.[0]?.Id ?? 0);
+      let nextTemplateId = hasRequestedTemplate ? requestedTemplateId : 0;
+      let existingResultId = 0;
+      let nextChargeDescription = '';
+
+      if (hasRequestedCharge) {
+        const chargeTarget = await getLabChargeResultTarget(requestedChargeId);
+        nextTemplateId =
+          nextTemplateId || getTemplateIdFromCharge(chargeTarget);
+        existingResultId = getPositiveNumber(chargeTarget?.ResultId);
+        nextChargeDescription = String(chargeTarget?.Description ?? '');
+        setChargeId(requestedChargeId);
+        setChargeDescription(nextChargeDescription);
+      }
+
+      if (!nextTemplateId && !templates) {
+        return;
+      }
+
+      if (!hasRequestedCharge && !nextTemplateId && templates?.length === 1) {
+        nextTemplateId = getPositiveNumber(templates[0].Id);
+      }
+
+      if (!nextTemplateId) {
+        resetResultWorkspace();
+        notification.info({
+          message: 'Unable to identify the laboratory template.',
+          placement: 'topRight',
+          duration: 3,
+        });
+        return;
+      }
+
+      setSelectedTemplateId(getPositiveNumber(nextTemplateId) || undefined);
+      selectedProcedureHandledRef.current = procedureKey;
+
+      if (existingResultId <= 0) {
+        const res = await PostData('GetRecords', {
+          sp: 'udp_GetLabResultForAppointmentTemplate',
+          parameters: {
+            AppointmentId: Number(Id),
+            TemplateId: nextTemplateId,
+            ChargeId: hasRequestedCharge ? requestedChargeId : null,
+          },
+        });
+        existingResultId = Number(res?.parameters?.lst?.[0]?.Id ?? 0);
+      }
 
       if (existingResultId > 0) {
         await handleOpenResult(existingResultId);
       } else {
-        handleNew();
+        await handleNew(nextTemplateId, requestedChargeId);
+      }
+
+      if (nextChargeDescription) {
+        setChargeDescription(nextChargeDescription);
       }
     };
 
@@ -574,67 +1004,66 @@ const LaboratoryResults = () => {
   }, [
     Id,
     appointmentDetails,
-    form1,
     requestedChargeId,
     requestedTemplateId,
     templates,
   ]);
   return (
     <div className="cardBackGround">
-      <div className="grid lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
         <div>
-          <p>Name</p>
-          <p className="font-bold">{appointmentDetails?.Name}</p>
-        </div>
-        <div>
-          <p>Age</p>
-          <p className="font-bold">
-            {appointmentDetails?.AgeYears}Y{appointmentDetails?.AgeMonths}M
-            {appointmentDetails?.AgeDays}D
+          <p className="text-slate-500">Name</p>
+          <p className="font-semibold text-slate-900">
+            {appointmentDetails?.Name}
           </p>
         </div>
         <div>
-          <p>Sex</p>
-          <p className="font-bold">{appointmentDetails?.Sex}</p>
+          <p className="text-slate-500">Age</p>
+          <p className="font-semibold text-slate-900">{age}</p>
+        </div>
+        <div>
+          <p className="text-slate-500">Sex</p>
+          <p className="font-semibold text-slate-900">
+            {appointmentDetails?.Sex}
+          </p>
+        </div>
+        <div>
+          <p className="text-slate-500">Appointment No.</p>
+          <p className="font-semibold text-slate-900">
+            {appointmentDetails?.AppointmentNo}
+          </p>
         </div>
       </div>
-      <div className="grid lg:grid-cols-12 gap-4">
-        <div className="col-span-3">
-          <Divider>Results</Divider>
 
-          <Form form={form1} layout="vertical">
-            <Form.Item name="Template" label="Template">
-              <Select style={{ width: "100%" }}>
-                {templates?.map((v: TLaboratoryResultTemplates) => (
-                  <Select.Option key={v.Id} value={v.Id}>
-                    {v.Description}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Form>
+      <Divider className="print:hidden">
+        Laboratory Department Result
+        {chargeDescription || selectedTemplate?.Description
+          ? ` (${chargeDescription || selectedTemplate?.Description})`
+          : ''}
+      </Divider>
 
-          <Button type="primary" onClick={handleNew}>
-            New
-          </Button>
-          <div className="mt-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <aside className="min-w-0 lg:col-span-3">
+          <div className="lg:sticky lg:top-2">
+            <Divider>Charges</Divider>
             <Tabs
               defaultActiveKey="1"
               items={[
                 {
-                  label: "Charges",
-                  key: "1",
+                  label: 'Charges',
+                  key: '1',
                   children: (
                     <ChargesPerPatient
                       AppointmentId={appointmentDetails?.Id}
                       Counter="LAB"
+                      handleNewResult={handleNewResult}
                       Key={key}
                     />
                   ),
                 },
                 {
-                  label: "Existing Results",
-                  key: "2",
+                  label: 'Existing Results',
+                  key: '2',
                   children: (
                     <ExistingLabResults
                       PatientId={appointmentDetails?.fk_PatientInformation_Id}
@@ -646,21 +1075,34 @@ const LaboratoryResults = () => {
               ]}
             />
           </div>
-        </div>
-        <div className="col-span-9">
-          <h1 className="text-center font-bold">Laboratory Result</h1>
-          <div className="mt-2">
-            <div className="grid grid-cols-4 gap-4">
-              <div className="font-bold text-md">Test Name</div>
-              <div className="font-bold text-md">Result(SI)</div>
-              <div className="font-bold text-md">Reference Value(SI)</div>
-              {/* <div className="font-bold text-md">Result(Conv.)</div>
-              <div className="font-bold text-md">Reference Value(Conv.)</div> */}
-              <div className="font-bold text-md">Flag</div>
+        </aside>
+        <main className="min-w-0 lg:col-span-9">
+          {!hasSelectedTemplate ? (
+            <div className="flex min-h-[320px] items-center justify-center rounded border border-dashed border-slate-300 bg-slate-50 px-4 text-center">
+              <div>
+                <p className="text-base font-semibold text-slate-700">
+                  Please click the charges result first.
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Select a laboratory charge on the left to load the result
+                  form.
+                </p>
+              </div>
             </div>
-            {rowsCol1.map((v: any) => (
-              <>
-                {/* {v.IsWithResult === "N" && (
+          ) : (
+            <>
+              <div className="mt-2">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="font-bold text-md">Test Name</div>
+                  <div className="font-bold text-md">Result(SI)</div>
+                  <div className="font-bold text-md">Reference Value(SI)</div>
+                  {/* <div className="font-bold text-md">Result(Conv.)</div>
+              <div className="font-bold text-md">Reference Value(Conv.)</div> */}
+                  <div className="font-bold text-md">Flag</div>
+                </div>
+                {rowsCol1.map((v: any) => (
+                  <>
+                    {/* {v.IsWithResult === "N" && (
                   <div
                     key={v.Id}
                     className={v.IsBold === "Y" ? "font-bold" : "font-normal"}
@@ -668,15 +1110,15 @@ const LaboratoryResults = () => {
                     {v.Test}
                   </div>
                 )} */}
-                <>
-                  <LabResult
-                    data={v}
-                    handleSaveResult={(x: any) => handleSaveResult(x)}
-                    key={v.Id}
-                    ResultId={ResultId}
-                  />
-                </>
-                {/* {v.IsWithResult === "Y" && (
+                    <>
+                      <LabResult
+                        data={v}
+                        handleSaveResult={(x: any) => handleSaveResult(x)}
+                        key={v.Id}
+                        ResultId={ResultId}
+                      />
+                    </>
+                    {/* {v.IsWithResult === "Y" && (
                   <>
                     <LabResult
                       data={v}
@@ -685,51 +1127,51 @@ const LaboratoryResults = () => {
                     />
                   </>
                 )} */}
-              </>
-            ))}
-          </div>
-          <Form
-            //  layout="vertical"
-            {...formItemLayout}
-            form={form}
-            onFinish={handleSubmitForm}
-            scrollToFirstError
-          >
-            <Form.Item label="Result Id." name="ResultId">
-              <strong>{ResultId}</strong>
-            </Form.Item>
-            <Form.Item label="Template Id." name="TemplateId">
-              <strong>{form1.getFieldValue("Template")}</strong>
-            </Form.Item>
-            <Form.Item label="Result No." name="ResultNo">
-              <strong>{ResultNo}</strong>
-            </Form.Item>
+                  </>
+                ))}
+              </div>
+              <Form
+                //  layout="vertical"
+                {...formItemLayout}
+                form={form}
+                onFinish={handleSubmitForm}
+                scrollToFirstError
+              >
+                <Form.Item label="Result Id." name="ResultId">
+                  <strong>{ResultId}</strong>
+                </Form.Item>
+                <Form.Item label="Template Id." name="TemplateId">
+                  <strong>{selectedTemplateId}</strong>
+                </Form.Item>
+                <Form.Item label="Result No." name="ResultNo">
+                  <strong>{ResultNo}</strong>
+                </Form.Item>
 
-            <Form.Item
-              label="Date Received"
-              name="DateReceived"
-              rules={[
-                {
-                  required: true,
-                  message: "Date received is required!",
-                },
-              ]}
-            >
-              <DatePicker showTime showToday format="MM/DD/YYYY hh:mm A" />
-            </Form.Item>
-            <Form.Item
-              label="Date Recorded"
-              name="DateCollected"
-              rules={[
-                {
-                  required: true,
-                  message: "Date received is required!",
-                },
-              ]}
-            >
-              <DatePicker showTime showToday format="MM/DD/YYYY hh:mm A" />
-            </Form.Item>
-            {/* <Form.Item
+                <Form.Item
+                  label="Date Received"
+                  name="DateReceived"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Date received is required!',
+                    },
+                  ]}
+                >
+                  <DatePicker showTime showToday format="MM/DD/YYYY hh:mm A" />
+                </Form.Item>
+                <Form.Item
+                  label="Date Recorded"
+                  name="DateCollected"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Date received is required!',
+                    },
+                  ]}
+                >
+                  <DatePicker showTime showToday format="MM/DD/YYYY hh:mm A" />
+                </Form.Item>
+                {/* <Form.Item
               label="Specimen"
               name="Specimen"
               rules={[
@@ -742,21 +1184,21 @@ const LaboratoryResults = () => {
             >
               <AutoComplete options={specimen} placeholder="Please select" />
             </Form.Item> */}
-            <Form.Item
-              label="Lab No."
-              name="LabNo"
-              rules={[
-                { required: true, message: "Specimen is required!" },
-                {
-                  max: 100,
-                  message: "Specimen must not exceed 100 characters!",
-                },
-              ]}
-              normalize={(v) => v.toUpperCase()}
-            >
-              <Input />
-            </Form.Item>
-            {/* <Form.Item
+                <Form.Item
+                  label="Lab No."
+                  name="LabNo"
+                  rules={[
+                    { required: true, message: 'Specimen is required!' },
+                    {
+                      max: 100,
+                      message: 'Specimen must not exceed 100 characters!',
+                    },
+                  ]}
+                  normalize={(v) => v.toUpperCase()}
+                >
+                  <Input />
+                </Form.Item>
+                {/* <Form.Item
               label="Test Principle"
               name="TestPrinciple"
               rules={[
@@ -770,163 +1212,174 @@ const LaboratoryResults = () => {
                 placeholder="Please select"
               />
             </Form.Item> */}
-            <Form.Item label="Requesting Physician" name="RequestingPhysician">
-              <Select
-                showSearch
-                allowClear
-                filterOption={(inputValue, option: any) =>
-                  option.title
-                    .toUpperCase()
-                    .indexOf(inputValue.toUpperCase()) !== -1
-                }
-              >
-                {RequestingPhysician.map((d: any) => (
-                  <Select.Option key={d.Id} value={d.Id} title={d.Name}>
-                    {d.Name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <Form.Item
-              label="Medical Technologist"
-              name="Medtech"
-              // rules={[
-              //   {
-              //     required: true,
-              //     message: "Medical technologist is required!",
-              //   },
-              // ]}
-            >
-              <Select
-                showSearch
-                allowClear
-                filterOption={(inputValue, option: any) =>
-                  option.title
-                    .toUpperCase()
-                    .indexOf(inputValue.toUpperCase()) !== -1
-                }
-              >
-                {Medtechs.map((d: any) => (
-                  <Select.Option key={d.Id} title={d.Name} value={d.Id}>
-                    {d.Name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              label="Pathologist"
-              name="Pathologist"
-              rules={[
-                {
-                  required: true,
-                  message: "Pathologist is required!",
-                },
-              ]}
-            >
-              <Select
-                showSearch
-                allowClear
-                filterOption={(inputValue, option: any) =>
-                  option.title
-                    .toUpperCase()
-                    .indexOf(inputValue.toUpperCase()) !== -1
-                }
-              >
-                {Pathologist.map((d: any) => (
-                  <Select.Option key={d.Id} title={d.Name} value={d.Id}>
-                    {d.Name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item label="Remarks" name="Remarks">
-              <Input.TextArea rows={4} />
-            </Form.Item>
-            {isFinalized && (
-              <>
-                <Form.Item label="Finalized By" name="FinalizedBy">
-                  <Input readOnly />
+                <Form.Item
+                  label="Requesting Physician"
+                  name="RequestingPhysician"
+                >
+                  <Select
+                    showSearch
+                    allowClear
+                    filterOption={(inputValue, option: any) =>
+                      option.title
+                        .toUpperCase()
+                        .indexOf(inputValue.toUpperCase()) !== -1
+                    }
+                  >
+                    {RequestingPhysician.map((d: any) => (
+                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                        {d.Name}
+                      </Select.Option>
+                    ))}
+                  </Select>
                 </Form.Item>
-                <Form.Item label="Date Finalized" name="DateFinalized">
-                  <Input readOnly />
+                <Form.Item
+                  label="Medical Technologist"
+                  name="Medtech"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Medical technologist is required!',
+                    },
+                  ]}
+                >
+                  <Select
+                    showSearch
+                    allowClear
+                    filterOption={(inputValue, option: any) =>
+                      option.title
+                        .toUpperCase()
+                        .indexOf(inputValue.toUpperCase()) !== -1
+                    }
+                  >
+                    {Medtechs.map((d: any) => (
+                      <Select.Option key={d.Id} title={d.Name} value={d.Id}>
+                        {d.Name}
+                      </Select.Option>
+                    ))}
+                  </Select>
                 </Form.Item>
-              </>
-            )}
-            <Form.Item {...tailFormItemLayout}>
-              <div className="flex justify-between">
-                <Space>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    // disabled={IsSaving || ReportStatus === "F"}
 
-                    disabled={rowsCol1.length <= 0 || isFinalized}
-                    loading={isProcessing || IsSaving}
+                <Form.Item
+                  label="Pathologist"
+                  name="Pathologist"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Pathologist is required!',
+                    },
+                  ]}
+                >
+                  <Select
+                    showSearch
+                    allowClear
+                    filterOption={(inputValue, option: any) =>
+                      option.title
+                        .toUpperCase()
+                        .indexOf(inputValue.toUpperCase()) !== -1
+                    }
                   >
-                    Save
-                  </Button>
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      handlePrint(true);
-                    }}
-                    loading={isProcessing}
-                    disabled={!isFinalized}
-                  >
-                    Print
-                  </Button>
-                </Space>
-                <Space>
-                  <Popconfirm
-                    title="Cancel Changes?"
-                    okText="Yes"
-                    cancelText="No"
-                    onConfirm={() => {
-                      window.location.reload();
-                    }}
-                  >
-                    <Button
-                      danger
-                      type="primary"
-                      loading={isProcessing}
-                      disabled={!allowSave}
-                    >
-                      Cancel Changes
-                    </Button>
-                  </Popconfirm>
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      setShowFinalize(true);
-                    }}
-                    loading={isProcessing}
-                    disabled={ResultId === 0}
-                  >
-                    {isFinalized ? "Un-Finalize Result" : "Finalize Result"}
-                  </Button>
+                    {Pathologist.map((d: any) => (
+                      <Select.Option key={d.Id} title={d.Name} value={d.Id}>
+                        {d.Name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
 
-                  <Popconfirm
-                    title="Delete this result?"
-                    okText="Yes"
-                    cancelText="No"
-                    onConfirm={() => handleDeleteResult()}
-                  >
-                    <Button
-                      danger
-                      type="primary"
-                      loading={isProcessing}
-                      disabled={ResultId === 0 || isFinalized}
-                    >
-                      Delete Result
-                    </Button>
-                  </Popconfirm>
-                </Space>
-              </div>
-            </Form.Item>
-          </Form>
-        </div>
+                <Form.Item label="Remarks" name="Remarks">
+                  <Input.TextArea rows={4} />
+                </Form.Item>
+                {isFinalized && (
+                  <>
+                    <Form.Item label="Finalized By" name="FinalizedBy">
+                      <Input readOnly />
+                    </Form.Item>
+                    <Form.Item label="Date Finalized" name="DateFinalized">
+                      <Input readOnly />
+                    </Form.Item>
+                  </>
+                )}
+                <Form.Item {...tailFormItemLayout}>
+                  <div className="flex justify-between">
+                    <Space>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        // disabled={IsSaving || ReportStatus === "F"}
+
+                        disabled={
+                          rowsCol1.length <= 0 ||
+                          isFinalized ||
+                          isOnlineResultShown
+                        }
+                        loading={isProcessing || IsSaving}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="primary"
+                        onClick={() => {
+                          handlePrint(true);
+                        }}
+                        loading={isProcessing}
+                        disabled={ResultId === 0}
+                      >
+                        Print
+                      </Button>
+                    </Space>
+                    <Space>
+                      <Popconfirm
+                        title="Cancel Changes?"
+                        okText="Yes"
+                        cancelText="No"
+                        onConfirm={() => {
+                          window.location.reload();
+                        }}
+                      >
+                        <Button
+                          danger
+                          type="primary"
+                          loading={isProcessing}
+                          disabled={!allowSave || isOnlineResultShown}
+                        >
+                          Cancel Changes
+                        </Button>
+                      </Popconfirm>
+                      <Button
+                        type="primary"
+                        onClick={() => {
+                          setShowFinalize(true);
+                        }}
+                        loading={isProcessing}
+                        disabled={ResultId === 0}
+                      >
+                        {isOnlineResultShown
+                          ? 'Unshow Online Result'
+                          : 'Show to Online Results'}
+                      </Button>
+
+                      <Popconfirm
+                        title="Delete this result?"
+                        okText="Yes"
+                        cancelText="No"
+                        onConfirm={() => handleDeleteResult()}
+                      >
+                        <Button
+                          danger
+                          type="primary"
+                          loading={isProcessing}
+                          disabled={ResultId === 0 || isFinalized}
+                        >
+                          Delete Result
+                        </Button>
+                      </Popconfirm>
+                    </Space>
+                  </div>
+                </Form.Item>
+              </Form>
+            </>
+          )}
+        </main>
       </div>
       <Modal
         open={showFinalize}
@@ -934,7 +1387,15 @@ const LaboratoryResults = () => {
         onCancel={() => setShowFinalize(false)}
         footer={false}
       >
-        <FinalizeForm handleFinalizeResult={handleFinalizeResult} />
+        <FinalizeForm
+          handleFinalizeResult={handleOnlineResult}
+          title={
+            isOnlineResultShown
+              ? 'Unshow Online Result'
+              : 'Show to Online Results'
+          }
+          submitText={isOnlineResultShown ? 'Unshow' : 'Show'}
+        />
       </Modal>
     </div>
   );

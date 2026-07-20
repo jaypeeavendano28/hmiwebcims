@@ -1,7 +1,7 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { FilterMatchMode } from "primereact/api";
-import { useEffect, useState } from "react";
-import useAppStore from "../../store";
+import { Link, createFileRoute } from '@tanstack/react-router';
+import { FilterMatchMode } from 'primereact/api';
+import { useEffect, useState } from 'react';
+import useAppStore from '../../store';
 import {
   Button,
   Checkbox,
@@ -13,15 +13,15 @@ import {
   Space,
   Tooltip,
   notification,
-} from "antd";
-import { BiEdit } from "react-icons/bi";
-import { FaMicroscope, FaRegFileAlt, FaRegTrashAlt } from "react-icons/fa";
-import Loading from "../../components/loading";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { PostData } from "../../helpers";
+} from 'antd';
+import { BiEdit } from 'react-icons/bi';
+import { FaMicroscope, FaRegFileAlt, FaRegTrashAlt } from 'react-icons/fa';
+import Loading from '../../components/loading';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { PostData } from '../../helpers';
 
-export const Route = createFileRoute("/_authenticated/analytes")({
+export const Route = createFileRoute('/_authenticated/analytes')({
   component: () => <Analytes />,
 });
 
@@ -53,8 +53,8 @@ const Analytes = () => {
   const [possibleValues, setPossibleValues] = useState([]);
 
   const handleGetPossibleValues = async () => {
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetPossibleValues",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetPossibleValues',
       parameters: { TestId: Id },
     });
     if (res) {
@@ -65,6 +65,7 @@ const Analytes = () => {
   const handleNew = async () => {
     setId(0);
     form.resetFields();
+    form.setFieldValue('Deleted', false);
     setShowModal(true);
   };
 
@@ -74,7 +75,9 @@ const Analytes = () => {
     form.setFieldsValue({
       Description: rec.Description,
       TestCode: rec.TestCode,
+      Suffix: rec.Suffix,
       ShowHighLow: rec.ShowHighLow,
+      Deleted: false,
     });
     setShowModal(true);
   };
@@ -84,18 +87,19 @@ const Analytes = () => {
     const valuesToSave = {
       ...values,
       Id: Id,
+      Deleted: values.Deleted ?? false,
       username: store.username,
       BranchCode: store.branchCode,
     };
-    const res = await PostData("SaveTestAnalyte", valuesToSave);
+    const res = await PostData('SaveTestAnalyte', valuesToSave);
 
     if (res) {
       setIsSubmitting(false);
       console.log(res);
       if (res.status === 1) {
         notification.success({
-          message: "Successfully saved!",
-          placement: "topRight",
+          message: 'Successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
 
@@ -105,7 +109,7 @@ const Analytes = () => {
         setIsSubmitting(false);
         notification.error({
           message: res.data.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -114,8 +118,8 @@ const Analytes = () => {
   const handleInitialize = async () => {
     setIsLoading(true);
 
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetTestAnalytes",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetTestAnalytes',
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -157,7 +161,7 @@ const Analytes = () => {
               onClick={() => {
                 setId(data.Id);
                 form2.resetFields();
-                form2.setFieldValue("TestId", data.Id);
+                form2.setFieldValue('TestId', data.Id);
                 setModal2(true);
               }}
             />
@@ -189,57 +193,57 @@ const Analytes = () => {
 
   const handleAddPossibleValues = async (v: any) => {
     try {
-      const res = await PostData("AddPossibleValues", { ...v, Id: 0 });
+      const res = await PostData('AddPossibleValues', { ...v, Id: 0 });
       if (res) {
         notification.success({
-          message: "Successfully added!",
-          placement: "topRight",
+          message: 'Successfully added!',
+          placement: 'topRight',
           duration: 3,
         });
         handleGetPossibleValues();
-        form2.setFieldValue("Value", "");
+        form2.setFieldValue('Value', '');
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
   const handleDeletePossibleValues = async (v: any) => {
     try {
-      const res = await PostData("DeletePossibleValues", v);
+      const res = await PostData('DeletePossibleValues', v);
       if (res) {
         notification.success({
-          message: "Successfully deleted!",
-          placement: "topRight",
+          message: 'Successfully deleted!',
+          placement: 'topRight',
           duration: 3,
         });
         handleGetPossibleValues();
-        form2.setFieldValue("Value", "");
+        form2.setFieldValue('Value', '');
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
   };
-  
+
   useEffect(() => {
     handleGetPossibleValues();
   }, [Id]);
@@ -261,7 +265,7 @@ const Analytes = () => {
           <div className="mt-2">
             <DataTable
               value={data}
-              tableStyle={{ minWidth: "50rem" }}
+              tableStyle={{ minWidth: '50rem' }}
               paginator
               rows={10}
               rowsPerPageOptions={[5, 10, 25, 50]}
@@ -275,6 +279,7 @@ const Analytes = () => {
               ></Column>
               <Column field="Description" header="Description" filter></Column>
               <Column field="TestCode" header="Test Code" filter></Column>
+              <Column field="Suffix" header="Suffix" filter></Column>
               <Column
                 field="ShowHighLow"
                 header="Show High Lo?"
@@ -309,14 +314,17 @@ const Analytes = () => {
             rules={[
               {
                 required: true,
-                message: "Examination Name is required!",
+                message: 'Examination Name is required!',
               },
               { max: 100 },
             ]}
           >
-            <Input style={{ width: "100%" }} autoFocus />
+            <Input style={{ width: '100%' }} autoFocus />
           </Form.Item>
           <Form.Item label="Test Code" name="TestCode">
+            <Input />
+          </Form.Item>
+          <Form.Item label="Suffix" name="Suffix">
             <Input />
           </Form.Item>
           <Form.Item
@@ -338,6 +346,7 @@ const Analytes = () => {
               name="Deleted"
               label="Check to delete?"
               valuePropName="checked"
+              initialValue={false}
             >
               <Checkbox />
             </Form.Item>
@@ -372,7 +381,7 @@ const Analytes = () => {
               rules={[
                 {
                   required: true,
-                  message: "Description is required!",
+                  message: 'Description is required!',
                 },
               ]}
             >

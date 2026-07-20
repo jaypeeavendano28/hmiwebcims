@@ -680,7 +680,7 @@ function CardioResult() {
                     }}
                     loading={isProcessing}
                     // disabled={IsSaving || ReportStatus === "F"}
-                    disabled={ResultId === 0 || !isFinalized}
+                    disabled={ResultId === 0}
                   >
                     Print
                   </Button>

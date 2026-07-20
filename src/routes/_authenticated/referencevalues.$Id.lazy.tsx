@@ -131,6 +131,8 @@ const ReferenceValues = () => {
       ConventionalTo: data.ConventionalTo,
       ConventionalReferenceValue: data.ConventionalReferenceValue,
       Conversion: data.Conversion,
+      ConversionOperation: data.ConversionOperation ?? 'M',
+      ConversionRounding: data.ConversionRounding ?? 'D',
       Deleted: 'N',
       AgeFromMode: data.AgeFromMode,
       AgeToMode: data.AgeToMode,
@@ -165,6 +167,8 @@ const ReferenceValues = () => {
             setId('0');
             setShowModal(true);
             form.resetFields();
+            form.setFieldValue('ConversionOperation', 'M');
+            form.setFieldValue('ConversionRounding', 'D');
           }}
         >
           New
@@ -185,6 +189,20 @@ const ReferenceValues = () => {
           <Column field="IsFrom" header="IsFrom"></Column>
           <Column field="IsTo" header="IsTo"></Column>
           <Column field="IsReferenceValue" header="Is Reference Value"></Column>
+          <Column
+            field="ConversionOperation"
+            header="Operation"
+            body={(data) =>
+              data.ConversionOperation === 'D' ? 'Division' : 'Multiplication'
+            }
+          ></Column>
+          <Column
+            field="ConversionRounding"
+            header="Rounding"
+            body={(data) =>
+              data.ConversionRounding === 'W' ? 'Whole number' : 'Decimal'
+            }
+          ></Column>
           <Column field="Conversion" header="Conversion"></Column>
         </DataTable>
       </div>
@@ -367,6 +385,26 @@ const ReferenceValues = () => {
             </Form.Item>
           </div>
           <div className="grid lg:grid-cols-6 gap-4">
+            <Form.Item
+              name="ConversionOperation"
+              label="Operation"
+              initialValue="M"
+            >
+              <Select>
+                <Select.Option value="M">Multiplication</Select.Option>
+                <Select.Option value="D">Division</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="ConversionRounding"
+              label="Rounding"
+              initialValue="D"
+            >
+              <Select>
+                <Select.Option value="D">Decimal number</Select.Option>
+                <Select.Option value="W">Whole number</Select.Option>
+              </Select>
+            </Form.Item>
             <Form.Item name="Conversion" label="Conversion">
               <InputNumber precision={4} style={{ width: '100%' }} />
             </Form.Item>
