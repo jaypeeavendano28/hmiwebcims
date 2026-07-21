@@ -278,7 +278,7 @@ export default function RequestForMedicines({ Name, AppointmentId }: Props) {
                 options={items.data?.map((d) => ({
                   value: d.Id,
                   // label: d.Description,
-                  label: `${d.Description} - ${d.Price}`,
+                  label: `${d.Description2}`,
                 }))}
                 optionFilterProp="label"
                 // filterOption={(input, option) =>

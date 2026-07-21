@@ -12,6 +12,8 @@ import {
 import { PostData } from '../../helpers';
 import dayjs from 'dayjs';
 import logo from '../../assets/logo.jpg';
+import Attending from '../../components/attending';
+import Calling2 from '../../components/calling2';
 
 export const Route = createFileRoute('/_authenticated/queuing/$Code')({
   component: () => <Queuing />,
@@ -22,7 +24,33 @@ const delay = (milliseconds: number) =>
 
 const rowsPerDepartment = 8;
 
+const normalizeStatusText = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .toUpperCase();
+
+const isDeferredStatus = (...values: unknown[]) =>
+  values.some((value) => {
+    const status = normalizeStatusText(value);
+    return status === 'E' || status.includes('DEFER');
+  });
+
+const getVisibleQueuePatients = (patients: any[]) =>
+  patients.filter(
+    (patient) =>
+      !isDeferredStatus(
+        patient.Status,
+        patient.StatusDesc,
+        patient.StatusDescription,
+        patient.ChargeStatus,
+      ),
+  );
+
 const formatCounterQueue = (counter: TQCounters) => {
+  if (isDeferredStatus(counter.Status, counter.StatusDescription)) {
+    return '--';
+  }
+
   const isSameAsToday = counter.DateAdded
     ? dayjs(counter.DateAdded).format('YYYYMMDD') === dayjs().format('YYYYMMDD')
     : false;
@@ -31,9 +59,67 @@ const formatCounterQueue = (counter: TQCounters) => {
 };
 
 const getStatusClassName = (status?: string) =>
-  status?.toUpperCase().includes('DONE')
-    ? 'text-cyan-300'
-    : 'text-white';
+  status?.toUpperCase().includes('DONE') ? 'text-cyan-300' : 'text-white';
+
+const getPatientStatusPalette = (status?: string) => {
+  const normalizedStatus = status?.toUpperCase() ?? '';
+
+  if (normalizedStatus === 'C' || normalizedStatus.includes('CALL')) {
+    return {
+      rowClass: 'border-l-yellow-300 bg-yellow-500/30',
+      queueClass: 'text-yellow-50',
+      statusClass: 'text-yellow-100',
+    };
+  }
+
+  if (normalizedStatus === 'A' || normalizedStatus.includes('ATTEND')) {
+    return {
+      rowClass: 'border-l-sky-300 bg-sky-700/35',
+      queueClass: 'text-sky-50',
+      statusClass: 'text-sky-100',
+    };
+  }
+
+  if (normalizedStatus.includes('DONE')) {
+    return {
+      rowClass: 'border-l-cyan-300 bg-cyan-700/35',
+      queueClass: 'text-cyan-50',
+      statusClass: 'text-cyan-200',
+    };
+  }
+
+  if (
+    normalizedStatus.includes('CANCEL') ||
+    normalizedStatus.includes('VOID') ||
+    normalizedStatus.includes('SKIP')
+  ) {
+    return {
+      rowClass: 'border-l-red-300 bg-red-700/35',
+      queueClass: 'text-red-50',
+      statusClass: 'text-red-100',
+    };
+  }
+
+  return {
+    rowClass: 'border-l-emerald-300 bg-emerald-800/35',
+    queueClass: 'text-white',
+    statusClass: getStatusClassName(status),
+  };
+};
+
+const getStatusAnimation = (status?: string, size = 42) => {
+  const normalizedStatus = status?.toUpperCase() ?? '';
+
+  if (normalizedStatus === 'C' || normalizedStatus.includes('CALL')) {
+    return <Calling2 size={size} />;
+  }
+
+  if (normalizedStatus === 'A' || normalizedStatus.includes('ATTEND')) {
+    return <Attending size={size} />;
+  }
+
+  return null;
+};
 
 const DepartmentQueue = ({
   currentDepartment,
@@ -71,33 +157,46 @@ const DepartmentQueue = ({
     return () => clearInterval(interval);
   }, [handleGetPatients]);
 
-  const visiblePatients = patients.slice(0, rowsPerDepartment);
+  const visiblePatients = getVisibleQueuePatients(patients).slice(
+    0,
+    rowsPerDepartment,
+  );
   const fillerRows = Math.max(rowsPerDepartment - visiblePatients.length, 0);
 
   return (
     <section className="min-w-0">
       <div className="mb-2 truncate text-center text-3xl font-black uppercase leading-tight tracking-wide text-white drop-shadow-[2px_2px_0_rgba(0,0,0,0.25)] lg:text-4xl 2xl:text-6xl">
-        {currentDepartment?.CounterName2 ?? currentDepartment?.CounterName ?? ''}
+        {currentDepartment?.CounterName2 ??
+          currentDepartment?.CounterName ??
+          ''}
       </div>
 
       <div className="overflow-hidden rounded-sm border border-emerald-400/35 bg-emerald-700/25 shadow-[inset_0_0_24px_rgba(0,0,0,0.15)]">
-        {visiblePatients.map((patient, index) => (
-          <div
-            className="grid h-16 grid-cols-[32%_68%] items-center border-b border-emerald-300/35 bg-emerald-800/35 px-1.5 last:border-b-0 lg:h-20 2xl:h-24"
-            key={patient.Id ?? `${patient.QueueNo}-${index}`}
-          >
-            <div className="truncate text-2xl font-black leading-[1.18] text-white drop-shadow-[2px_2px_0_rgba(0,0,0,0.3)] lg:text-3xl 2xl:text-5xl">
-              {patient.QueueNo}
-            </div>
+        {visiblePatients.map((patient, index) => {
+          const statusDescription =
+            patient.StatusDesc ?? patient.StatusDescription ?? '';
+          const statusPalette = getPatientStatusPalette(
+            patient.Status ?? statusDescription,
+          );
+
+          return (
             <div
-              className={`truncate text-2xl font-black leading-[1.18] drop-shadow-[2px_2px_0_rgba(0,0,0,0.28)] lg:text-3xl 2xl:text-5xl ${getStatusClassName(
-                patient.StatusDesc,
-              )}`}
+              className={`grid h-16 grid-cols-[32%_68%] items-center border-b border-l-8 border-b-emerald-300/35 px-1.5 last:border-b-0 lg:h-20 2xl:h-24 ${statusPalette.rowClass}`}
+              key={patient.Id ?? `${patient.QueueNo}-${index}`}
             >
-              {patient.StatusDesc}
+              <div
+                className={`truncate text-2xl font-black leading-[1.18] drop-shadow-[2px_2px_0_rgba(0,0,0,0.3)] lg:text-3xl 2xl:text-5xl ${statusPalette.queueClass}`}
+              >
+                {patient.QueueNo}
+              </div>
+              <div
+                className={`flex min-w-0 items-center gap-2 overflow-hidden text-2xl font-black leading-[1.18] drop-shadow-[2px_2px_0_rgba(0,0,0,0.28)] lg:text-3xl 2xl:text-5xl ${statusPalette.statusClass}`}
+              >
+                <span className="min-w-0 truncate">{statusDescription}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {Array.from({ length: fillerRows }).map((_, index) => (
           <div
@@ -134,6 +233,31 @@ const Queuing = () => {
     }
   }, [Code]);
 
+  const getVisiblePatientCount = useCallback(
+    async (counterCode?: string) => {
+      if (!counterCode) {
+        return 0;
+      }
+
+      try {
+        const res = await PostData('GetRecords', {
+          sp: 'udp_GetPatientsPerCounter2',
+          parameters: {
+            BranchCode: branchCode,
+            CounterCode: counterCode,
+            DateFrom: dayjs().format('YYYYMMDD'),
+            DateTo: dayjs().format('YYYYMMDD'),
+          },
+        });
+
+        return getVisibleQueuePatients(res?.parameters?.lst ?? []).length;
+      } catch {
+        return 0;
+      }
+    },
+    [branchCode],
+  );
+
   const handleGetDepartments = useCallback(async () => {
     const res = await PostData('GetRecords', {
       sp: 'udp_GetPatientPerCounter2',
@@ -145,9 +269,23 @@ const Queuing = () => {
       },
     });
     if (res) {
-      setQueueCounters(res.parameters.lst ?? []);
+      const departments = (res.parameters.lst ?? []) as TCurrentDepartment[];
+      const departmentsWithVisiblePatients = await Promise.all(
+        departments.map(async (department) => ({
+          department,
+          visiblePatientCount: await getVisiblePatientCount(
+            department.CounterCode,
+          ),
+        })),
+      );
+
+      setQueueCounters(
+        departmentsWithVisiblePatients
+          .filter(({ visiblePatientCount }) => visiblePatientCount > 0)
+          .map(({ department }) => department),
+      );
     }
-  }, [Code, branchCode]);
+  }, [Code, branchCode, getVisiblePatientCount]);
 
   useEffect(() => {
     setHideSideBar('Y');
@@ -296,19 +434,35 @@ const Queuing = () => {
           </div>
 
           <div className="min-h-0 flex-1">
-            {Counters?.map((counter: TQCounters) => (
-              <div
-                className="flex min-h-[92px] flex-col items-center justify-center border-b border-rose-100 bg-white/45 px-4 text-center 2xl:min-h-[118px]"
-                key={counter.Code}
-              >
-                <div className="font-sans text-xl font-semibold uppercase tracking-normal text-slate-800 2xl:text-3xl">
-                  {counter.Description}
+            {Counters?.map((counter: TQCounters) => {
+              const queueNo = formatCounterQueue(counter);
+              const statusAnimation =
+                queueNo === '--'
+                  ? null
+                  : getStatusAnimation(
+                      counter.StatusDescription ?? counter.Status,
+                      58,
+                    );
+
+              return (
+                <div
+                  className="flex min-h-[92px] flex-col items-center justify-center border-b border-rose-100 bg-white/45 px-4 text-center 2xl:min-h-[118px]"
+                  key={counter.Code}
+                >
+                  <div className="font-sans text-xl font-semibold uppercase tracking-normal text-slate-800 2xl:text-3xl">
+                    {counter.Description}
+                  </div>
+                  <div className="mt-1 flex min-h-[58px] items-center justify-center gap-2 font-sans text-5xl font-bold leading-none tracking-normal text-blue-900 2xl:min-h-[72px] 2xl:text-7xl">
+                    {statusAnimation && (
+                      <span className="flex h-[58px] w-[58px] shrink-0 items-center justify-center 2xl:h-[72px] 2xl:w-[72px]">
+                        {statusAnimation}
+                      </span>
+                    )}
+                    <span>{queueNo}</span>
+                  </div>
                 </div>
-                <div className="mt-1 font-sans text-5xl font-bold leading-none tracking-normal text-blue-900 2xl:text-7xl">
-                  {formatCounterQueue(counter)}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </aside>
 
@@ -319,7 +473,11 @@ const Queuing = () => {
           </div>
 
           <div className="flex h-full items-center pt-11 2xl:pt-12">
-            <div className="grid w-full grid-cols-1 gap-3 lg:grid-cols-2 2xl:gap-4">
+            <div
+              className={`grid w-full grid-cols-1 gap-3 2xl:gap-4 ${
+                visibleDepartments.length > 1 ? 'lg:grid-cols-2' : ''
+              }`}
+            >
               {visibleDepartments.map((department) => (
                 <DepartmentQueue
                   currentDepartment={department}

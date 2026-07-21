@@ -106,7 +106,9 @@ export default function PharmacySales() {
         },
       });
       if (res) {
-        return res.parameters.lst as TPrice[];
+        const list = res.parameters.lst as TPrice[];
+        const opdList = list.filter((d) => d.PriceCategory2 === 'OPD');
+        return opdList;
       }
     },
     refetchOnWindowFocus: false,
@@ -178,6 +180,8 @@ export default function PharmacySales() {
     ]);
     form2.resetFields();
   };
+
+  console.log(items.data);
 
   const handleComputeTotal = () => {
     let amount: number = 0;

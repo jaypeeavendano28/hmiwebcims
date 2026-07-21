@@ -368,6 +368,7 @@ export type TQueueDetail = {
   ResultId?: number;
   DateQueued?: string;
   Description?: string;
+  ChargeStatus?: string;
   Status: string;
 };
 

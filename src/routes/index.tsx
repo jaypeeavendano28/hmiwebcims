@@ -1,13 +1,10 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { Button } from "antd";
 import { useAuth } from "../hooks/userAuth";
-import { registerLicense } from "@syncfusion/ej2-base";
 export const Route = createFileRoute("/")({
   component: () => <HomePage />,
 });
-registerLicense(
-  "ORg4AjUWIQA/Gnt2VVhiQlFaclZJXGFWfVJpTGpQdk5xdV9DaVZUTWY/P1ZhSXxQdkdjX31dcHVXRmdcV0w="
-);
+
 const HomePage = () => {
   const auth = useAuth();
   const router = useRouter();

@@ -1,6 +1,20 @@
 import { createLazyFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { DatePicker, Divider, Form, Input, Radio, Select, Switch } from "antd";
+import {
+  Button,
+  DatePicker,
+  Divider,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  notification,
+  Radio,
+  Select,
+  Switch,
+  Tooltip,
+} from "antd";
+import { FileExcelOutlined } from "@ant-design/icons";
 import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
 import useAppStore from "../../store";
 import { useEffect, useState } from "react";
@@ -10,6 +24,9 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import Loading from "../../components/loading";
 import PatientsPerCounter from "../../components/PatientsPerCounter";
+import type { TDoctors } from "../../types";
+import * as XLSX from "xlsx-js-style";
+import { saveAs } from "file-saver";
 export const Route = createLazyFileRoute(
   "/_authenticated/registeredpatients/$station",
 )({
@@ -53,9 +70,54 @@ type DepartmentProcedureItem = {
   Description: string;
 };
 
+type ProfessionalFeeDepartmentType =
+  | "LABORATORY"
+  | "CARDIOLOGY"
+  | "ULTRASOUND"
+  | "XRAY"
+  | "OTHER";
+
+type ProfessionalFeeFormValues = {
+  ProcedureId?: number;
+  ProcedureIds?: number[];
+  Month: Dayjs;
+  ReaderId: number;
+  PfPercentage?: number;
+};
+
+type ProfessionalFeeStatementRow = {
+  DepartmentType?: ProfessionalFeeDepartmentType;
+  ReaderId: number;
+  ReaderName?: string;
+  ResultId: number;
+  BranchCode?: string;
+  BranchName?: string;
+  AppointmentId: number;
+  ChargeId: number;
+  ItemId: number;
+  ProcedureName?: string;
+  MemberNo?: string;
+  PatientName?: string;
+  Diagnosis?: string;
+  DateDone?: string;
+  OrNo?: string;
+  BaseAmount?: number;
+  HmiCarePrice?: number;
+  PfAmount?: number;
+  HmoCompany?: string;
+};
+
+type ProfessionalFeeDepartment = {
+  DepartmentId: number;
+  DepartmentName: string;
+  ProcedureId?: number;
+};
+
 const DEFAULT_DATE_RANGE: DateRangePreset = "today";
 const DATE_QUERY_FORMAT = "YYYYMMDD";
 const DATE_DISPLAY_FORMAT = "MM/DD/YYYY";
+const PF_TAX_RATE = 0.1;
+const SELECT_ALL_PROCEDURES_VALUE = "__ALL_PROCEDURES__";
 
 const dateRangeOptions: { value: DateRangePreset; label: string }[] = [
   { value: "today", label: "Today" },
@@ -146,6 +208,271 @@ const formatDateRange = (value: FormDateRangeValue) => {
   };
 };
 
+const sanitizeExcelFileName = (value: string) =>
+  value.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
+
+const roundCurrency = (value: number) => Math.round(value * 100) / 100;
+
+const getProfessionalFeeDepartmentType = (
+  departmentName?: string,
+): ProfessionalFeeDepartmentType => {
+  const normalizedName = departmentName?.toUpperCase() ?? "";
+
+  if (normalizedName.includes("LAB")) {
+    return "LABORATORY";
+  }
+
+  if (normalizedName.includes("CARDIO")) {
+    return "CARDIOLOGY";
+  }
+
+  if (
+    normalizedName.includes("ULTRASOUND") ||
+    normalizedName.includes("UTZ")
+  ) {
+    return "ULTRASOUND";
+  }
+
+  if (
+    normalizedName.includes("XRAY") ||
+    normalizedName.includes("X-RAY") ||
+    normalizedName.includes("RADIO")
+  ) {
+    return "XRAY";
+  }
+
+  return "OTHER";
+};
+
+const canGenerateProfessionalFee = (departmentName?: string) =>
+  getProfessionalFeeDepartmentType(departmentName) !== "OTHER";
+
+const exportProfessionalFeeStatement = (
+  rows: ProfessionalFeeStatementRow[],
+  values: ProfessionalFeeFormValues,
+  procedureName: string,
+  readerName: string,
+  departmentType: ProfessionalFeeDepartmentType,
+) => {
+  const procedureText =
+    procedureName || rows[0]?.ProcedureName || "EXAM/PROCEDURE";
+  const branchName = rows[0]?.BranchName || rows[0]?.BranchCode || "";
+  const monthText = values.Month.format("MMMM YYYY").toUpperCase();
+  const pfRows = rows.map((row) => ({
+    ...row,
+    HmiCarePrice:
+      row.HmiCarePrice === null || row.HmiCarePrice === undefined
+        ? undefined
+        : roundCurrency(Number(row.HmiCarePrice)),
+    PfAmount: roundCurrency(Number(row.PfAmount ?? 0)),
+  }));
+  const totalGross = roundCurrency(
+    pfRows.reduce((sum, row) => sum + row.PfAmount, 0),
+  );
+  const lessTax = roundCurrency(totalGross * PF_TAX_RATE);
+  const totalNet = roundCurrency(totalGross - lessTax);
+  const tableStartRow = 6;
+  const totalStartRow = tableStartRow + pfRows.length + 2;
+  const checkedByStartRow = totalStartRow + 5;
+  const useTaxSummary = departmentType !== "LABORATORY";
+  const sheetRows = [
+    [],
+    ["PROCEDURE :", procedureText, "", "", "MEMBER & NON-MEMBER / HMICARE"],
+    ["SPECIALIST :", readerName],
+    ["DATE :", monthText],
+    ["", branchName ? `HMICARE - ${branchName}` : "HMICARE"],
+    [],
+    [
+      "MEM. #",
+      "PATIENT NAME",
+      "DIAGNOSIS",
+      "DATE DONE",
+      "EXAMINATION",
+      "PP",
+      "O.R #",
+      "PF",
+    ],
+    ...pfRows.map((row) => [
+      row.MemberNo ?? "",
+      row.PatientName ?? "",
+      row.Diagnosis ?? "",
+      row.DateDone ? dayjs(row.DateDone).format("MM/DD/YYYY") : "",
+      row.ProcedureName ?? "",
+      row.HmiCarePrice ?? "",
+      row.OrNo ?? "",
+      row.PfAmount,
+    ]),
+    [],
+    useTaxSummary
+      ? ["", "", "", "", "", "", "TOTAL GROSS", totalGross]
+      : ["", "", "", "", "", "", "TOTAL AMT.", totalGross],
+    useTaxSummary ? ["", "", "", "", "", "", "LESS 10%", lessTax] : [],
+    useTaxSummary ? ["", "", "", "", "", "", "TOTAL NET", totalNet] : [],
+    [],
+    [],
+    ["Checked By:"],
+    [],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+  const border = {
+    top: { style: "thin", color: { rgb: "000000" } },
+    bottom: { style: "thin", color: { rgb: "000000" } },
+    left: { style: "thin", color: { rgb: "000000" } },
+    right: { style: "thin", color: { rgb: "000000" } },
+  };
+  const headerStyle = {
+    font: { bold: true },
+    alignment: { horizontal: "center", vertical: "center" },
+    border,
+  };
+  const tableCellStyle = {
+    alignment: { vertical: "center", wrapText: true },
+    border,
+  };
+  const centerTableCellStyle = {
+    ...tableCellStyle,
+    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+  };
+  const currencyCellStyle = {
+    ...tableCellStyle,
+    alignment: { horizontal: "right", vertical: "center" },
+    numFmt: "#,##0.00",
+  };
+  const metadataLabelStyle = {
+    font: { bold: true },
+    alignment: { horizontal: "left" },
+  };
+  const metadataValueStyle = {
+    font: { bold: true },
+    alignment: { horizontal: "left" },
+  };
+  const totalLabelStyle = {
+    font: { bold: true },
+    alignment: { horizontal: "right" },
+  };
+  const totalValueStyle = {
+    font: { bold: true },
+    alignment: { horizontal: "right" },
+    numFmt: "#,##0.00",
+  };
+
+  ws["!cols"] = [
+    { wch: 16 },
+    { wch: 38 },
+    { wch: 42 },
+    { wch: 14 },
+    { wch: 24 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 12 },
+  ];
+  ws["!merges"] = [{ s: { r: 1, c: 4 }, e: { r: 1, c: 7 } }];
+
+  [1, 2, 3].forEach((rowIndex) => {
+    const labelCell = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
+    const valueCell = XLSX.utils.encode_cell({ r: rowIndex, c: 1 });
+    if (ws[labelCell]) {
+      ws[labelCell].s = metadataLabelStyle;
+    }
+    if (ws[valueCell]) {
+      ws[valueCell].s = metadataValueStyle;
+    }
+  });
+
+  const branchCell = XLSX.utils.encode_cell({ r: 4, c: 1 });
+  if (ws[branchCell]) {
+    ws[branchCell].s = metadataValueStyle;
+  }
+
+  const memberLabelCell = XLSX.utils.encode_cell({ r: 1, c: 4 });
+  if (ws[memberLabelCell]) {
+    ws[memberLabelCell].s = {
+      font: { bold: true },
+      alignment: { horizontal: "center" },
+    };
+  }
+
+  for (let columnIndex = 0; columnIndex <= 7; columnIndex++) {
+    const cellAddress = XLSX.utils.encode_cell({
+      r: tableStartRow,
+      c: columnIndex,
+    });
+    if (ws[cellAddress]) {
+      ws[cellAddress].s = headerStyle;
+    }
+  }
+
+  pfRows.forEach((_, rowOffset) => {
+    const rowIndex = tableStartRow + rowOffset + 1;
+    for (let columnIndex = 0; columnIndex <= 7; columnIndex++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex });
+      if (!ws[cellAddress]) {
+        continue;
+      }
+
+      if ([0, 3, 4, 6].includes(columnIndex)) {
+        ws[cellAddress].s = centerTableCellStyle;
+      } else if ([5, 7].includes(columnIndex)) {
+        ws[cellAddress].s = currencyCellStyle;
+      } else {
+        ws[cellAddress].s = tableCellStyle;
+      }
+    }
+  });
+
+  const totalRows = useTaxSummary
+    ? [totalStartRow, totalStartRow + 1, totalStartRow + 2]
+    : [totalStartRow];
+  totalRows.forEach((rowIndex) => {
+    const labelCell = XLSX.utils.encode_cell({ r: rowIndex, c: 6 });
+    const valueCell = XLSX.utils.encode_cell({ r: rowIndex, c: 7 });
+    if (ws[labelCell]) {
+      ws[labelCell].s = totalLabelStyle;
+    }
+    if (ws[valueCell]) {
+      ws[valueCell].s = totalValueStyle;
+    }
+  });
+
+  const finalTotalCell = XLSX.utils.encode_cell({
+    r: useTaxSummary ? totalStartRow + 2 : totalStartRow,
+    c: 7,
+  });
+  if (ws[finalTotalCell]) {
+    ws[finalTotalCell].s = {
+      ...totalValueStyle,
+      border: {
+        top: { style: "double", color: { rgb: "000000" } },
+        bottom: { style: "double", color: { rgb: "000000" } },
+      },
+    };
+  }
+
+  const checkedByCell = XLSX.utils.encode_cell({
+    r: checkedByStartRow,
+    c: 0,
+  });
+  if (ws[checkedByCell]) {
+    ws[checkedByCell].s = { font: { bold: true } };
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "PF Statement");
+  const buffer = XLSX.write(wb, {
+    bookType: "xlsx",
+    type: "array",
+  });
+  const fileName = sanitizeExcelFileName(
+    `PF_${procedureText}_${readerName}_${values.Month.format("YYYYMM")}`,
+  );
+
+  saveAs(
+    new Blob([buffer], { type: "application/octet-stream" }),
+    `${fileName || "Professional_Fee_Statement"}.xlsx`,
+  );
+};
+
 const DepartmentItemFilter = ({
   DepartmentId,
   value,
@@ -194,6 +521,11 @@ const RegisteredPatients = () => {
   const [departmentItemFilters, setDepartmentItemFilters] = useState<
     Record<string, number | undefined>
   >({});
+  const [pfModalOpen, setPfModalOpen] = useState(false);
+  const [isGeneratingPf, setIsGeneratingPf] = useState(false);
+  const [pfDepartment, setPfDepartment] = useState<
+    ProfessionalFeeDepartment | undefined
+  >();
   const store = useAppStore();
   const router = useRouter();
   const search = Route.useSearch() as QueueSearch;
@@ -225,8 +557,15 @@ const RegisteredPatients = () => {
   const queryClient = useQueryClient();
 
   const [form] = Form.useForm();
+  const [pfForm] = Form.useForm<ProfessionalFeeFormValues>();
   const searchTextFilter = Form.useWatch("SearchText", form);
   const hasPatientFilter = !isNullOrUndefinedOrBlank(searchTextFilter);
+  const pfDepartmentType = getProfessionalFeeDepartmentType(
+    pfDepartment?.DepartmentName,
+  );
+  const isLaboratoryProfessionalFee = pfDepartmentType === "LABORATORY";
+  const isXrayProfessionalFee = pfDepartmentType === "XRAY";
+  const isUltrasoundProfessionalFee = pfDepartmentType === "ULTRASOUND";
 
   const departments = useQuery({
     queryKey: ["queueDepartments", store.userId],
@@ -242,6 +581,47 @@ const RegisteredPatients = () => {
     refetchOnWindowFocus: false,
     enabled: station === "1",
   });
+  const doctors = useQuery<TDoctors[]>({
+    queryKey: ["professionalFeeDoctors", store.branchCode],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetDoctors",
+        parameters: {},
+      });
+
+      return res?.parameters.lst ?? [];
+    },
+    refetchOnWindowFocus: false,
+    enabled: pfModalOpen,
+  });
+  const professionalFeeProcedures = useQuery<DepartmentProcedureItem[]>({
+    queryKey: [
+      "professionalFeeProcedures",
+      store.branchCode,
+      pfDepartmentType,
+      pfDepartment?.DepartmentId,
+    ],
+    queryFn: async () => {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetProfessionalFeeProcedures",
+        parameters: {
+          BranchCode: store.branchCode,
+          DepartmentType: pfDepartmentType,
+          DepartmentId: pfDepartment?.DepartmentId ?? 0,
+        },
+      });
+
+      return res?.parameters.lst ?? [];
+    },
+    refetchOnWindowFocus: false,
+    enabled:
+      pfModalOpen &&
+      Number(pfDepartment?.DepartmentId) > 0 &&
+      !isLaboratoryProfessionalFee,
+  });
+  const professionalFeeReaders = (doctors.data ?? []).filter((doctor) =>
+    pfDepartmentType === "LABORATORY" ? doctor.Pathologist : true,
+  );
   const accessibleDepartments = departments.data ?? [];
   const hasSelectedDepartmentAccess =
     DepartmentId !== undefined &&
@@ -387,6 +767,139 @@ const RegisteredPatients = () => {
     }
 
     updateFilterSearch(values);
+  };
+
+  const handleOpenProfessionalFeeModal = (department: any) => {
+    const nextDepartment = {
+      DepartmentId: Number(department.DepartmentId),
+      DepartmentName: department.DepartmentName ?? "",
+      ProcedureId: departmentItemFilters[department.DepartmentId],
+    };
+    const nextDepartmentType = getProfessionalFeeDepartmentType(
+      nextDepartment.DepartmentName,
+    );
+    const selectedProcedureId = nextDepartment.ProcedureId;
+
+    setPfDepartment(nextDepartment);
+    pfForm.resetFields();
+    pfForm.setFieldsValue({
+      Month: dayjs(),
+      ProcedureId:
+        nextDepartmentType !== "XRAY" &&
+        nextDepartmentType !== "LABORATORY" &&
+        nextDepartmentType !== "ULTRASOUND"
+          ? selectedProcedureId
+          : undefined,
+      ProcedureIds:
+        (nextDepartmentType === "XRAY" ||
+          nextDepartmentType === "ULTRASOUND") &&
+        selectedProcedureId
+          ? [selectedProcedureId]
+          : undefined,
+      ReaderId: undefined,
+      PfPercentage: nextDepartmentType === "ULTRASOUND" ? 25 : undefined,
+    });
+    setPfModalOpen(true);
+  };
+
+  const handleGenerateProfessionalFee = async (
+    values: ProfessionalFeeFormValues,
+  ) => {
+    try {
+      setIsGeneratingPf(true);
+      const departmentType = getProfessionalFeeDepartmentType(
+        pfDepartment?.DepartmentName,
+      );
+      const procedureIds = values.ProcedureIds ?? [];
+      const pfPercentageValue = Number(values.PfPercentage ?? 25);
+      const pfPercentage =
+        Number.isFinite(pfPercentageValue) && pfPercentageValue >= 0
+          ? pfPercentageValue
+          : 25;
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetProfessionalFeeStatement",
+        parameters: {
+          BranchCode: store.branchCode,
+          Month: values.Month.month() + 1,
+          Year: values.Month.year(),
+          DepartmentType: departmentType,
+          ReaderId: values.ReaderId,
+          ItemId: values.ProcedureId ?? 0,
+          ItemIdsCsv: procedureIds.join(","),
+          DepartmentId: pfDepartment?.DepartmentId ?? 0,
+          ...(departmentType === "ULTRASOUND"
+            ? { PfPercentage: pfPercentage }
+            : {}),
+        },
+      });
+      const rows = (res?.parameters.lst ?? []) as ProfessionalFeeStatementRow[];
+
+      if (rows.length === 0) {
+        notification.warning({
+          message: "No completed results found for the selected PF filters.",
+          placement: "topRight",
+          duration: 3,
+        });
+        return;
+      }
+
+      const procedureName =
+        departmentType === "LABORATORY"
+          ? "HISTOPATH / PAPSMEAR"
+          : departmentType === "ULTRASOUND"
+          ? (professionalFeeProcedures.data ?? [])
+              .filter((procedure) => procedureIds.includes(procedure.Id))
+              .map((procedure) => procedure.Description)
+              .join(", ") || "ULTRASOUND"
+          : departmentType === "XRAY"
+            ? (professionalFeeProcedures.data ?? [])
+                .filter((procedure) => procedureIds.includes(procedure.Id))
+                .map((procedure) => procedure.Description)
+                .join(", ") || "XRAY"
+            : professionalFeeProcedures.data?.find(
+                (procedure) => procedure.Id === values.ProcedureId,
+              )?.Description ?? rows[0]?.ProcedureName ?? "";
+      const readerName =
+        professionalFeeReaders.find((reader) => reader.Id === values.ReaderId)
+          ?.Name ?? rows[0]?.ReaderName ?? "";
+
+      exportProfessionalFeeStatement(
+        rows,
+        values,
+        procedureName,
+        readerName,
+        departmentType,
+      );
+      setPfModalOpen(false);
+      setPfDepartment(undefined);
+    } catch (error) {
+      console.error(error);
+      notification.error({
+        message: "Unable to generate PF statement.",
+        placement: "topRight",
+        duration: 3,
+      });
+    } finally {
+      setIsGeneratingPf(false);
+    }
+  };
+
+  const handleSelectAllProfessionalFeeProcedures = (
+    selectedValues: (number | string)[],
+  ) => {
+    const allProcedureIds = (professionalFeeProcedures.data ?? []).map(
+      (procedure) => procedure.Id,
+    );
+
+    pfForm.setFieldValue(
+      "ProcedureIds",
+      selectedValues.includes(SELECT_ALL_PROCEDURES_VALUE)
+        ? allProcedureIds
+        : selectedValues.filter(
+            (selectedValue): selectedValue is number =>
+              typeof selectedValue === "number",
+          ),
+    );
   };
 
   useEffect(() => {
@@ -564,16 +1077,34 @@ const RegisteredPatients = () => {
                 >
                   <div className="flex items-center justify-between gap-3 bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-700">
                     <span>{department.DepartmentName}</span>
-                    <DepartmentItemFilter
-                      DepartmentId={department.DepartmentId}
-                      value={departmentItemFilters[department.DepartmentId]}
-                      onChange={(value) =>
-                        setDepartmentItemFilters((previous) => ({
-                          ...previous,
-                          [department.DepartmentId]: value,
-                        }))
-                      }
-                    />
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <DepartmentItemFilter
+                        DepartmentId={department.DepartmentId}
+                        value={departmentItemFilters[department.DepartmentId]}
+                        onChange={(value) =>
+                          setDepartmentItemFilters((previous) => ({
+                            ...previous,
+                            [department.DepartmentId]: value,
+                          }))
+                        }
+                      />
+                      {canGenerateProfessionalFee(
+                        department.DepartmentName,
+                      ) && (
+                        <Tooltip title="Generate PF">
+                          <Button
+                            aria-label="Generate PF"
+                            className="!h-6 !w-6 !p-0 !text-slate-500 hover:!text-sky-600"
+                            icon={<FileExcelOutlined />}
+                            size="small"
+                            type="text"
+                            onClick={() =>
+                              handleOpenProfessionalFeeModal(department)
+                            }
+                          />
+                        </Tooltip>
+                      )}
+                    </div>
                   </div>
                   <div className="p-1">
                     {renderDepartmentPatients(department, true)}
@@ -610,6 +1141,170 @@ const RegisteredPatients = () => {
           </DataTable>
         )}
       </div>
+      <Modal
+        open={pfModalOpen}
+        title={`Generate Professional Fee${
+          pfDepartment?.DepartmentName ? ` - ${pfDepartment.DepartmentName}` : ""
+        }`}
+        footer={null}
+        width={620}
+        destroyOnClose
+        onCancel={() => {
+          setPfModalOpen(false);
+          setPfDepartment(undefined);
+        }}
+      >
+        <Form
+          form={pfForm}
+          layout="vertical"
+          requiredMark={false}
+          initialValues={{
+            Month: dayjs(),
+            PfPercentage: 25,
+          }}
+          onFinish={handleGenerateProfessionalFee}
+        >
+          <div className="grid gap-3 md:grid-cols-2">
+            <Form.Item
+              name="ReaderId"
+              label="Specialist Reader"
+              rules={[
+                {
+                  required: true,
+                  message: "Please select specialist reader.",
+                },
+              ]}
+            >
+              <Select
+                showSearch
+                loading={doctors.isFetching}
+                placeholder="Select reader"
+                optionFilterProp="label"
+                options={professionalFeeReaders.map((doctor) => ({
+                  value: doctor.Id,
+                  label: doctor.Name ?? "",
+                }))}
+              />
+            </Form.Item>
+            {!isLaboratoryProfessionalFee &&
+              (isXrayProfessionalFee || isUltrasoundProfessionalFee ? (
+                <Form.Item
+                  name="ProcedureIds"
+                  label="Exam/Procedure"
+                  rules={[
+                    {
+                      validator: (_, value?: number[]) =>
+                        value && value.length > 0
+                          ? Promise.resolve()
+                          : Promise.reject(
+                              new Error("Please select exam/procedure."),
+                            ),
+                    },
+                  ]}
+                >
+                  <Select
+                    mode="multiple"
+                    showSearch
+                    loading={professionalFeeProcedures.isFetching}
+                    placeholder="Select exam/procedure"
+                    optionFilterProp="label"
+                    maxTagCount="responsive"
+                    onChange={handleSelectAllProfessionalFeeProcedures}
+                    options={[
+                      {
+                        value: SELECT_ALL_PROCEDURES_VALUE,
+                        label: "Select all",
+                      },
+                      ...(professionalFeeProcedures.data ?? []).map(
+                        (procedure) => ({
+                          value: procedure.Id,
+                          label: procedure.Description,
+                        }),
+                      ),
+                    ]}
+                  />
+                </Form.Item>
+              ) : (
+                <Form.Item
+                  name="ProcedureId"
+                  label="Exam/Procedure"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please select exam/procedure.",
+                    },
+                  ]}
+                >
+                  <Select
+                    showSearch
+                    loading={professionalFeeProcedures.isFetching}
+                    placeholder="Select exam/procedure"
+                    optionFilterProp="label"
+                    options={(professionalFeeProcedures.data ?? []).map(
+                      (procedure) => ({
+                        value: procedure.Id,
+                        label: procedure.Description,
+                      }),
+                    )}
+                  />
+                </Form.Item>
+              ))}
+            <Form.Item
+              name="Month"
+              label="Month"
+              rules={[
+                {
+                  required: true,
+                  message: "Please select month.",
+                },
+              ]}
+            >
+              <DatePicker
+                picker="month"
+                format="MMMM YYYY"
+                className="!w-full"
+              />
+            </Form.Item>
+            {isUltrasoundProfessionalFee && (
+              <Form.Item
+                name="PfPercentage"
+                label="PF Percentage"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please enter PF percentage.",
+                  },
+                ]}
+              >
+                <InputNumber
+                  className="!w-full"
+                  min={0}
+                  max={100}
+                  precision={2}
+                  addonAfter="%"
+                />
+              </Form.Item>
+            )}
+          </div>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button
+              onClick={() => {
+                setPfModalOpen(false);
+                setPfDepartment(undefined);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isGeneratingPf}
+            >
+              Generate Excel
+            </Button>
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };

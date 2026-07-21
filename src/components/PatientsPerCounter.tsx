@@ -59,6 +59,19 @@ type ProcedureStatusFormValues = {
 const procedureStatusOptions = ['DONE', 'TO FOLLOW', 'DEFERRED'];
 const resultCounterCodes = ['LAB', 'XRAY', 'ULT', 'CARDIO'];
 const allQueueDetailsOption = 0;
+const normalizeStatusText = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .toUpperCase();
+
+const isDeferredQueueOrProcedure = (patient: any) =>
+  normalizeStatusText(patient.Status) === 'E' ||
+  normalizeStatusText(patient.StatusDesc) === 'DEFERRED' ||
+  normalizeStatusText(patient.StatusDescription) === 'DEFERRED' ||
+  normalizeStatusText(patient.ChargeStatus) === 'DEFERRED';
+
+const getVisibleQueueDetails = (details: TQueueDetail[]) =>
+  details.filter((detail) => !isDeferredQueueOrProcedure(detail));
 
 const PatientsPerCounter: FC<Props> = ({
   CounterCode,
@@ -170,12 +183,15 @@ const PatientsPerCounter: FC<Props> = ({
   const selectedItemId = Number(ItemId);
   const hasItemFilter = Number.isFinite(selectedItemId) && selectedItemId > 0;
   const rawListOfPatients = patients.data ?? [];
-  const listOfPatients = hasItemFilter
+  const itemFilteredPatients = hasItemFilter
     ? rawListOfPatients.filter(
         (patient: any) =>
           Number(patient.ItemId ?? patient.fk_Items_Id) === selectedItemId,
       )
     : rawListOfPatients;
+  const listOfPatients = itemFilteredPatients.filter(
+    (patient: any) => !isDeferredQueueOrProcedure(patient),
+  );
 
   const refreshPatientQueries = async () => {
     await Promise.all([
@@ -294,9 +310,30 @@ const PatientsPerCounter: FC<Props> = ({
       }
 
       if (res.status === 2) {
+        const visibleDetails = getVisibleQueueDetails(res.parameters ?? []);
         resultWindow?.close();
+
+        if (visibleDetails.length === 0) {
+          notification.warning({
+            message: 'This queue has no pending procedures.',
+            placement: 'topRight',
+            duration: 3,
+          });
+          await refreshPatientQueries();
+          return;
+        }
+
+        if (visibleDetails.length === 1) {
+          await handleCall({
+            ...data,
+            Status: 'C',
+            QueueDetailId: visibleDetails[0].QueueDetailId,
+          });
+          return;
+        }
+
         setSelectedRecord({ ...data, Status: 'C' });
-        setPendingQueueDetails(res.parameters ?? []);
+        setPendingQueueDetails(visibleDetails);
         setSelectedQueueDetailId(undefined);
         setShowProcedureModal(true);
         return;
@@ -370,7 +407,19 @@ const PatientsPerCounter: FC<Props> = ({
         return;
       }
 
-      const details: TQueueDetail[] = res.parameters ?? [];
+      const details: TQueueDetail[] = getVisibleQueueDetails(
+        res.parameters ?? [],
+      );
+      if (details.length === 0) {
+        notification.warning({
+          message: 'This queue has no pending procedures.',
+          placement: 'topRight',
+          duration: 3,
+        });
+        await refreshPatientQueries();
+        return;
+      }
+
       if (details.length > 1) {
         setSelectedRecord({ ...data, Status: 'C' });
         setPendingQueueDetails(details);
@@ -699,14 +748,14 @@ const PatientsPerCounter: FC<Props> = ({
         )}
         {!resultCounterCodes.includes(rowCounterCode ?? '') &&
           canSetProcedureStatus(data) && (
-          <Tooltip title="Set Status">
-            <Button
-              type="primary"
-              icon={<BiEdit />}
-              onClick={() => openSetProcedureStatus(data)}
-              loading={isStatusSubmitting}
-            />
-          </Tooltip>
+            <Tooltip title="Set Status">
+              <Button
+                type="primary"
+                icon={<BiEdit />}
+                onClick={() => openSetProcedureStatus(data)}
+                loading={isStatusSubmitting}
+              />
+            </Tooltip>
           )}
         {rowCounterCode === 'LAB' && effectiveIsDone && (
           <>
@@ -772,7 +821,7 @@ const PatientsPerCounter: FC<Props> = ({
           />
         </Tooltip>
 
-        {data.Status === 'D' && <BsCheckLg size={32} color="green" />}
+        {/* {data.Status === 'D' && <BsCheckLg size={32} color="green" />} */}
 
         {data.WithMer === 'Y' && (
           <Tooltip title="MER is available">
@@ -1101,11 +1150,7 @@ const PatientsPerCounter: FC<Props> = ({
           >
             <Input.TextArea rows={4} />
           </Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={isStatusSubmitting}
-          >
+          <Button type="primary" htmlType="submit" loading={isStatusSubmitting}>
             Submit
           </Button>
         </Form>
@@ -1147,7 +1192,7 @@ const PatientsPerCounter: FC<Props> = ({
                 </div>
               </div>
             </Radio>
-            {pendingQueueDetails.map((detail) => {
+            {getVisibleQueueDetails(pendingQueueDetails).map((detail) => {
               const detailId =
                 detail.QueueDetailId ?? (detail as any).queueDetailId;
               const dateQueued =

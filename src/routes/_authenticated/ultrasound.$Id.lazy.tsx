@@ -17,15 +17,12 @@ import {
   Select,
   Space,
   Tabs,
-  Tooltip,
   notification,
 } from "antd";
 import useAppStore from "../../store";
 import dayjs from "dayjs";
 import axios from "axios";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { BiEdit, BiNotepad } from "react-icons/bi";
+import ChargesPerPatient from "../../components/ChargesPerPatient";
 import FinalizeForm from "../../components/FinalizeForm";
 import { ExistingRadiologyResults } from "../../components/ExistingRadiologyResult";
 const isDev = import.meta.env.DEV;
@@ -64,11 +61,8 @@ const formItemLayout = {
 const UltrasoundResult = () => {
   const [showFinalize, setShowFinalize] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
-  const [selectedRow, setSelectedRow] = useState<any | undefined>({});
   const [form] = Form.useForm();
-  const [form1] = Form.useForm();
-  const [showModal, setShowModal] = useState(false);
-  const [charges, setCharges] = useState([]);
+  const [Key, setKey] = useState<string>(Math.random().toString());
   const [allowSave, setAllowSave] = useState(false);
   const [chargeDescription, setChargeDescription] = useState("");
   const [chargeId, setChargeId] = useState(0);
@@ -108,22 +102,6 @@ const UltrasoundResult = () => {
     setIsOnlineResultShown(Boolean(res?.parameters?.Shown));
   };
 
-  const handleGetCharges = async () => {
-    try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetChargesByAppointmentIdForResult",
-        parameters: {
-          AppointmentId: Id,
-        },
-      });
-
-      if (res) {
-        setCharges(res.parameters.lst);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
   const handleGetAppointmentDetails = async () => {
     let res = await PostData("GetRecords", {
       sp: "udp_GetAppointmentDetails",
@@ -135,40 +113,6 @@ const UltrasoundResult = () => {
       setAppointmentDetails(res.parameters.lst[0]);
     }
   };
-  const handleSetStatus = async (v: any) => {
-    try {
-      const res = await PostData("SaveSetStatus", {
-        Id: selectedRow.Id,
-        Status: v.Status,
-        StatusRemarks: v.StatusRemarks,
-      });
-
-      if (res) {
-        if (res.status === 1) {
-          notification.success({
-            message: "Successfully Saved!",
-            placement: "topRight",
-            duration: 3,
-          });
-          handleGetCharges();
-          setShowModal(false);
-        } else {
-          notification.error({
-            message: res.message,
-            placement: "topRight",
-            duration: 3,
-          });
-        }
-      }
-    } catch (error: any) {
-      notification.error({
-        message: error.message,
-        placement: "topRight",
-        duration: 3,
-      });
-    }
-  };
-
   const handleSubmitForm = async (values: any) => {
     try {
       setIsProcessing(true);
@@ -181,7 +125,7 @@ const UltrasoundResult = () => {
         Id: ResultId,
         fk_Appointments_Id: appointmentDetails?.Id,
         fk_Charges_Id: chargeId,
-        Department: "XR",
+        Department: "US",
         ChargeDescription: chargeDescription,
       };
 
@@ -200,6 +144,7 @@ const UltrasoundResult = () => {
           setResultId(res.parameters.Id);
           setResultNo(res.parameters.ResultNo);
           await refreshOnlineResultStatus(res.parameters.Id);
+          setKey(Math.random().toString());
         } else {
           setIsProcessing(false);
           notification.error({
@@ -485,7 +430,7 @@ const UltrasoundResult = () => {
         setIsFinalized(false);
         setIsOnlineResultShown(false);
         form.resetFields();
-        handleGetCharges();
+        setKey(Math.random().toString());
       } else {
         notification.error({
           message: res?.message ?? "Unable to delete result.",
@@ -503,49 +448,9 @@ const UltrasoundResult = () => {
       setIsProcessing(false);
     }
   };
-  const actionBodyTemplate = (data: any) => {
-    //  store.setItemDetails(data);
-    return (
-      <Space>
-        {data.fk_Departments_Id === 1002 && (
-          <Tooltip title="Set Status">
-            <Button
-              type="link"
-              className="!h-auto !p-0"
-              icon={<BiEdit size={16} />}
-              onClick={() => {
-                setSelectedRow(data);
-                form.resetFields();
-                if (!isNullOrUndefinedOrBlank(data.Status)) {
-                  form.setFieldsValue({
-                    Status: data.Status,
-                    StatusRemarks: data.StatusRemarks,
-                  });
-                }
-
-                setShowModal(true);
-              }}
-            />
-          </Tooltip>
-        )}
-
-        {data.fk_Departments_Id === 1002 && (
-          <Tooltip title="Result">
-            <Button
-              type="link"
-              className="!h-auto !p-0"
-              icon={<BiNotepad size={16} />}
-              onClick={() => handleNewResult!(data)}
-            />
-          </Tooltip>
-        )}
-      </Space>
-    );
-  };
   useEffect(() => {
     handleGetAppointmentDetails();
     handleInitialize();
-    handleGetCharges();
   }, []);
   useEffect(() => {
     if (!Number.isFinite(requestedChargeId) || requestedChargeId <= 0) {
@@ -607,49 +512,12 @@ const UltrasoundResult = () => {
                   label: "Charges",
                   key: "1",
                   children: (
-                    <DataTable
-                      value={charges.filter(
-                        (c: any) => c.fk_Departments_Id === 1002,
-                      )}
-                      // paginator
-                      // rows={10}
-                      // rowsPerPageOptions={[10, 25, 50]}
-                      emptyMessage="No Records!"
-                      stripedRows
-                      size="small"
-                    >
-                      <Column
-                        field="action"
-                        header="Action"
-                        body={(data: any) => actionBodyTemplate(data)}
-                      ></Column>
-                      <Column field="Description" header="Description"></Column>
-                      <Column field="Status" header="Status"></Column>
-                      <Column
-                        field="StatusDate"
-                        header="Status set Date"
-                      ></Column>
-                      <Column
-                        field="StatusSetBy"
-                        header="Status Set By"
-                      ></Column>
-                      <Column
-                        field="StatusRemarks"
-                        header="Status Remarks"
-                      ></Column>
-                      <Column field="Gross" header="Gross"></Column>
-                      <Column field="HmoAmount" header="Hmo"></Column>
-                      <Column
-                        field="CashPayment"
-                        header="Cash Payment"
-                      ></Column>
-                      <Column field="Net" header="Net"></Column>
-                      <Column
-                        field="PaymentType"
-                        header="Payment Type"
-                      ></Column>
-                      <Column field="ResultId" header="ResultId"></Column>
-                    </DataTable>
+                    <ChargesPerPatient
+                      AppointmentId={appointmentDetails?.Id}
+                      handleNewResult={handleNewResult}
+                      Key={Key}
+                      Counter="ULT"
+                    />
                   ),
                 },
                 {
@@ -954,62 +822,6 @@ const UltrasoundResult = () => {
           </Form>
         </div>
       </div>
-      <Modal
-        open={showModal}
-        destroyOnClose
-        footer={false}
-        onCancel={() => setShowModal(false)}
-        width={500}
-        title={`Set status for ${selectedRow.Description}`}
-      >
-        <Form form={form1} onFinish={handleSetStatus} layout="vertical">
-          <Form.Item
-            name="Status"
-            label="Status"
-            rules={[
-              {
-                required: true,
-                message: "Status is required!",
-              },
-            ]}
-          >
-            <Select>
-              <Select.Option key="DONE" value="DONE">
-                DONE
-              </Select.Option>
-              <Select.Option key="TO FOLLOW" value="TO FOLLOW">
-                TO FOLLOW
-              </Select.Option>
-              <Select.Option key="DEFERRED" value="DEFERRED">
-                DEFERRED
-              </Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="StatusRemarks"
-            label="Remarks"
-            normalize={(v) => v.toUpperCase()}
-            rules={[
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (
-                    getFieldValue("Status") === "DEFERRED" &&
-                    isNullOrUndefinedOrBlank(value)
-                  ) {
-                    return Promise.reject("Remarks is required!");
-                  }
-                  return Promise.resolve();
-                },
-              }),
-            ]}
-          >
-            <Input.TextArea rows={4} />
-          </Form.Item>
-          <Button type="primary" htmlType="submit">
-            Submit
-          </Button>
-        </Form>
-      </Modal>
       <Modal
         open={showFinalize}
         destroyOnClose
