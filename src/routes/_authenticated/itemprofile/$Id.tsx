@@ -164,8 +164,8 @@ const ItemProfile = () => {
         fk_SoaDescriptions_Id: x.fk_SoaDescriptions_Id,
         TestCode: x.TestCode,
         Conversion: x.Conversion,
-        Cost: x.Cost ?? 0,
-        UnitCostPerPc: x.UnitCostPerPc,
+        Cost: x.UnitCostPerPc ?? 0,
+        UnitCostPerPc: x.UnitCostPerPc ?? 0,
         UnitCostPerBox: x.UnitCostPerBox,
         UnitOfMeasureSmall: x.UnitOfMeasureSmall,
         UnitOfMeasureBig: x.UnitOfMeasureBig,
@@ -665,6 +665,7 @@ const ItemProfile = () => {
               <Form.Item
                 name="Cost"
                 label="Cost"
+                className="hidden"
                 rules={[
                   {
                     required: true,

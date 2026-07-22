@@ -194,7 +194,7 @@ const Mer = () => {
           ExtremitiesStatus: x.ExtremitiesStatus,
           ExtremitiesRemarks: x.ExtremitiesRemarks,
           OthersStatus: x.OthersStatus,
-          OthersRemarks: x.OthersRemarks,
+          OthersRemarks: decodeReportLineBreaks(x.OthersRemarks),
           AttendingPhysician: x.AttendingPhysician,
           ChestXrayDate: isNullOrUndefinedOrBlank(x.ChestXrayDate)
             ? undefined
@@ -560,6 +560,7 @@ const Mer = () => {
         TreadmillResult: encodeReportLineBreaks(v.TreadmillResult),
         EchoResult: encodeReportLineBreaks(v.EchoResult),
         UltrasoundResult: encodeReportLineBreaks(v.UltrasoundResult),
+        OthersRemarks: encodeReportLineBreaks(v.OthersRemarks),
         Type: 'R',
       };
 
@@ -1153,7 +1154,7 @@ const Mer = () => {
             </AutoComplete>
           </Form.Item>
           <Form.Item name="OthersRemarks" noStyle>
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} />
           </Form.Item>
         </div>
         <div className="grid lg:grid-cols-2 gap-4 mb-2">

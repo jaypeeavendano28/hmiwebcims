@@ -13,7 +13,7 @@ import {
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
-import { TPrice } from '../types';
+import { TDiscountTypes, TPrice } from '../types';
 import dayjs from 'dayjs';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -23,6 +23,35 @@ import { BsCheck2, BsTrash } from 'react-icons/bs';
 import PharmacyRequestDetails from './PharmacyRequestDetails';
 import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
+
+const roundCurrency = (value: number) => Math.round(value * 100) / 100;
+
+const computePharmacySalesTotals = (
+  saleItems: any[],
+  discountTypeId: unknown,
+  discountTypes?: TDiscountTypes[],
+) => {
+  const grossAmount = roundCurrency(
+    saleItems.reduce(
+      (total: number, item: any) => total + Number(item.Amount ?? 0),
+      0,
+    ),
+  );
+  const selectedDiscountType = isNullOrUndefinedOrBlank(discountTypeId)
+    ? undefined
+    : discountTypes?.find(
+        (discountType) => String(discountType.Id) === String(discountTypeId),
+      );
+  const discountRate = Number(selectedDiscountType?.PharmacyDiscount ?? 0);
+  const totalDiscount = roundCurrency(grossAmount * discountRate);
+  const netAmount = roundCurrency(grossAmount - totalDiscount);
+
+  return {
+    grossAmount,
+    totalDiscount,
+    netAmount,
+  };
+};
 
 export default function PharmacySales() {
   const [showModal, setShowModal] = useState(false);
@@ -42,6 +71,8 @@ export default function PharmacySales() {
   // const [items, setItems] = useState([]);
   const [addedItems, setAddedItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<TPrice | undefined>();
+  const selectedDiscountType = Form.useWatch('DiscountType', form);
+  const amountPaid = Form.useWatch('AmountPaid', form);
   const handleClose = () => {
     setShowModal(false);
   };
@@ -68,7 +99,7 @@ export default function PharmacySales() {
     staleTime: 0,
   });
 
-  const discountTypes = useQuery({
+  const discountTypes = useQuery<TDiscountTypes[]>({
     queryKey: ['discountTypes'],
     queryFn: async () => {
       const res = await PostData('GetRecords', {
@@ -128,11 +159,17 @@ export default function PharmacySales() {
   };
   const handleNew = () => {
     setModal(true);
+    setId(0);
     form.resetFields();
     form2.resetFields();
     form.setFieldValue('Date', dayjs());
     form.setFieldValue('Customer', 'CASH');
     setAddedItems([]);
+    setSelectedItem(undefined);
+    setAmount(0);
+    setDiscount(0);
+    setNet(0);
+    setChange(0);
   };
 
   const allSelectedAddItemIds = addedItems.map((item) => item.Id);
@@ -179,28 +216,10 @@ export default function PharmacySales() {
       },
     ]);
     form2.resetFields();
+    setSelectedItem(undefined);
   };
 
   console.log(items.data);
-
-  const handleComputeTotal = () => {
-    let amount: number = 0;
-    addedItems.map((v: any) => {
-      amount = amount + v.Amount;
-    });
-    let d = 0;
-    if (!isNullOrUndefinedOrBlank(form.getFieldValue('DiscountType'))) {
-      const discountRate = discountTypes.data?.filter(
-        (f: any) => f.Id === form.getFieldValue('DiscountType'),
-      )[0].PharmacyDiscount;
-      // console.log(discountRate);
-      d = amount * discountRate;
-      setDiscount(d);
-    }
-
-    setAmount(amount);
-    setNet(amount - d);
-  };
   const handleSubmitSales = async (v: any) => {
     if (addedItems.length <= 0) {
       notification.error({
@@ -211,7 +230,14 @@ export default function PharmacySales() {
       return;
     }
 
-    if (change < 0) {
+    const totals = computePharmacySalesTotals(
+      addedItems,
+      v.DiscountType,
+      discountTypes.data,
+    );
+    const amountPaid = Number(v.AmountPaid ?? 0);
+
+    if (amountPaid - totals.netAmount < 0) {
       notification.error({
         message: 'Amount paid is not enough!',
         placement: 'topRight',
@@ -229,10 +255,10 @@ export default function PharmacySales() {
           Id: 0,
           Date: dayjs(v.Date).format('YYYY-MM-DD'),
           BranchCode: store.branchCode,
-          Amount: amount,
+          Amount: totals.grossAmount,
           AmountPaid: v.AmountPaid,
-          GrossAmount: amount,
-          Discount: discount,
+          GrossAmount: totals.grossAmount,
+          Discount: totals.totalDiscount,
         },
         details: addedItems,
       });
@@ -247,6 +273,7 @@ export default function PharmacySales() {
           });
           setId(res.parameters.Id);
           setModal(false);
+          await q.invalidateQueries({ queryKey: ['sales'] });
         } else {
           notification.error({
             message: res.message,
@@ -265,8 +292,7 @@ export default function PharmacySales() {
   };
 
   const handleRemove = (data: any) => {
-    const x = addedItems.filter((f: any) => f.fk_Items_Id !== data.fk_Items_Id);
-    setAddedItems(x);
+    setAddedItems((prev) => prev.filter((item: any) => item.Id !== data.Id));
   };
   const actionBodyTemplate = (data: any) => {
     return (
@@ -370,9 +396,12 @@ export default function PharmacySales() {
     );
   };
   const handleChangeAmountPaid = (e: any) => {
-    const amountPaid = e;
-    const change = amountPaid - net;
-    setChange(change);
+    if (isNullOrUndefinedOrBlank(e)) {
+      setChange(0);
+      return;
+    }
+
+    setChange(roundCurrency(Number(e) - net));
   };
   const footerGroup = (
     <ColumnGroup>
@@ -400,8 +429,20 @@ export default function PharmacySales() {
     // handleGetItems();
   }, []);
   useEffect(() => {
-    handleComputeTotal();
-  }, [addedItems]);
+    const totals = computePharmacySalesTotals(
+      addedItems,
+      selectedDiscountType,
+      discountTypes.data,
+    );
+    const nextChange = isNullOrUndefinedOrBlank(amountPaid)
+      ? 0
+      : roundCurrency(Number(amountPaid) - totals.netAmount);
+
+    setAmount(totals.grossAmount);
+    setDiscount(totals.totalDiscount);
+    setNet(totals.netAmount);
+    setChange(nextChange);
+  }, [addedItems, amountPaid, discountTypes.data, selectedDiscountType]);
 
   return (
     <>

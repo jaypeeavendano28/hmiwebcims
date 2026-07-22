@@ -187,6 +187,29 @@ const NewReceiving = () => {
   }, [departmentItems.data]);
 
   const allSelecteItemIds = selectePrItems.map((i) => i.ItemId);
+  const filteredSearchItems = items.filter((item) =>
+    item.Description?.toLocaleLowerCase()?.includes(
+      itemSearch.toLocaleLowerCase(),
+    ),
+  );
+  // const unselectedSearchItems = filteredSearchItems.filter(
+  //   (item) => !allSelecteItemIds.includes(item.ItemId),
+  // );
+
+  // const handleSelectAllSearchItems = () => {
+  //   setSelectedPrItems((prev) => {
+  //     const selectedItemIds = prev.map((item) => item.ItemId);
+  //     const itemsToAdd = filteredSearchItems.filter(
+  //       (item) => !selectedItemIds.includes(item.ItemId),
+  //     );
+
+  //     if (itemsToAdd.length < 1) {
+  //       return prev;
+  //     }
+
+  //     return [...prev, ...itemsToAdd];
+  //   });
+  // };
 
   const itemsCol: ColumnsType<PrItemType> = [
     {
@@ -224,6 +247,7 @@ const NewReceiving = () => {
       title: 'Req. Qty',
       dataIndex: 'reqQty',
       width: 80,
+      fixed: 'right',
       key: 'reqQty',
       align: 'right',
       render: (value, record) =>
@@ -250,6 +274,7 @@ const NewReceiving = () => {
     },
     {
       key: 'add',
+      fixed: 'right',
       width: 50,
       render: (_, record) => (
         <div className="grid place-content-center">
@@ -730,11 +755,7 @@ const NewReceiving = () => {
             scroll={{ y: 200, x: 'max-content' }}
             rowKey="ItemId"
             columns={itemsCol}
-            dataSource={items.filter((item) =>
-              item.Description?.toLocaleLowerCase()?.includes(
-                itemSearch.toLocaleLowerCase(),
-              ),
-            )}
+            dataSource={filteredSearchItems}
             pagination={false}
           />
         </div>
