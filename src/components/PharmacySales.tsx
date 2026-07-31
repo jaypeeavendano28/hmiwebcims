@@ -33,7 +33,9 @@ const getSaleNetAmount = (sale: any) =>
   roundCurrency(
     Number(
       sale?.Net ??
-        Number(sale?.GrossAmount ?? 0) - Number(sale?.Discount ?? 0),
+        Number(sale?.GrossAmount ?? 0) -
+          Number(sale?.LessVat ?? 0) -
+          Number(sale?.Discount ?? 0),
     ),
   );
 const customerOptions = ['CASH', 'BANK TRANSFER', 'MAYA'].map((value) => ({
@@ -56,46 +58,74 @@ const isTrueFlag = (value: unknown) =>
       .toUpperCase(),
   );
 
+const computePharmacyLineTotals = (
+  item: any,
+  discountRate: number,
+  shouldRemoveVat: boolean,
+) => {
+  const grossAmount = roundCurrency(Number(item.Amount ?? 0));
+  const lessVat =
+    shouldRemoveVat && isFalseFlag(item.VatExcept)
+      ? roundCurrency(grossAmount - grossAmount / 1.12)
+      : 0;
+  const discountBase = roundCurrency(grossAmount - lessVat);
+  const discount = roundCurrency(discountBase * discountRate);
+  const netAmount = roundCurrency(grossAmount - lessVat - discount);
+  const isVatExempt = isTrueFlag(item.VatExcept) || lessVat > 0;
+  const vat = isVatExempt
+    ? 0
+    : roundCurrency(grossAmount - grossAmount / 1.12);
+
+  return {
+    grossAmount,
+    vat,
+    lessVat,
+    discount,
+    netAmount,
+    isVatExempt,
+  };
+};
+
 const computePharmacySalesTotals = (
   saleItems: any[],
   discountTypeId: unknown,
   discountTypes?: TDiscountTypes[],
 ) => {
-  const grossAmount = roundCurrency(
-    saleItems.reduce(
-      (total: number, item: any) => total + Number(item.Amount ?? 0),
-      0,
-    ),
-  );
   const selectedDiscountType = isNullOrUndefinedOrBlank(discountTypeId)
     ? undefined
     : discountTypes?.find(
         (discountType) => String(discountType.Id) === String(discountTypeId),
       );
   const discountRate = Number(selectedDiscountType?.PharmacyDiscount ?? 0);
-  const totalDiscount = roundCurrency(
-    saleItems.reduce((total: number, item: any) => {
-      const itemAmount = Number(item.Amount ?? 0);
-
-      if (discountRate !== 0.2 || !isFalseFlag(item.VatExcept)) {
-        return total + itemAmount * discountRate;
-      }
-
-      const removedVat = roundCurrency(itemAmount - itemAmount / 1.12);
-      const vatExclusiveAmount = itemAmount - removedVat;
-      const seniorOrPwdDiscount = roundCurrency(
-        vatExclusiveAmount * discountRate,
-      );
-
-      return total + removedVat + seniorOrPwdDiscount;
-    }, 0),
+  const shouldRemoveVat = isTrueFlag(selectedDiscountType?.LessVat);
+  const lineTotals = saleItems.map((item) =>
+    computePharmacyLineTotals(item, discountRate, shouldRemoveVat),
   );
-  const netAmount = roundCurrency(grossAmount - totalDiscount);
+  const grossAmount = roundCurrency(
+    lineTotals.reduce((total, line) => total + line.grossAmount, 0),
+  );
+  const lessVat = roundCurrency(
+    lineTotals.reduce((total, line) => total + line.lessVat, 0),
+  );
+  const vat = roundCurrency(
+    lineTotals.reduce((total, line) => total + line.vat, 0),
+  );
+  const salesDiscount = roundCurrency(
+    lineTotals.reduce((total, line) => total + line.discount, 0),
+  );
+  const totalDiscount = roundCurrency(lessVat + salesDiscount);
+  const netAmount = roundCurrency(
+    lineTotals.reduce((total, line) => total + line.netAmount, 0),
+  );
 
   return {
     grossAmount,
+    vat,
+    lessVat,
+    salesDiscount,
     totalDiscount,
     netAmount,
+    lineTotals,
   };
 };
 
@@ -309,14 +339,23 @@ export default function PharmacySales() {
           Id: 0,
           Date: dayjs(v.Date).format('YYYY-MM-DD'),
           BranchCode: store.branchCode,
-          Amount: totals.grossAmount,
+          Amount: totals.netAmount,
           AmountPaid: isForPayment ? v.AmountPaid ?? null : v.AmountPaid,
           IsForPayment: isForPayment,
           OrNo: isForPayment ? null : v.OrNo,
           GrossAmount: totals.grossAmount,
-          Discount: totals.totalDiscount,
+          LessVat: totals.lessVat,
+          Discount: totals.salesDiscount,
         },
-        details: addedItems,
+        details: addedItems.map((item, index) => ({
+          ...item,
+          Gross: totals.lineTotals[index].grossAmount,
+          Vat: totals.lineTotals[index].vat,
+          LessVat: totals.lineTotals[index].lessVat,
+          Discount: totals.lineTotals[index].discount,
+          Net: totals.lineTotals[index].netAmount,
+          IsVatExempt: totals.lineTotals[index].isVatExempt,
+        })),
       });
 
       if (res) {
@@ -590,6 +629,7 @@ export default function PharmacySales() {
       <Column field="ItemNames" header="Items"></Column>
       <Column field="Cashier" header="Cashier"></Column>
       <Column field="GrossAmount" header="Gross"></Column>
+      <Column field="LessVat" header="Less VAT"></Column>
       <Column field="Discount" header="Discount"></Column>
       <Column field="Net" header="Net"></Column>
     </DataTable>
@@ -630,6 +670,17 @@ export default function PharmacySales() {
   const forPaymentSaleRows = saleRows.filter((sale: any) =>
     isTrueFlag(sale.IsForPayment),
   );
+  const currentSaleTotals = computePharmacySalesTotals(
+    addedItems,
+    selectedDiscountType,
+    discountTypes.data,
+  );
+  const getCurrentLineTotals = (item: any) =>
+    computePharmacySalesTotals(
+      [item],
+      selectedDiscountType,
+      discountTypes.data,
+    ).lineTotals[0];
 
   return (
     <>
@@ -846,13 +897,23 @@ export default function PharmacySales() {
               >
                 <Input />
               </Form.Item>
-              <Form.Item name="Amount" label="Gross Amount">
+              <Form.Item label="Gross Amount">
                 <p className="text-lg font-bold"> {amount}</p>
               </Form.Item>
-              <Form.Item name="Discount" label="Discount">
-                <p className="text-lg font-bold">{discount}</p>
+              <Form.Item label="Less VAT">
+                <p className="text-lg font-bold">
+                  {currentSaleTotals.lessVat.toFixed(2)}
+                </p>
               </Form.Item>
-              <Form.Item name="Amount" label="Net Amount">
+              <Form.Item label="Discount">
+                <p className="text-lg font-bold">
+                  {currentSaleTotals.salesDiscount.toFixed(2)}
+                </p>
+              </Form.Item>
+              <Form.Item label="Total Deduction">
+                <p className="text-lg font-bold">{discount.toFixed(2)}</p>
+              </Form.Item>
+              <Form.Item label="Net Amount">
                 <p className="text-lg font-bold"> {net}</p>
               </Form.Item>
               <Form.Item
@@ -988,7 +1049,25 @@ export default function PharmacySales() {
               <Column field="Description" header="Description"></Column>
               <Column field="Price" header="Price"></Column>
               <Column field="Quantity" header="Qty"></Column>
-              <Column field="Amount" header="Amount"></Column>
+              <Column field="Amount" header="Gross"></Column>
+              <Column
+                header="Less VAT"
+                body={(data: any) =>
+                  getCurrentLineTotals(data).lessVat.toFixed(2)
+                }
+              ></Column>
+              <Column
+                header="Discount"
+                body={(data: any) =>
+                  getCurrentLineTotals(data).discount.toFixed(2)
+                }
+              ></Column>
+              <Column
+                header="Net"
+                body={(data: any) =>
+                  getCurrentLineTotals(data).netAmount.toFixed(2)
+                }
+              ></Column>
             </DataTable>
           </div>
         </div>

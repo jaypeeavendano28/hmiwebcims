@@ -206,6 +206,10 @@ const reportData = [
     description: 'Pharmacy Sales Report',
   },
   {
+    key: 'pharmacy-daily-sales-report',
+    description: 'Pharmacy Daily Sales Report',
+  },
+  {
     key: 'medical-exams-tests',
     description: 'Medical Exams & Tests Census',
   },
@@ -337,6 +341,25 @@ const Reports = () => {
 
           if (res) {
             printPharmacySaleReport(
+              dayjs(from).format('YYYY-MM-DD'),
+              dayjs(to).format('YYYY-MM-DD'),
+              res.parameters.lst,
+            );
+          }
+          break;
+        }
+        case 'pharmacy-daily-sales-report': {
+          const res = await PostData('GetRecords', {
+            sp: 'udp_GetPharmacySalesDailyReport',
+            parameters: {
+              dateFrom: dayjs(from).format('MM/DD/YYYY'),
+              dateTo: dayjs(to).format('MM/DD/YYYY'),
+              BranchCode: store.branchCode,
+            },
+          });
+
+          if (res) {
+            printPharmacyDailySalesReport(
               dayjs(from).format('YYYY-MM-DD'),
               dayjs(to).format('YYYY-MM-DD'),
               res.parameters.lst,
@@ -476,6 +499,29 @@ const Reports = () => {
             a.setAttribute('target', '_blank');
 
             a.click();
+          });
+          break;
+        }
+        case 'pharmacy-daily-sales-report': {
+          await axios({
+            url: url,
+            method: 'GET',
+            responseType: 'blob',
+            params: {
+              ReportName: 'PharmacyDailySalesReport.rdl',
+              BranchCode: store.branchCode,
+              dateFrom: dayjs(from).format('MM/DD/YYYY'),
+              dateTo: dayjs(to).format('MM/DD/YYYY'),
+              Type: store.userId,
+            },
+          }).then((response) => {
+            const data = window.URL.createObjectURL(
+              new Blob([response.data], { type: 'application/pdf' }),
+            );
+            const anchor = document.createElement('a');
+            anchor.setAttribute('href', data);
+            anchor.setAttribute('target', '_blank');
+            anchor.click();
           });
           break;
         }
@@ -1181,6 +1227,101 @@ const printClaimsTMPH = (data: TClaimsTMPH[]) => {
   saveAs(
     new Blob([buffer], { type: 'application/octet-stream' }),
     `For Claims-TMP-H.xlsx`,
+  );
+};
+
+const printPharmacyDailySalesReport = (
+  dateFrom: string,
+  dateTo: string,
+  data: any[],
+) => {
+  const headers = [
+    'Date',
+    'VAT Sales',
+    'VAT',
+    'Net of VAT',
+    'Non-VAT Sales',
+    'Senior Disc',
+    'Service Charge',
+  ];
+  const rows = data.map((item) => [
+    dayjs(item.SaleDate).format('YYYY-MM-DD'),
+    Number(item.VatSales ?? 0),
+    Number(item.Vat ?? 0),
+    Number(item.NetOfVat ?? 0),
+    Number(item.NonVatSales ?? 0),
+    Number(item.SeniorDiscount ?? 0),
+    Number(item.ServiceCharge ?? 0),
+  ]);
+  const totals = headers.map((_, columnIndex) =>
+    columnIndex === 0
+      ? 'Total'
+      : rows.reduce(
+          (total, row) => total + Number(row[columnIndex] ?? 0),
+          0,
+        ),
+  );
+  const sheetData = [
+    ['Sales Daily Report'],
+    ['Print Out Date:', dayjs().format('YYYY-MM-DD hh:mm A')],
+    [
+      'Period:',
+      `${dayjs(dateFrom).format('YYYY-MM-DD')} - ${dayjs(dateTo).format('YYYY-MM-DD')}`,
+    ],
+    [],
+    headers,
+    ...rows,
+    totals,
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  const range = XLSX.utils.decode_range(ws['!ref']!);
+  const border = {
+    top: { style: 'thin' },
+    bottom: { style: 'thin' },
+    left: { style: 'thin' },
+    right: { style: 'thin' },
+  };
+
+  ws['A1'].s = { font: { bold: true, sz: 14 } };
+  for (let column = 0; column < headers.length; column++) {
+    const headerCell = ws[XLSX.utils.encode_cell({ r: 4, c: column })];
+    headerCell.s = {
+      font: { bold: true },
+      border,
+      alignment: { horizontal: 'center' },
+      fill: { fgColor: { rgb: 'E5E7EB' } },
+    };
+  }
+
+  for (let row = 5; row <= range.e.r; row++) {
+    for (let column = 0; column < headers.length; column++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: row, c: column })];
+      if (!cell) continue;
+      cell.s = {
+        ...(cell.s ?? {}),
+        border,
+        ...(column > 0 ? { numFmt: '#,##0.00' } : {}),
+        ...(row === range.e.r ? { font: { bold: true } } : {}),
+      };
+    }
+  }
+
+  ws['!cols'] = [
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 16 },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Daily Sales');
+  const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  saveAs(
+    new Blob([buffer], { type: 'application/octet-stream' }),
+    'Pharmacy Daily Sales Report.xlsx',
   );
 };
 
