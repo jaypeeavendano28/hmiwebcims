@@ -10,6 +10,8 @@ import {
   notification,
   Select,
   Space,
+  Switch,
+  Tabs,
   Tooltip,
 } from 'antd';
 import { useEffect, useState } from 'react';
@@ -20,13 +22,20 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import useAppStore from '../store';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BsCheck2, BsTrash } from 'react-icons/bs';
+import { BsCashCoin, BsTrash } from 'react-icons/bs';
 import PharmacyRequestDetails from './PharmacyRequestDetails';
 import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
 import FinalizeForm from './FinalizeForm';
 
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
+const getSaleNetAmount = (sale: any) =>
+  roundCurrency(
+    Number(
+      sale?.Net ??
+        Number(sale?.GrossAmount ?? 0) - Number(sale?.Discount ?? 0),
+    ),
+  );
 const customerOptions = ['CASH', 'BANK TRANSFER', 'MAYA'].map((value) => ({
   value,
 }));
@@ -34,6 +43,14 @@ const isFalseFlag = (value: unknown) =>
   value === false ||
   value === 0 ||
   ['0', 'N', 'NO', 'FALSE'].includes(
+    String(value ?? '')
+      .trim()
+      .toUpperCase(),
+  );
+const isTrueFlag = (value: unknown) =>
+  value === true ||
+  value === 1 ||
+  ['1', 'Y', 'YES', 'TRUE'].includes(
     String(value ?? '')
       .trim()
       .toUpperCase(),
@@ -93,10 +110,12 @@ export default function PharmacySales() {
   const [amount, setAmount] = useState(0);
   const [change, setChange] = useState(0);
   const [net, setNet] = useState(0);
-  const [NetAmount, setNetAmount] = useState(0);
   const [form] = Form.useForm();
   const [form2] = Form.useForm();
+  const [paymentForm] = Form.useForm();
   const [modalOpen, setModal] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<any>();
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{
     sale: any;
     reason: string;
@@ -106,6 +125,8 @@ export default function PharmacySales() {
   const [selectedItem, setSelectedItem] = useState<TPrice | undefined>();
   const selectedDiscountType = Form.useWatch('DiscountType', form);
   const amountPaid = Form.useWatch('AmountPaid', form);
+  const pendingAmountPaid = Form.useWatch('AmountPaid', paymentForm);
+  const isForPayment = Form.useWatch('IsForPayment', form) === true;
   const handleClose = () => {
     setShowModal(false);
   };
@@ -122,9 +143,6 @@ export default function PharmacySales() {
         },
       });
       if (res) {
-        setNetAmount(
-          res.parameters.lst.reduce((a: any, v: any) => (a = a + v.Net), 0),
-        );
         return res.parameters.lst;
       }
     },
@@ -197,6 +215,7 @@ export default function PharmacySales() {
     form2.resetFields();
     form.setFieldValue('Date', dayjs());
     form.setFieldValue('Customer', 'CASH');
+    form.setFieldValue('IsForPayment', false);
     setAddedItems([]);
     setSelectedItem(undefined);
     setAmount(0);
@@ -269,9 +288,10 @@ export default function PharmacySales() {
       v.DiscountType,
       discountTypes.data,
     );
+    const isForPayment = v.IsForPayment === true;
     const amountPaid = Number(v.AmountPaid ?? 0);
 
-    if (amountPaid - totals.netAmount < 0) {
+    if (!isForPayment && amountPaid - totals.netAmount < 0) {
       notification.error({
         message: 'Amount paid is not enough!',
         placement: 'topRight',
@@ -290,7 +310,9 @@ export default function PharmacySales() {
           Date: dayjs(v.Date).format('YYYY-MM-DD'),
           BranchCode: store.branchCode,
           Amount: totals.grossAmount,
-          AmountPaid: v.AmountPaid,
+          AmountPaid: isForPayment ? v.AmountPaid ?? null : v.AmountPaid,
+          IsForPayment: isForPayment,
+          OrNo: isForPayment ? null : v.OrNo,
           GrossAmount: totals.grossAmount,
           Discount: totals.totalDiscount,
         },
@@ -411,11 +433,86 @@ export default function PharmacySales() {
       });
     }
   };
-  const actionBodyTemplate2 = (data: any) => {
+
+  const handleOpenPayment = (sale: any) => {
+    const amountDue = getSaleNetAmount(sale);
+
+    setPendingPayment(sale);
+    paymentForm.resetFields();
+    paymentForm.setFieldsValue({
+      OrNo: '',
+      AmountPaid: amountDue,
+    });
+  };
+
+  const handlePayPharmacySale = async (values: any) => {
+    if (!pendingPayment) return;
+
+    const amountDue = getSaleNetAmount(pendingPayment);
+    const paidAmount = Number(values.AmountPaid ?? 0);
+
+    if (paidAmount < amountDue) {
+      notification.error({
+        message: 'Amount paid is not enough!',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    try {
+      setIsPaymentProcessing(true);
+
+      const res = await PostData('PayPharmacySale', {
+        PharmacySalesId: pendingPayment.Id,
+        OrNo: String(values.OrNo ?? '').trim(),
+        AmountPaid: paidAmount,
+      });
+
+      if (res?.status !== 1) {
+        notification.error({
+          message: res?.message ?? 'Unable to post pharmacy payment.',
+          placement: 'topRight',
+          duration: 3,
+        });
+        return;
+      }
+
+      notification.success({
+        message: 'Pharmacy payment successfully posted!',
+        placement: 'topRight',
+        duration: 3,
+      });
+      setPendingPayment(undefined);
+      paymentForm.resetFields();
+      await q.invalidateQueries({ queryKey: ['sales'] });
+    } catch (error: any) {
+      notification.error({
+        message: error.message,
+        placement: 'topRight',
+        duration: 3,
+      });
+    } finally {
+      setIsPaymentProcessing(false);
+    }
+  };
+
+  const actionBodyTemplate2 = (data: any, canPay = false) => {
     return (
       <Space>
+        {canPay && (
+          <Tooltip title="Pay">
+            <Button
+              type="text"
+              className="!px-2"
+              onClick={() => handleOpenPayment(data)}
+            >
+              <BsCashCoin size={20} className="text-green-600" />
+            </Button>
+          </Tooltip>
+        )}
         <Tooltip title="Open">
-          <Button
+          {/* <Button
             type="text"
             className="!px-2"
             disabled={data.DateRendered !== null}
@@ -425,7 +522,7 @@ export default function PharmacySales() {
             }}
           >
             <BsCheck2 size={24} color="green" className="cursor-pointer" />
-          </Button>
+          </Button> */}
         </Tooltip>
         <Tooltip title="Delete">
           <Button
@@ -441,14 +538,14 @@ export default function PharmacySales() {
     );
   };
   const handleChangeAmountPaid = (e: any) => {
-    if (isNullOrUndefinedOrBlank(e)) {
+    if (isForPayment || isNullOrUndefinedOrBlank(e)) {
       setChange(0);
       return;
     }
 
     setChange(roundCurrency(Number(e) - net));
   };
-  const footerGroup = (
+  const footerGroup = (netAmount: number) => (
     <ColumnGroup>
       <Row>
         <Column
@@ -462,9 +559,40 @@ export default function PharmacySales() {
 
         <Column footer="" />
         <Column footer="" />
-        <Column footer={NetAmount} />
+        <Column footer={netAmount} />
       </Row>
     </ColumnGroup>
+  );
+  const renderSalesTable = (rows: any[], canPay = false) => (
+    <DataTable
+      value={rows}
+      paginator
+      rows={10}
+      rowsPerPageOptions={[10, 25, 50]}
+      emptyMessage="No Records!"
+      stripedRows
+      size="small"
+      footerColumnGroup={footerGroup(
+        rows.reduce(
+          (total: number, sale: any) => total + Number(sale.Net ?? 0),
+          0,
+        ),
+      )}
+    >
+      <Column
+        field="action"
+        header="Action"
+        body={(data: any) => actionBodyTemplate2(data, canPay)}
+      ></Column>
+      <Column field="Id" header="Transaction ID"></Column>
+      <Column field="DateStr" header="Date"></Column>
+      <Column field="Customer" header="Customer"></Column>
+      <Column field="ItemNames" header="Items"></Column>
+      <Column field="Cashier" header="Cashier"></Column>
+      <Column field="GrossAmount" header="Gross"></Column>
+      <Column field="Discount" header="Discount"></Column>
+      <Column field="Net" header="Net"></Column>
+    </DataTable>
   );
   useEffect(() => {
     formSearch.setFieldsValue({
@@ -479,15 +607,29 @@ export default function PharmacySales() {
       selectedDiscountType,
       discountTypes.data,
     );
-    const nextChange = isNullOrUndefinedOrBlank(amountPaid)
-      ? 0
-      : roundCurrency(Number(amountPaid) - totals.netAmount);
+    const nextChange =
+      isForPayment || isNullOrUndefinedOrBlank(amountPaid)
+        ? 0
+        : roundCurrency(Number(amountPaid) - totals.netAmount);
 
     setAmount(totals.grossAmount);
     setDiscount(totals.totalDiscount);
     setNet(totals.netAmount);
     setChange(nextChange);
-  }, [addedItems, amountPaid, discountTypes.data, selectedDiscountType]);
+  }, [
+    addedItems,
+    amountPaid,
+    discountTypes.data,
+    isForPayment,
+    selectedDiscountType,
+  ]);
+  const saleRows = Array.isArray(sales.data) ? sales.data : [];
+  const regularSaleRows = saleRows.filter(
+    (sale: any) => !isTrueFlag(sale.IsForPayment),
+  );
+  const forPaymentSaleRows = saleRows.filter((sale: any) =>
+    isTrueFlag(sale.IsForPayment),
+  );
 
   return (
     <>
@@ -514,30 +656,106 @@ export default function PharmacySales() {
           </Button>
         </Form.Item>
       </Form>
-      <DataTable
-        value={sales.data}
-        paginator
-        rows={10}
-        rowsPerPageOptions={[10, 25, 50]}
-        emptyMessage="No Records!"
-        stripedRows
-        size="small"
-        footerColumnGroup={footerGroup}
+      <Tabs
+        defaultActiveKey="sales"
+        items={[
+          {
+            key: 'sales',
+            label: 'Sales',
+            children: renderSalesTable(regularSaleRows),
+          },
+          {
+            key: 'for-payment',
+            label: 'For Payment',
+            children: renderSalesTable(forPaymentSaleRows, true),
+          },
+        ]}
+      />
+      <Modal
+        title="Pay Pharmacy Sale"
+        open={Boolean(pendingPayment)}
+        destroyOnClose
+        onCancel={() => {
+          setPendingPayment(undefined);
+          paymentForm.resetFields();
+        }}
+        footer={false}
+        width={460}
       >
-        <Column
-          field="action"
-          header="Action"
-          body={(data: any) => actionBodyTemplate2(data)}
-        ></Column>
-        <Column field="Id" header="Transaction ID"></Column>
-        <Column field="DateStr" header="Date"></Column>
-        <Column field="Customer" header="Customer"></Column>
-        <Column field="ItemNames" header="Items"></Column>
-        <Column field="Cashier" header="Cashier"></Column>
-        <Column field="GrossAmount" header="Gross"></Column>
-        <Column field="Discount" header="Discount"></Column>
-        <Column field="Net" header="Net"></Column>
-      </DataTable>
+        <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 border-b border-slate-200 pb-4 text-sm">
+          <span className="text-slate-500">Transaction ID</span>
+          <strong>{pendingPayment?.Id}</strong>
+          <span className="text-slate-500">Customer</span>
+          <strong>{pendingPayment?.Customer}</strong>
+          <span className="text-slate-500">Amount Due</span>
+          <strong>{getSaleNetAmount(pendingPayment).toFixed(2)}</strong>
+        </div>
+        <Form
+          form={paymentForm}
+          layout="vertical"
+          onFinish={handlePayPharmacySale}
+        >
+          <Form.Item
+            name="OrNo"
+            label="O.R. No."
+            rules={[
+              {
+                required: true,
+                whitespace: true,
+                message: 'O.R. No. is required!',
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="AmountPaid"
+            label="Amount Paid"
+            rules={[
+              {
+                required: true,
+                message: 'Amount paid is required!',
+              },
+            ]}
+          >
+            <InputNumber
+              min={0}
+              precision={2}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <div className="mb-5 flex items-center justify-between border-t border-slate-200 pt-3">
+            <span className="text-slate-500">Change</span>
+            <strong>
+              {Math.max(
+                0,
+                roundCurrency(
+                  Number(pendingAmountPaid ?? 0) -
+                    getSaleNetAmount(pendingPayment),
+                ),
+              ).toFixed(2)}
+            </strong>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              onClick={() => {
+                setPendingPayment(undefined);
+                paymentForm.resetFields();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isPaymentProcessing}
+              icon={<BsCashCoin />}
+            >
+              Pay
+            </Button>
+          </div>
+        </Form>
+      </Modal>
       <Modal
         open={modalOpen}
         onCancel={() => setModal(false)}
@@ -578,7 +796,7 @@ export default function PharmacySales() {
                   },
                 ]}
                 normalize={(v) => v.toUpperCase()}
-            >
+              >
                 <AutoComplete
                   options={customerOptions}
                   filterOption={(inputValue, option) =>
@@ -600,13 +818,30 @@ export default function PharmacySales() {
               </Form.Item>
 
               <Form.Item
+                name="IsForPayment"
+                label="For Payment"
+                valuePropName="checked"
+              >
+                <Switch />
+              </Form.Item>
+
+              <Form.Item
                 name="OrNo"
                 label="Or No."
+                dependencies={['IsForPayment']}
                 rules={[
-                  {
-                    required: true,
-                    message: 'Or No. is required!',
-                  },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value) => {
+                      if (
+                        getFieldValue('IsForPayment') === true ||
+                        !isNullOrUndefinedOrBlank(value)
+                      ) {
+                        return Promise.resolve();
+                      }
+
+                      return Promise.reject(new Error('Or No. is required!'));
+                    },
+                  }),
                 ]}
               >
                 <Input />
@@ -623,11 +858,22 @@ export default function PharmacySales() {
               <Form.Item
                 name="AmountPaid"
                 label="Amount Paid"
+                dependencies={['IsForPayment']}
                 rules={[
-                  {
-                    required: true,
-                    message: 'Amount Paid is required!',
-                  },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value) => {
+                      if (
+                        getFieldValue('IsForPayment') === true ||
+                        !isNullOrUndefinedOrBlank(value)
+                      ) {
+                        return Promise.resolve();
+                      }
+
+                      return Promise.reject(
+                        new Error('Amount Paid is required!'),
+                      );
+                    },
+                  }),
                 ]}
               >
                 <InputNumber
