@@ -1206,7 +1206,7 @@ const printPharmacySaleReport = (
     'Description',
     'Qty',
     'Discount',
-    'Sales',
+    'Selling Price',
     'Unit Cost',
     'Profit',
     'Payment',

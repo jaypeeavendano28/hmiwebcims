@@ -288,7 +288,7 @@ const PatientsPerCounter: FC<Props> = ({
     }
   };
 
-  const handleCall = async (data: any, resultWindow?: Window | null) => {
+  const handleCall = async (data: any) => {
     setIsSubmitting(true);
 
     try {
@@ -305,13 +305,11 @@ const PatientsPerCounter: FC<Props> = ({
 
       const res = await PostData('CallCounter', valuesToSave);
       if (!res) {
-        resultWindow?.close();
         return;
       }
 
       if (res.status === 2) {
         const visibleDetails = getVisibleQueueDetails(res.parameters ?? []);
-        resultWindow?.close();
 
         if (visibleDetails.length === 0) {
           notification.warning({
@@ -362,9 +360,9 @@ const PatientsPerCounter: FC<Props> = ({
           setSelectedRecord(activeRecord);
           setShowModal(false);
           if (activeRecord.AllProcedures) {
-            openProcedureSelectionWorkspace(activeRecord, resultWindow);
+            openProcedureSelectionWorkspace(activeRecord);
           } else {
-            openProcedureWorkspace(activeRecord, resultWindow);
+            openProcedureWorkspace(activeRecord);
           }
         }
         await refreshPatientQueries();
@@ -372,7 +370,6 @@ const PatientsPerCounter: FC<Props> = ({
           queryKey: ['patientsPerCounter'],
         });
       } else {
-        resultWindow?.close();
         notification.error({
           message: res.message,
           placement: 'topRight',
@@ -380,7 +377,6 @@ const PatientsPerCounter: FC<Props> = ({
         });
       }
     } catch (error: any) {
-      resultWindow?.close();
       notification.error({
         message: error?.message ?? 'Unable to update the queue.',
         placement: 'topRight',
@@ -450,8 +446,7 @@ const PatientsPerCounter: FC<Props> = ({
       key: 'A',
       label: 'Attending',
       onClick: () => {
-        const resultWindow = createResultWindow();
-        void handleCall({ ...selectedRecord, Status: 'A' }, resultWindow);
+        void handleCall({ ...selectedRecord, Status: 'A' });
       },
     },
     {
@@ -483,27 +478,10 @@ const PatientsPerCounter: FC<Props> = ({
       },
     },
   ];
-  const createResultWindow = () => {
-    const resultWindow = window.open('', '_blank');
-    if (resultWindow) {
-      resultWindow.opener = null;
-    }
-    return resultWindow;
+  const openResultLocation = (locationOptions: any) => {
+    void router.navigate(locationOptions);
   };
-  const openResultLocation = (
-    locationOptions: any,
-    resultWindow?: Window | null,
-  ) => {
-    const href = router.buildLocation(locationOptions).href;
-
-    if (resultWindow && !resultWindow.closed) {
-      resultWindow.location.href = href;
-      return;
-    }
-
-    window.open(href, '_blank', 'noopener,noreferrer');
-  };
-  const handleLabResult = (data: any, resultWindow?: Window | null) => {
+  const handleLabResult = (data: any) => {
     openResultLocation(
       {
         to: '/laboratoryresults/$Id',
@@ -513,14 +491,12 @@ const PatientsPerCounter: FC<Props> = ({
         search: {
           templateId: Number(data.LabTemplateId ?? 0),
           chargeId: Number(data.ChargeId ?? 0),
-          standalone: true,
         },
       },
-      resultWindow,
     );
   };
 
-  const handleXrayResult = (data: any, resultWindow?: Window | null) => {
+  const handleXrayResult = (data: any) => {
     openResultLocation(
       {
         to: '/xrayresult/$Id',
@@ -529,14 +505,12 @@ const PatientsPerCounter: FC<Props> = ({
         },
         search: {
           chargeId: Number(data.ChargeId ?? 0),
-          standalone: true,
         },
       },
-      resultWindow,
     );
   };
 
-  const handleCardioResult = (data: any, resultWindow?: Window | null) => {
+  const handleCardioResult = (data: any) => {
     // router.navigate({
     //   to: '/cardioresult/$Id',
     //   params: {
@@ -554,14 +528,12 @@ const PatientsPerCounter: FC<Props> = ({
           exam: data.Exam,
           chargeId: Number(data.ChargeId ?? 0),
           resultId: Number(data.ResultId ?? 0),
-          standalone: true,
         },
       },
-      resultWindow,
     );
   };
 
-  const handleUltrasoundResult = (data: any, resultWindow?: Window | null) => {
+  const handleUltrasoundResult = (data: any) => {
     openResultLocation(
       {
         to: '/ultrasound/$Id',
@@ -570,46 +542,34 @@ const PatientsPerCounter: FC<Props> = ({
         },
         search: {
           chargeId: Number(data.ChargeId ?? 0),
-          standalone: true,
         },
       },
-      resultWindow,
     );
   };
 
-  const openProcedureWorkspace = (data: any, resultWindow?: Window | null) => {
+  const openProcedureWorkspace = (data: any) => {
     switch (data.CounterCode ?? CounterCode) {
       case 'LAB':
-        handleLabResult(data, resultWindow);
+        handleLabResult(data);
         break;
       case 'XRAY':
-        handleXrayResult(data, resultWindow);
+        handleXrayResult(data);
         break;
       case 'CARDIO':
-        handleCardioResult(data, resultWindow);
+        handleCardioResult(data);
         break;
       case 'ULT':
-        handleUltrasoundResult(data, resultWindow);
+        handleUltrasoundResult(data);
         break;
-      default:
-        resultWindow?.close();
     }
   };
 
-  const openProcedureSelectionWorkspace = (
-    data: any,
-    resultWindow?: Window | null,
-  ) => {
+  const openProcedureSelectionWorkspace = (data: any) => {
     const appointmentId = data.fk_Appointments_Id?.toString();
 
     if (!appointmentId) {
-      resultWindow?.close();
       return;
     }
-
-    const search = {
-      standalone: true,
-    };
 
     switch (data.CounterCode ?? CounterCode) {
       case 'LAB':
@@ -619,9 +579,7 @@ const PatientsPerCounter: FC<Props> = ({
             params: {
               Id: appointmentId,
             },
-            search,
           },
-          resultWindow,
         );
         break;
       case 'XRAY':
@@ -631,9 +589,7 @@ const PatientsPerCounter: FC<Props> = ({
             params: {
               Id: appointmentId,
             },
-            search,
           },
-          resultWindow,
         );
         break;
       case 'CARDIO':
@@ -643,9 +599,7 @@ const PatientsPerCounter: FC<Props> = ({
             params: {
               Id: appointmentId,
             },
-            search,
           },
-          resultWindow,
         );
         break;
       case 'ULT':
@@ -655,13 +609,9 @@ const PatientsPerCounter: FC<Props> = ({
             params: {
               Id: appointmentId,
             },
-            search,
           },
-          resultWindow,
         );
         break;
-      default:
-        resultWindow?.close();
     }
   };
   const actionBodyElapseTime = (data: TAppointments) => {
@@ -1248,8 +1198,7 @@ const PatientsPerCounter: FC<Props> = ({
             type="primary"
             onClick={() => {
               if (Station === '1') {
-                const resultWindow = createResultWindow();
-                handleCall({ ...selectedRecord, Status: 'A' }, resultWindow);
+                handleCall({ ...selectedRecord, Status: 'A' });
               }
 
               setShowModal(false);

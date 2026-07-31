@@ -1,5 +1,14 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
-import { Button, Divider, Modal, Space, Tooltip, notification } from "antd";
+import {
+  Button,
+  Divider,
+  Form,
+  Input,
+  Modal,
+  Space,
+  Tooltip,
+  notification,
+} from "antd";
 import { PostData, WithAccess } from "../../helpers";
 import { useEffect, useState } from "react";
 import Loading from "../../components/loading";
@@ -9,7 +18,7 @@ import { TUsers } from "../../types";
 import { MdOutlineCountertops, MdOutlineDelete } from "react-icons/md";
 import { BiBuilding } from "react-icons/bi";
 import { FilterMatchMode } from "primereact/api";
-import { FiUserCheck, FiUsers } from "react-icons/fi";
+import { FiKey, FiUserCheck, FiUsers } from "react-icons/fi";
 import useAppStore from "../../store";
 export const Route = createFileRoute("/_authenticated/users")({
   component: () => <Users />,
@@ -23,6 +32,9 @@ const Users = () => {
   const [list, setList] = useState<TUsers[] | undefined>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showPasswordOverride, setShowPasswordOverride] = useState(false);
+  const [isOverridingPassword, setIsOverridingPassword] = useState(false);
+  const [passwordForm] = Form.useForm();
   const [filters] = useState({
     Username: { value: null, matchMode: FilterMatchMode.CONTAINS },
     Fullname: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -75,6 +87,17 @@ const Users = () => {
   const actionBodyTemplate = (data: TUsers) => {
     return (
       <Space>
+        <Tooltip title="Override Password">
+          <Button
+            type="primary"
+            icon={<FiKey />}
+            onClick={() => {
+              setSeletectedData(data);
+              passwordForm.resetFields();
+              setShowPasswordOverride(true);
+            }}
+          />
+        </Tooltip>
         <Tooltip title="Delete">
           <Button
             type="primary"
@@ -128,6 +151,48 @@ const Users = () => {
         </Tooltip>
       </Space>
     );
+  };
+
+  const handleOverridePassword = async (values: {
+    Password: string;
+    ConfirmPassword: string;
+  }) => {
+    if (!selectedData) {
+      return;
+    }
+
+    try {
+      setIsOverridingPassword(true);
+      const res = await PostData("OverrideUserPassword", {
+        Id: selectedData.Id,
+        Password: values.Password,
+      });
+
+      if (res?.status !== 1) {
+        notification.error({
+          message: res?.message ?? "Unable to override the password.",
+          placement: "topRight",
+          duration: 3,
+        });
+        return;
+      }
+
+      notification.success({
+        message: "Password successfully overridden!",
+        placement: "topRight",
+        duration: 3,
+      });
+      passwordForm.resetFields();
+      setShowPasswordOverride(false);
+    } catch (error: any) {
+      notification.error({
+        message: error.message,
+        placement: "topRight",
+        duration: 3,
+      });
+    } finally {
+      setIsOverridingPassword(false);
+    }
   };
 
   const rowExpansionTemplate = (data: TUsers) => {
@@ -238,6 +303,77 @@ const Users = () => {
         onOk={handleDelete}
       >
         <div className="font-bold">Delete user?</div>
+      </Modal>
+      <Modal
+        title={`Override Password - ${selectedData?.Username ?? ""}`}
+        open={showPasswordOverride}
+        onCancel={() => {
+          passwordForm.resetFields();
+          setShowPasswordOverride(false);
+        }}
+        footer={null}
+        destroyOnClose
+        width={420}
+      >
+        <Form
+          form={passwordForm}
+          layout="vertical"
+          onFinish={handleOverridePassword}
+        >
+          <Form.Item
+            name="Password"
+            label="New Password"
+            rules={[
+              {
+                required: true,
+                message: "New password is required!",
+              },
+            ]}
+          >
+            <Input.Password autoFocus autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item
+            name="ConfirmPassword"
+            label="Confirm New Password"
+            dependencies={["Password"]}
+            rules={[
+              {
+                required: true,
+                message: "Please confirm the new password!",
+              },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("Password") === value) {
+                    return Promise.resolve();
+                  }
+
+                  return Promise.reject(
+                    new Error("The two passwords do not match!"),
+                  );
+                },
+              }),
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+          <div className="flex justify-end gap-2">
+            <Button
+              onClick={() => {
+                passwordForm.resetFields();
+                setShowPasswordOverride(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isOverridingPassword}
+            >
+              Override Password
+            </Button>
+          </div>
+        </Form>
       </Modal>
     </div>
   );

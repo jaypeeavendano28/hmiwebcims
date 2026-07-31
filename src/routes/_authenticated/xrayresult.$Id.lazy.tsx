@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useRouter } from "@tanstack/react-router";
 import {
   PostData,
   blobToDataUrl,
@@ -25,6 +25,7 @@ import axios from "axios";
 import ChargesPerPatient from "../../components/ChargesPerPatient";
 import FinalizeForm from "../../components/FinalizeForm";
 import { ExistingRadiologyResults } from "../../components/ExistingRadiologyResult";
+import { BiArrowBack } from "react-icons/bi";
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + "/api/";
 const devApi = import.meta.env.VITE_DEV_API + "/api/";
@@ -58,6 +59,7 @@ const formItemLayout = {
   },
 };
 const XrayResult = () => {
+  const router = useRouter();
   const [showFinalize, setShowFinalize] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
   const [Key, setKey] = useState<string>(Math.random().toString());
@@ -509,6 +511,13 @@ const XrayResult = () => {
       <div className="grid lg:grid-cols-12 gap-4">
         <div className="col-span-3">
           <div className="mt-2">
+            <Button
+              className="mb-2"
+              icon={<BiArrowBack />}
+              onClick={() => router.history.back()}
+            >
+              Back
+            </Button>
             <Divider>Charges</Divider>
 
             <Tabs

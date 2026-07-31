@@ -21,12 +21,20 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   const store = useAppStore();
-  const search = useRouterState({
-    select: (state) => state.location.search,
-  }) as { standalone?: boolean | string };
+  const location = useRouterState({
+    select: (state) => state.location,
+  });
+  const search = location.search as { standalone?: boolean | string };
   const isStandalone =
     search.standalone === true || search.standalone === "true";
-  const hideSidebar = store.hideSideBar === "Y" || isStandalone;
+  const isExaminationRoute = [
+    "/cardiologyresult/",
+    "/ultrasound/",
+    "/xrayresult/",
+    "/laboratoryresults/",
+  ].some((path) => location.pathname.includes(path));
+  const hideSidebar =
+    !isExaminationRoute && (store.hideSideBar === "Y" || isStandalone);
 
   useEffect(() => {
     store.setCollapsed(false);

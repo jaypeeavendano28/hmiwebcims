@@ -1,5 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Button, Form, Input, notification } from "antd";
+import { Button, Checkbox, Form, Input, notification } from "antd";
 import { PostData } from "../../helpers";
 import { useEffect, useState } from "react";
 import { TMedtechs } from "../../types";
@@ -20,16 +20,22 @@ const MedtechProfile = () => {
   const [form] = Form.useForm();
   const store = useAppStore();
   const [picture, setPicture] = useState<string | null>(null);
+  const [qaPicture, setQaPicture] = useState<string | null>(null);
   const medtechName = Form.useWatch("Name", form);
   const medtechLicenseNo = Form.useWatch("LicenseNo", form);
   const medtechTitle = Form.useWatch("Title", form);
+  const isQA = Form.useWatch("IsQA", form);
 
-  const handleUploadPicture = async (image: any) => {
+  const handleUploadPicture = async (
+    image: string,
+    signatureType: "M" | "Q" = "M",
+  ) => {
     try {
       const fd = new FormData();
 
       fd.append("image", image);
       fd.append("Id", Id);
+      fd.append("SignatureType", signatureType);
       axios.defaults.baseURL = apiUrl;
       axios.defaults.headers.common["Authorization"] = ("Bearer " +
         store.tokenIdWebCims) as string;
@@ -44,7 +50,11 @@ const MedtechProfile = () => {
       });
 
       if (res.data.status === 1) {
-        setPicture(image);
+        if (signatureType === "Q") {
+          setQaPicture(image);
+        } else {
+          setPicture(image);
+        }
         notification.success({
           message: "Successfully saved!",
           placement: "topRight",
@@ -69,7 +79,10 @@ const MedtechProfile = () => {
     showSuccessNotification = true
   ) => {
     try {
-      const res = await PostData("SaveMedtech", { ...values, Type: "M" });
+      const res = await PostData("SaveMedtech", {
+        ...values,
+        Type: "M",
+      });
       if (res) {
         if (res.status === 1) {
           setId(res.parameters.Id);
@@ -123,6 +136,28 @@ const MedtechProfile = () => {
       return false;
     }
   };
+
+  const handleSaveQaSignature = async (image: string) => {
+    try {
+      const values = await form.validateFields();
+      const saved = await saveMedtechProfile(values, false);
+
+      if (!saved) {
+        return false;
+      }
+
+      return handleUploadPicture(image, "Q");
+    } catch (error: any) {
+      notification.error({
+        message:
+          error.message ??
+          "Please complete the profile before saving the quality control signature.",
+        placement: "topRight",
+        duration: 3,
+      });
+      return false;
+    }
+  };
   const handleGetMedtechProfile = async () => {
     try {
       let res = await PostData("GetRecords", {
@@ -136,14 +171,23 @@ const MedtechProfile = () => {
           Name: x.Name,
           LicenseNo: x.LicenseNo,
           Title: x.Title ?? "MEDICAL TECHNOLOGIST",
+          IsQA: Boolean(x.IsQA),
         });
 
         res = await PostData("GetRecords", {
           sp: "udp_GetMedtechSignature",
-          parameters: { Id },
+          parameters: { Id, SignatureType: "M" },
         });
         if (res) {
-          setPicture(res.parameters.lst[0].Signature);
+          setPicture(res.parameters.lst?.[0]?.Signature ?? null);
+        }
+
+        res = await PostData("GetRecords", {
+          sp: "udp_GetMedtechSignature",
+          parameters: { Id, SignatureType: "Q" },
+        });
+        if (res) {
+          setQaPicture(res.parameters.lst?.[0]?.Signature ?? null);
         }
       }
     } catch (error: any) {
@@ -162,6 +206,7 @@ const MedtechProfile = () => {
         Sonologist: false,
         Pathologist: false,
         Title: "MEDICAL TECHNOLOGIST",
+        IsQA: false,
       });
     } else {
       handleGetMedtechProfile();
@@ -198,6 +243,9 @@ const MedtechProfile = () => {
             >
               <Input />
             </Form.Item>
+            <Form.Item name="IsQA" valuePropName="checked">
+              <Checkbox>Quality Control</Checkbox>
+            </Form.Item>
 
             <div className="flex justify-end">
               <Button type="primary" htmlType="submit">
@@ -208,6 +256,7 @@ const MedtechProfile = () => {
         </div>
         <div>
           <SignatureBuilder
+            title="Medical Technologist E-Sign"
             currentImage={picture}
             disabled={Id === "0"}
             fullName={medtechName}
@@ -220,6 +269,23 @@ const MedtechProfile = () => {
             onTitleChange={(value) => form.setFieldValue("Title", value)}
             onSave={handleSaveSignature}
           />
+          {isQA && (
+            <SignatureBuilder
+              title="Quality Control E-Sign"
+              buttonLabel="Create QC e-sign"
+              currentImage={qaPicture}
+              disabled={Id === "0"}
+              fullName={medtechName}
+              licenseNo={medtechLicenseNo}
+              positionTitle="QUALITY CONTROL"
+              defaultTitle="QUALITY CONTROL"
+              titleReadOnly
+              onLicenseNoChange={(value) =>
+                form.setFieldValue("LicenseNo", value)
+              }
+              onSave={handleSaveQaSignature}
+            />
+          )}
         </div>
       </div>
     </div>

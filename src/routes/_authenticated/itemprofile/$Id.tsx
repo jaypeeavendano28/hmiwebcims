@@ -21,7 +21,7 @@ import {
   TSettings,
   TSoaDescriptions,
 } from '../../../types';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { round } from 'lodash';
 import PackageDetails from '../../../components/PackageDetails';
@@ -29,6 +29,18 @@ import PackageDetails from '../../../components/PackageDetails';
 export const Route = createFileRoute('/_authenticated/itemprofile/$Id')({
   component: () => <ItemProfile />,
 });
+
+const NEW_ITEM_DEFAULTS: Partial<TItems> = {
+  Cost: 0,
+  UnitCostPerPc: 0,
+  DoctorShare: 0,
+  VatExcept: false,
+};
+
+const isEnabledFlag = (value: boolean | number | string | undefined) =>
+  value === true ||
+  value === 1 ||
+  ['Y', 'YES', 'TRUE', '1'].includes(String(value ?? '').toUpperCase());
 
 const ItemProfile = () => {
   const router = useRouter();
@@ -140,7 +152,7 @@ const ItemProfile = () => {
     refetchOnWindowFocus: false,
     staleTime: 0,
   });
-  const handleGetItemDetails = async () => {
+  const handleGetItemDetails = useCallback(async () => {
     const res = await PostData('GetRecords', {
       sp: 'udp_GetItemDetailsById',
       parameters: {
@@ -171,6 +183,7 @@ const ItemProfile = () => {
         UnitOfMeasureBig: x.UnitOfMeasureBig,
         Dosage: x.Dosage,
         Discountable: x.Discountable,
+        VatExcept: isEnabledFlag(x.VatExcept),
         Inventoriable: x.Inventoriable,
         ForSale: x.ForSale,
         QCounter: x.QCounter,
@@ -188,7 +201,7 @@ const ItemProfile = () => {
         IncentivesType: x.IncentivesType,
       });
     }
-  };
+  }, [Id, form]);
   const handleSubmit = async (v: TItems) => {
     if (v.fk_Departments_Id === 1040 || v.fk_Departments_Id === 1041) {
       if (isNullOrUndefinedOrBlank(v.fk_SoaDescriptions_Id)) {
@@ -200,8 +213,18 @@ const ItemProfile = () => {
         return;
       }
     }
-    if (isNullOrUndefinedOrBlank(v.DoctorShare)) v.DoctorShare = 0;
-    const res = await PostData('SaveItemProfile', { ...v, Id: Id });
+    const unitCostPerPc = isNullOrUndefinedOrBlank(v.UnitCostPerPc)
+      ? 0
+      : v.UnitCostPerPc;
+    const res = await PostData('SaveItemProfile', {
+      ...v,
+      Id: Number(Id),
+      Cost: unitCostPerPc,
+      UnitCostPerPc: unitCostPerPc,
+      DoctorShare: isNullOrUndefinedOrBlank(v.DoctorShare)
+        ? 0
+        : v.DoctorShare,
+    });
     if (res) {
       if (res.status === 1) {
         notification.success({
@@ -223,7 +246,7 @@ const ItemProfile = () => {
           router.navigate({
             to: '/itemprofile/$Id',
             params: {
-              Id: res.parameters.Id,
+              Id: String(res.parameters.Id),
             },
           });
         }
@@ -250,10 +273,11 @@ const ItemProfile = () => {
       : form.getFieldValue('Conversion');
     let UnitCostPerPc: number = 0;
 
-    if (UnitCostPerBox + Conversion > 0) {
+    if (UnitCostPerBox > 0 && Conversion > 0) {
       UnitCostPerPc = round(UnitCostPerBox / Conversion, 2);
     }
     form.setFieldsValue({
+      Cost: UnitCostPerPc,
       UnitCostPerPc: UnitCostPerPc,
     });
   };
@@ -269,17 +293,29 @@ const ItemProfile = () => {
     setShowPackage(true);
   };
   useEffect(() => {
-    if (Id !== '0') {
-      handleGetItemDetails();
+    if (Id === '0') {
+      form.resetFields();
+      form.setFieldsValue({
+        ...NEW_ITEM_DEFAULTS,
+        Id,
+      });
+      return;
     }
-  }, []);
+
+    handleGetItemDetails();
+  }, [Id, form, handleGetItemDetails]);
 
   const getHmiShrType = Form.useWatch('HmiShrType', form);
   const getIncentivesType = Form.useWatch('IncentivesType', form);
   return (
     <div className="cardBackGround  mx-auto">
       <Divider>Item Profile</Divider>
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={NEW_ITEM_DEFAULTS}
+      >
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <Form.Item name="Id" label="Id">
@@ -479,7 +515,7 @@ const ItemProfile = () => {
             </Form.Item>
           </div>
           <div>
-            <div className="grid md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-x-2 xl:grid-cols-4">
               <Form.Item
                 label="For Sale?"
                 name="ForSale"
@@ -523,6 +559,21 @@ const ItemProfile = () => {
                 <Radio.Group>
                   <Radio value="Y">Yes</Radio>
                   <Radio value="N">No</Radio>
+                </Radio.Group>
+              </Form.Item>
+              <Form.Item
+                label="VAT Exempt?"
+                name="VatExcept"
+                rules={[
+                  {
+                    required: true,
+                    message: 'This field is required!',
+                  },
+                ]}
+              >
+                <Radio.Group>
+                  <Radio value={true}>Yes</Radio>
+                  <Radio value={false}>No</Radio>
                 </Radio.Group>
               </Form.Item>
             </div>
@@ -666,12 +717,6 @@ const ItemProfile = () => {
                 name="Cost"
                 label="Cost"
                 className="hidden"
-                rules={[
-                  {
-                    required: true,
-                    message: 'Cost is required',
-                  },
-                ]}
               >
                 <InputNumber
                   style={{ width: '100%' }}
@@ -738,7 +783,7 @@ const ItemProfile = () => {
             <Form.Item
               name="UnitOfMeasureSmall"
               label="Unit Of Measure Small"
-              normalize={(v) => v.toUpperCase()}
+              normalize={(v) => v?.toUpperCase()}
               // rules={[
               //   ({ getFieldValue }) => ({
               //     validator(_, value) {
@@ -775,7 +820,7 @@ const ItemProfile = () => {
             <Form.Item
               name="UnitOfMeasureBig"
               label="Unit Of Measure Big"
-              normalize={(v) => v.toUpperCase()}
+              normalize={(v) => v?.toUpperCase()}
               // rules={[
               //   ({ getFieldValue }) => ({
               //     validator(_, value) {
@@ -810,7 +855,7 @@ const ItemProfile = () => {
             <Form.Item
               name="Dosage"
               label="Dosage"
-              normalize={(v) => v.toUpperCase()}
+              normalize={(v) => v?.toUpperCase()}
             >
               <AutoComplete
                 filterOption={(inputValue, option) =>

@@ -111,6 +111,7 @@ export type TItems = {
   Incentives?: number;
   IncentivesType?: string; // P = percentage, F = Fixed
   fk_LabResultTemplateId?: number;
+  VatExcept?: boolean | number | string;
 };
 
 export type TDepartments = {
@@ -421,6 +422,7 @@ export type TPrice = {
   PriceCategory2?: string;
   Department?: string;
   PriceCategoryCode?: string;
+  VatExcept?: boolean | number | string;
 };
 
 export type TDoctors = {
@@ -892,6 +894,7 @@ export type TMedtechs = {
   LicenseNo?: string;
   Title?: string;
   Type?: string;
+  IsQA?: boolean;
   Department?: string;
   AddedBy?: string;
   DateAdded?: string;

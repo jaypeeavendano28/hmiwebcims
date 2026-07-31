@@ -1,5 +1,6 @@
 import {
   App,
+  AutoComplete,
   Button,
   DatePicker,
   Form,
@@ -23,8 +24,20 @@ import { BsCheck2, BsTrash } from 'react-icons/bs';
 import PharmacyRequestDetails from './PharmacyRequestDetails';
 import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
+import FinalizeForm from './FinalizeForm';
 
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
+const customerOptions = ['CASH', 'BANK TRANSFER', 'MAYA'].map((value) => ({
+  value,
+}));
+const isFalseFlag = (value: unknown) =>
+  value === false ||
+  value === 0 ||
+  ['0', 'N', 'NO', 'FALSE'].includes(
+    String(value ?? '')
+      .trim()
+      .toUpperCase(),
+  );
 
 const computePharmacySalesTotals = (
   saleItems: any[],
@@ -43,7 +56,23 @@ const computePharmacySalesTotals = (
         (discountType) => String(discountType.Id) === String(discountTypeId),
       );
   const discountRate = Number(selectedDiscountType?.PharmacyDiscount ?? 0);
-  const totalDiscount = roundCurrency(grossAmount * discountRate);
+  const totalDiscount = roundCurrency(
+    saleItems.reduce((total: number, item: any) => {
+      const itemAmount = Number(item.Amount ?? 0);
+
+      if (discountRate !== 0.2 || !isFalseFlag(item.VatExcept)) {
+        return total + itemAmount * discountRate;
+      }
+
+      const removedVat = roundCurrency(itemAmount - itemAmount / 1.12);
+      const vatExclusiveAmount = itemAmount - removedVat;
+      const seniorOrPwdDiscount = roundCurrency(
+        vatExclusiveAmount * discountRate,
+      );
+
+      return total + removedVat + seniorOrPwdDiscount;
+    }, 0),
+  );
   const netAmount = roundCurrency(grossAmount - totalDiscount);
 
   return {
@@ -68,6 +97,10 @@ export default function PharmacySales() {
   const [form] = Form.useForm();
   const [form2] = Form.useForm();
   const [modalOpen, setModal] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{
+    sale: any;
+    reason: string;
+  }>();
   // const [items, setItems] = useState([]);
   const [addedItems, setAddedItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<TPrice | undefined>();
@@ -213,6 +246,7 @@ export default function PharmacySales() {
         Quantity: qty,
         Amount: price * qty,
         fk_Items_Id: selectedItem?.ItemId,
+        VatExcept: selectedItem?.VatExcept,
       },
     ]);
     form2.resetFields();
@@ -324,7 +358,7 @@ export default function PharmacySales() {
       okText: 'Delete',
       okButtonProps: { danger: true },
       centered: true,
-      onOk: async () => {
+      onOk: () => {
         if (isNullOrUndefinedOrBlank(deleteReason.trim())) {
           notification.error({
             message: 'Please enter a delete reason!',
@@ -334,37 +368,48 @@ export default function PharmacySales() {
           return Promise.reject();
         }
 
-        try {
-          const res = await PostData('DeletePharmacySales', {
-            PharmacySalesId: data.Id,
-            DeleteReason: deleteReason.trim(),
-          });
-
-          if (res?.status !== 1) {
-            notification.error({
-              message: res?.message ?? 'Unable to delete pharmacy sale.',
-              placement: 'topRight',
-              duration: 3,
-            });
-            return Promise.reject();
-          }
-
-          notification.success({
-            message: 'Pharmacy sale successfully deleted!',
-            placement: 'topRight',
-            duration: 3,
-          });
-          await q.invalidateQueries({ queryKey: ['sales'] });
-        } catch (error: any) {
-          notification.error({
-            message: error.message,
-            placement: 'topRight',
-            duration: 3,
-          });
-          return Promise.reject();
-        }
+        setPendingDelete({
+          sale: data,
+          reason: deleteReason.trim(),
+        });
       },
     });
+  };
+
+  const handleConfirmDeleteSale = async (credentials: any) => {
+    if (!pendingDelete) return;
+
+    try {
+      const res = await PostData('DeletePharmacySales', {
+        PharmacySalesId: pendingDelete.sale.Id,
+        DeleteReason: pendingDelete.reason,
+        Username: credentials.Username,
+        Password: credentials.Password,
+      });
+
+      if (res?.status !== 1) {
+        notification.error({
+          message: res?.message ?? 'Unable to delete pharmacy sale.',
+          placement: 'topRight',
+          duration: 3,
+        });
+        return;
+      }
+
+      notification.success({
+        message: 'Pharmacy sale successfully deleted!',
+        placement: 'topRight',
+        duration: 3,
+      });
+      setPendingDelete(undefined);
+      await q.invalidateQueries({ queryKey: ['sales'] });
+    } catch (error: any) {
+      notification.error({
+        message: error.message,
+        placement: 'topRight',
+        duration: 3,
+      });
+    }
   };
   const actionBodyTemplate2 = (data: any) => {
     return (
@@ -408,7 +453,7 @@ export default function PharmacySales() {
       <Row>
         <Column
           footer="Totals:"
-          colSpan={4}
+          colSpan={6}
           footerStyle={{
             textAlign: 'right',
             fontWeight: 'bold',
@@ -487,6 +532,8 @@ export default function PharmacySales() {
         <Column field="Id" header="Transaction ID"></Column>
         <Column field="DateStr" header="Date"></Column>
         <Column field="Customer" header="Customer"></Column>
+        <Column field="ItemNames" header="Items"></Column>
+        <Column field="Cashier" header="Cashier"></Column>
         <Column field="GrossAmount" header="Gross"></Column>
         <Column field="Discount" header="Discount"></Column>
         <Column field="Net" header="Net"></Column>
@@ -531,8 +578,15 @@ export default function PharmacySales() {
                   },
                 ]}
                 normalize={(v) => v.toUpperCase()}
-              >
-                <Input />
+            >
+                <AutoComplete
+                  options={customerOptions}
+                  filterOption={(inputValue, option) =>
+                    String(option?.value ?? '')
+                      .toUpperCase()
+                      .includes(inputValue.toUpperCase())
+                  }
+                />
               </Form.Item>
 
               <Form.Item name="DiscountType" label="Discount Type">
@@ -705,6 +759,18 @@ export default function PharmacySales() {
           handleClose={handleClose}
           AppointmentId={0}
           // RenderedBy="comlogik"
+        />
+      </Modal>
+      <Modal
+        open={Boolean(pendingDelete)}
+        destroyOnClose
+        onCancel={() => setPendingDelete(undefined)}
+        footer={false}
+      >
+        <FinalizeForm
+          handleFinalizeResult={handleConfirmDeleteSale}
+          title="Confirm Pharmacy Sale Deletion"
+          submitText="Delete"
         />
       </Modal>
     </>

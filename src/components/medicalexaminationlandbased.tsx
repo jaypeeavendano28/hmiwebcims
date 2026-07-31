@@ -881,12 +881,6 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
               <Input />
             </Form.Item>
             <Form.Item
-              name="VACorrectedFarVisionOU"
-              label="FAR VISION CORRECTED OS"
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
               name="VAUncorrectedFarVisionOS"
               label="FAR VISION UNCORRECTED OS"
             >
@@ -898,6 +892,13 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
             >
               <Input />
             </Form.Item>
+            <Form.Item
+              name="VACorrectedFarVisionOU"
+              label="FAR VISION CORRECTED OS"
+            >
+              <Input />
+            </Form.Item>
+
             {/* <Form.Item name="NearVision" label="Near Vision">
               <Input />
             </Form.Item> */}

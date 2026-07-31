@@ -7,8 +7,10 @@ import {
 } from '../../helpers';
 import {
   TAppointments,
+  TBranches,
   TLaboratoryResultMain,
   TLaboratoryResultTemplates,
+  TMedtechs,
 } from '../../types';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -32,6 +34,7 @@ import axios from 'axios';
 import ChargesPerPatient from '../../components/ChargesPerPatient';
 import ExistingLabResults from '../../components/ExistingLabResults';
 import FinalizeForm from '../../components/FinalizeForm';
+import { BiArrowBack } from 'react-icons/bi';
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + '/api/';
 const devApi = import.meta.env.VITE_DEV_API + '/api/';
@@ -73,6 +76,8 @@ const getPositiveNumber = (value: unknown) => {
 
   return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
 };
+const isQualityControlMedtech = (value: unknown) =>
+  ['1', 'TRUE', 'Y'].includes(String(value ?? '').trim().toUpperCase());
 
 const LaboratoryResults = () => {
   const [allowSave, setAllowSave] = useState(false);
@@ -82,9 +87,10 @@ const LaboratoryResults = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOnlineResultShown, setIsOnlineResultShown] = useState(false);
   // const [specimen, setSpecimen] = useState([]);
-  const [branchDetails, setBranchDetails] = useState({});
+  const [branchDetails, setBranchDetails] = useState<Partial<TBranches>>({});
   // const [Remarks, setRemarks] = useState([]);
-  const [Medtechs, setMedtechs] = useState([]);
+  const [Medtechs, setMedtechs] = useState<TMedtechs[]>([]);
+  const [QualityControls, setQualityControls] = useState<TMedtechs[]>([]);
   const [Pathologist, setPathologist] = useState<any[]>([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
   const [IsSaving, setIsSaving] = useState(false);
@@ -285,6 +291,7 @@ const LaboratoryResults = () => {
         DateReceived: dayjs(x.DateReceived),
         Pathologist: x.Pathologist,
         Medtech: x.Medtech,
+        Qa: x.Qa,
         ResultNo: x.ResultNo,
         RequestingPhysician: x.RequestingPhysician,
         Specimen: x.Specimen,
@@ -325,6 +332,7 @@ const LaboratoryResults = () => {
           : dayjs(x.DateCollected),
         Pathologist: x.Pathologist,
         Medtech: x.Medtech,
+        Qa: x.Qa,
         ResultNo: x.ResultNo,
         RequestingPhysician: x.RequestingPhysician,
         Specimen: x.Specimen,
@@ -394,6 +402,7 @@ const LaboratoryResults = () => {
       TemplateId: nextTemplateId,
       RequestingPhysician: DEFAULT_REQUESTING_PHYSICIAN_ID,
       Pathologist: DEFAULT_PATHOLOGIST_ID,
+      Qa: getPositiveNumber(branchDetails.QualityControl) || undefined,
     });
     setResultNo('');
     setResultId(0);
@@ -564,7 +573,23 @@ const LaboratoryResults = () => {
       },
     });
     if (res) {
-      setMedtechs(res.parameters.lst);
+      setMedtechs(res.parameters.lst ?? []);
+    }
+
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetListOfMedtechs',
+      parameters: {
+        BranchCode: store.branchCode,
+        Type: 'M',
+        IsQA: true,
+      },
+    });
+    if (res) {
+      setQualityControls(
+        (res.parameters.lst ?? []).filter((medtech: TMedtechs) =>
+          isQualityControlMedtech(medtech.IsQA),
+        ),
+      );
     }
 
     res = await PostData('GetRecords', {
@@ -595,8 +620,18 @@ const LaboratoryResults = () => {
       },
     });
     if (res) {
-      setBranchDetails(res.parameters.lst[0]);
-      console.log(branchDetails);
+      const currentBranch = res.parameters.lst[0] as Partial<TBranches>;
+      setBranchDetails(currentBranch);
+
+      const defaultQualityControlId = getPositiveNumber(
+        currentBranch.QualityControl,
+      );
+      if (
+        defaultQualityControlId > 0 &&
+        isNullOrUndefinedOrBlank(form.getFieldValue('Qa'))
+      ) {
+        form.setFieldValue('Qa', defaultQualityControlId);
+      }
     }
 
     res = await PostData('GetRecords', {
@@ -1045,6 +1080,13 @@ const LaboratoryResults = () => {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <aside className="min-w-0 lg:col-span-3">
           <div className="lg:sticky lg:top-2">
+            <Button
+              className="mb-2"
+              icon={<BiArrowBack />}
+              onClick={() => router.history.back()}
+            >
+              Back
+            </Button>
             <Divider>Charges</Divider>
             <Tabs
               defaultActiveKey="1"
@@ -1252,6 +1294,33 @@ const LaboratoryResults = () => {
                     }
                   >
                     {Medtechs.map((d: any) => (
+                      <Select.Option key={d.Id} title={d.Name} value={d.Id}>
+                        {d.Name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label="Quality Control"
+                  name="Qa"
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Quality control signer is required!',
+                    },
+                  ]}
+                >
+                  <Select
+                    showSearch
+                    allowClear
+                    filterOption={(inputValue, option: any) =>
+                      option.title
+                        .toUpperCase()
+                        .indexOf(inputValue.toUpperCase()) !== -1
+                    }
+                  >
+                    {QualityControls.map((d: any) => (
                       <Select.Option key={d.Id} title={d.Name} value={d.Id}>
                         {d.Name}
                       </Select.Option>

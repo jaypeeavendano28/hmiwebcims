@@ -1,5 +1,5 @@
 import { createLazyFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Button, Divider, notification, Space, Tooltip } from "antd";
+import { Button, Divider, notification, Space, Tag, Tooltip } from "antd";
 import { useEffect, useState } from "react";
 import useAppStore from "../../store";
 import { useQuery } from "@tanstack/react-query";
@@ -7,6 +7,7 @@ import { PostData, WithAccess } from "../../helpers";
 import { FilterMatchMode } from "primereact/api";
 import { TMedtechs } from "../../types";
 import { BiEdit } from "react-icons/bi";
+import { PlusOutlined } from "@ant-design/icons";
 import Loading from "../../components/loading";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -24,7 +25,7 @@ const Medtechs = () => {
   });
 
   const data = useQuery({
-    queryKey: ["data"],
+    queryKey: ["medtechs"],
     queryFn: async () => {
       const res = await PostData("GetRecords", {
         sp: "udp_GetListOfMedtechs",
@@ -100,6 +101,7 @@ const Medtechs = () => {
       <Divider>Medical Technologists</Divider>
       <Button
         type="primary"
+        icon={<PlusOutlined />}
         onClick={() => {
           router.navigate({
             to: "/medtech/$Id",
@@ -141,6 +143,17 @@ const Medtechs = () => {
             ></Column>
             <Column field="Id" header="Id" filter></Column>
             <Column field="Name" header="Name" filter></Column>
+            <Column
+              field="IsQA"
+              header="Quality Control"
+              body={(row: TMedtechs) =>
+                row.IsQA ? (
+                  <Tag color="blue">YES</Tag>
+                ) : (
+                  <Tag>NO</Tag>
+                )
+              }
+            ></Column>
           </DataTable>
         )}
       </div>

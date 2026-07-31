@@ -933,12 +933,6 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
             <Input />
           </Form.Item>
           <Form.Item
-            name="VACorrectedFarVisionOU"
-            label="FAR VISION UNCORRECTED OS"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
             name="VAUncorrectedFarVisionOS"
             label="FAR VISION UNCORRECTED OS"
           >
@@ -950,36 +944,44 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
           >
             <Input />
           </Form.Item>
+          <Form.Item
+            name="VACorrectedFarVisionOU"
+            label="FAR VISION CORRECTED OS"
+          >
+            <Input />
+          </Form.Item>
+
           {/* <Form.Item name="NearVision" label="Near Vision">
               <Input />
             </Form.Item> */}
-
           <Form.Item
-            name="NearVisionCorrectedODJ"
+            name="NearVisionUncorrectedODJ"
             label="NEAR VISION UNCORRECTED OD"
           >
             <Input />
           </Form.Item>
           <Form.Item
-            name="NearVisionUncorrectedODJ"
-            label="NEAR VISION UNCORRECTED OS"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="NearVisionCorrectedOSJ"
+            name="NearVisionUncorrectedOSJ"
             label="NEAR VISION UNCORRECTED OS
 "
           >
             <Input />
           </Form.Item>
+
           <Form.Item
-            name="NearVisionUncorrectedOSJ"
-            label="NEAR VISION CORRECTED OD
+            name="NearVisionCorrectedODJ"
+            label="NEAR VISION CORRECTED OD"
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="NearVisionCorrectedOSJ"
+            label="NEAR VISION CORRECTED OS
 "
           >
             <Input />
           </Form.Item>
+
           <div>
             <Form.Item name="Ishihara" label="Ishihara Color Vision">
               <Radio.Group>

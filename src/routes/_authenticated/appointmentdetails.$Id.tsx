@@ -1393,11 +1393,9 @@ export const AppointmentDetails = ({
               showSearch
               allowClear
               filterOption={(input, option) =>
-                (
-                  option!.children
-                    ?.toString()
-                    .toLocaleLowerCase() as unknown as string
-                ).includes(input.toLocaleLowerCase())
+                String(option?.title ?? '')
+                  .toLocaleLowerCase()
+                  .includes(input.toLocaleLowerCase())
               }
             >
               {company.data &&
@@ -1700,11 +1698,9 @@ export const AppointmentDetails = ({
                       showSearch
                       allowClear
                       filterOption={(input, option) =>
-                        (
-                          option!.children
-                            ?.toString()
-                            .toLocaleLowerCase() as unknown as string
-                        ).includes(input.toLocaleLowerCase())
+                        String(option?.title ?? '')
+                          .toLocaleLowerCase()
+                          .includes(input.toLocaleLowerCase())
                       }
                     >
                       {appointmentType.data?.map((d: TAppointmentType) => (
@@ -1744,11 +1740,9 @@ export const AppointmentDetails = ({
                           showSearch
                           allowClear
                           filterOption={(input, option) =>
-                            (
-                              option!.children
-                                ?.toString()
-                                .toLocaleLowerCase() as unknown as string
-                            ).includes(input.toLocaleLowerCase())
+                            String(option?.title ?? '')
+                              .toLocaleLowerCase()
+                              .includes(input.toLocaleLowerCase())
                           }
                         >
                           {hmo.data?.map((d: THmoCompany) => (
@@ -1780,11 +1774,9 @@ export const AppointmentDetails = ({
                           showSearch
                           allowClear
                           filterOption={(input, option) =>
-                            (
-                              option!.children
-                                ?.toString()
-                                .toLocaleLowerCase() as unknown as string
-                            ).includes(input.toLocaleLowerCase())
+                            String(option?.title ?? '')
+                              .toLocaleLowerCase()
+                              .includes(input.toLocaleLowerCase())
                           }
                         >
                           {company.data?.map((d: THmoCompany) => (

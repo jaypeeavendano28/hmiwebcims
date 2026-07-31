@@ -2,12 +2,15 @@ import { Button, Divider, Image, Input, Modal, Space, notification } from "antd"
 import { useEffect, useRef, useState } from "react";
 
 type SignatureBuilderProps = {
+  title?: string;
+  buttonLabel?: string;
   currentImage?: string | null;
   disabled?: boolean;
   fullName?: string;
   licenseNo?: string;
   positionTitle?: string;
   defaultTitle?: string;
+  titleReadOnly?: boolean;
   onLicenseNoChange?: (value: string) => void;
   onTitleChange?: (value: string) => void;
   onSave: (image: string) => Promise<boolean | void> | boolean | void;
@@ -85,12 +88,15 @@ const drawCenteredPrcText = (
 };
 
 const SignatureBuilder = ({
+  title = "Signature",
+  buttonLabel = "Create e-sign",
   currentImage,
   disabled,
   fullName,
   licenseNo,
   positionTitle,
   defaultTitle = "",
+  titleReadOnly = false,
   onLicenseNoChange,
   onTitleChange,
   onSave,
@@ -270,14 +276,14 @@ const SignatureBuilder = ({
 
   return (
     <div>
-      <Divider>Signature</Divider>
+      <Divider>{title}</Divider>
       <div className="flex justify-center">
         <Image src={preview as string} preview={false} />
       </div>
 
       <div className="flex justify-center mt-3">
         <Button type="primary" onClick={() => setShowBuilder(true)} disabled={disabled}>
-          Create e-sign
+          {buttonLabel}
         </Button>
       </div>
 
@@ -311,6 +317,7 @@ const SignatureBuilder = ({
             }}
             placeholder="Position/Title"
             disabled={disabled}
+            readOnly={titleReadOnly}
           />
         </div>
 
