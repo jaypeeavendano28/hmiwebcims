@@ -1825,7 +1825,7 @@ const Mer = () => {
               </Form.Item>
               <Form.Item name="StoolCsValue" noStyle>
                 <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Reactive">Reactive</Radio>
                   <Radio value="Non Reactive">Non Reactive</Radio>
                 </Radio.Group>
               </Form.Item>
@@ -1841,7 +1841,7 @@ const Mer = () => {
               </Form.Item>
               <Form.Item name="HbSagValue" noStyle>
                 <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Reactive">Reactive</Radio>
                   <Radio value="Non Reactive">Non Reactive</Radio>
                 </Radio.Group>
               </Form.Item>
@@ -1857,7 +1857,7 @@ const Mer = () => {
               </Form.Item>
               <Form.Item name="HepaAIgMValue" noStyle>
                 <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Reactive">Reactive</Radio>
                   <Radio value="Non Reactive">Non Reactive</Radio>
                 </Radio.Group>
               </Form.Item>
@@ -1873,7 +1873,7 @@ const Mer = () => {
               </Form.Item>
               <Form.Item name="AntiHavValue" noStyle>
                 <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Reactive">Reactive</Radio>
                   <Radio value="Non Reactive">Non Reactive</Radio>
                 </Radio.Group>
               </Form.Item>
@@ -1889,7 +1889,7 @@ const Mer = () => {
               </Form.Item>
               <Form.Item name="AntiHbsValue" noStyle>
                 <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Reactive">Reactive</Radio>
                   <Radio value="Non Reactive">Non Reactive</Radio>
                 </Radio.Group>
               </Form.Item>
@@ -1905,7 +1905,7 @@ const Mer = () => {
               </Form.Item>
               <Form.Item name="HepaAIgGValue" noStyle>
                 <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Reactive">Reactive</Radio>
                   <Radio value="Non Reactive">Non Reactive</Radio>
                 </Radio.Group>
               </Form.Item>
@@ -1918,7 +1918,7 @@ const Mer = () => {
               </Form.Item>
               <Form.Item name="RprValue" noStyle>
                 <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Reactive">Reactive</Radio>
                   <Radio value="Non Reactive">Non Reactive</Radio>
                 </Radio.Group>
               </Form.Item>
@@ -1934,7 +1934,7 @@ const Mer = () => {
               </Form.Item>
               <Form.Item name="AntiHavIgMValue" noStyle>
                 <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
+                  <Radio value="Reactive">Reactive</Radio>
                   <Radio value="Non Reactive">Non Reactive</Radio>
                 </Radio.Group>
               </Form.Item>

@@ -21,6 +21,7 @@ import {
   Radio,
   Select,
   Space,
+  Tag,
   Tooltip,
   notification,
 } from 'antd';
@@ -49,6 +50,7 @@ import Webcam from 'react-webcam';
 import axios, { AxiosError } from 'axios';
 import AddCharge from '../../components/AddCharge';
 import { FaRegEdit } from 'react-icons/fa';
+import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
 import ResultStatus from '../../components/ResultStatus';
@@ -74,6 +76,12 @@ const devApi = import.meta.env.VITE_DEV_API;
 import { isNullOrUndefinedOrBlank } from './../../helpers/index';
 
 const ApiUrl = isDev ? devApi : prodApi;
+
+const formatChargeAmount = (value?: number | null) =>
+  Number(value ?? 0).toLocaleString('en-PH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 type SaveAppointmentArgs = {
   values: TAppointments;
@@ -131,7 +139,6 @@ export const AppointmentDetails = ({
     TAppointments | undefined
   >();
   const q = useQueryClient();
-  const [Net, setNet] = useState<number>(0);
   // const [qCounters, setQCounters] = useState<MenuProps['items']>([]);
   const fileInput = useRef<HTMLInputElement | null>(null);
   const [showWebCam, setShowWebCam] = useState(false);
@@ -471,7 +478,7 @@ export const AppointmentDetails = ({
       return;
     }
 
-    if (isMobileTph === false && Number(Net) > 0) {
+    if (isMobileTph === false && chargeTotals.net > 0) {
       notification.error({
         message: 'Please pay first the balance at the cashier!',
         placement: 'topRight',
@@ -606,7 +613,7 @@ export const AppointmentDetails = ({
         duration: 3,
       });
       return;
-    } else if (isMobileTph === false && Number(Net) > 0) {
+    } else if (isMobileTph === false && chargeTotals.net > 0) {
       notification.error({
         message: 'Please pay first the balance at the cashier!',
         placement: 'topRight',
@@ -1153,7 +1160,7 @@ export const AppointmentDetails = ({
   };
   const actionBodyTemplate = (data: TCharges) => {
     return (
-      <Space>
+      <Space size={4}>
         {data.Editable && (
           <Tooltip title="Edit">
             <FaRegEdit
@@ -1221,7 +1228,7 @@ export const AppointmentDetails = ({
 
   const rowExpansionTemplate = (data: TCharges) => {
     return (
-      <div className="p-3">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 p-2 text-xs">
         <div>Doctor</div>
         <div>
           <strong>{data.DoctorName}</strong>
@@ -1307,23 +1314,16 @@ export const AppointmentDetails = ({
   //   console.log(data);
   // };
 
-  const net = () => {
-    let total = 0;
+  const chargeTotals = (charges ?? []).reduce(
+    (totals, charge) => ({
+      gross: totals.gross + Number(charge.Gross ?? 0),
+      hmo: totals.hmo + Number(charge.HmoAmount ?? 0),
+      cash: totals.cash + Number(charge.CashPayment ?? 0),
+      net: totals.net + Number(charge.Net ?? 0),
+    }),
+    { gross: 0, hmo: 0, cash: 0, net: 0 },
+  );
 
-    for (let sale of charges!) {
-      total += sale.Net!;
-    }
-    setNet(total);
-    //// return formatCurrency(total);
-    return (
-      <p className="font-bold text-lg">
-        {total.toLocaleString(undefined, {
-          maximumFractionDigits: 2,
-          minimumFractionDigits: 2,
-        })}
-      </p>
-    );
-  };
   const footerGroup = (
     <ColumnGroup>
       <Row>
@@ -1337,8 +1337,34 @@ export const AppointmentDetails = ({
         />
         <Column footer="" />
         <Column footer="" />
+        <Column
+          footer={formatChargeAmount(chargeTotals.gross)}
+          footerStyle={{ textAlign: 'right', fontWeight: 'bold' }}
+        />
+        <Column
+          footer={formatChargeAmount(chargeTotals.hmo)}
+          footerStyle={{ textAlign: 'right', fontWeight: 'bold' }}
+        />
+        <Column
+          footer={formatChargeAmount(chargeTotals.cash)}
+          footerStyle={{ textAlign: 'right', fontWeight: 'bold' }}
+        />
+        <Column
+          footer={
+            <span
+              className={
+                chargeTotals.net > 0
+                  ? 'text-base font-bold text-red-600'
+                  : 'font-bold text-slate-700'
+              }
+            >
+              {formatChargeAmount(chargeTotals.net)}
+            </span>
+          }
+          footerStyle={{ textAlign: 'right' }}
+        />
         <Column footer="" />
-        <Column footer={net} />
+        <Column footer="" />
       </Row>
     </ColumnGroup>
   );
@@ -2089,10 +2115,23 @@ export const AppointmentDetails = ({
               </section>
 
               <section className="border-t-2 border-sky-500 bg-white shadow-sm">
-                <div className="border-b px-4 py-3">
-                  <h2 className="font-semibold text-slate-700">Charges</h2>
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <div className="flex items-baseline gap-2">
+                    <h2 className="font-semibold text-slate-700">Charges</h2>
+                    <span className="text-xs text-slate-500">
+                      {charges?.length ?? 0} item(s)
+                    </span>
+                  </div>
+                  {/* <div className="text-right">
+                    <div className="text-[11px] font-medium uppercase text-slate-500">
+                      Total Charges
+                    </div>
+                    <div className="text-base font-bold tabular-nums text-slate-800">
+                      {formatChargeAmount(chargeTotals.gross)}
+                    </div>
+                  </div> */}
                 </div>
-                <div className="p-4">
+                <div className="p-2">
                   {isLoading ? (
                     <Loading size={64} />
                   ) : (
@@ -2104,32 +2143,122 @@ export const AppointmentDetails = ({
                       emptyMessage="No Records!"
                       stripedRows
                       size="small"
-                      filterDisplay="row"
+                      className="text-xs [&_.p-datatable-tbody>tr>td]:!px-2 [&_.p-datatable-tbody>tr>td]:!py-1.5 [&_.p-datatable-tfoot>tr>td]:!px-2 [&_.p-datatable-tfoot>tr>td]:!py-1.5 [&_.p-datatable-thead>tr>th]:!px-2 [&_.p-datatable-thead>tr>th]:!py-1.5"
                       rowExpansionTemplate={rowExpansionTemplate}
                       expandedRows={expandedRows as any}
                       onRowToggle={(e) => setExpandedRows(e.data as any)}
                       footerColumnGroup={footerGroup}
                     >
                       <Column
-                        expander={charges!.length > 0}
-                        style={{ width: '2rem' }}
+                        expander={(charges?.length ?? 0) > 0}
+                        style={{ width: '1.75rem' }}
                       />
                       <Column
                         field="action"
                         header="Action"
                         body={(data: any) => actionBodyTemplate(data)}
+                        style={{ width: '4.5rem' }}
                       ></Column>
                       <Column field="Description" header="Description"></Column>
-                      <Column field="Gross" header="Gross"></Column>
-                      <Column field="HmoAmount" header="Hmo"></Column>
+                      <Column
+                        field="Qty"
+                        header="Qty"
+                        body={(data: TCharges) =>
+                          Number(data.Qty ?? 0).toLocaleString('en-PH')
+                        }
+                        bodyStyle={{ textAlign: 'right' }}
+                        headerStyle={{ textAlign: 'right', width: '4rem' }}
+                        headerClassName="[&_.p-column-header-content]:!justify-end"
+                      ></Column>
+                      <Column
+                        field="Price"
+                        header="Item Price"
+                        body={(data: TCharges) =>
+                          formatChargeAmount(data.Price)
+                        }
+                        bodyStyle={{ textAlign: 'right' }}
+                        headerStyle={{ textAlign: 'right', width: '6.5rem' }}
+                        headerClassName="[&_.p-column-header-content]:!justify-end"
+                      ></Column>
+                      <Column
+                        field="Gross"
+                        header="Total"
+                        body={(data: TCharges) =>
+                          formatChargeAmount(data.Gross)
+                        }
+                        bodyStyle={{ textAlign: 'right' }}
+                        headerStyle={{ textAlign: 'right', width: '6.5rem' }}
+                        headerClassName="[&_.p-column-header-content]:!justify-end"
+                      ></Column>
+                      <Column
+                        field="HmoAmount"
+                        header="HMO"
+                        body={(data: TCharges) =>
+                          formatChargeAmount(data.HmoAmount)
+                        }
+                        bodyStyle={{ textAlign: 'right' }}
+                        headerStyle={{ textAlign: 'right', width: '6.5rem' }}
+                        headerClassName="[&_.p-column-header-content]:!justify-end"
+                      ></Column>
                       <Column
                         field="CashPayment"
-                        header="Cash Payment"
+                        header="Cash"
+                        body={(data: TCharges) =>
+                          formatChargeAmount(data.CashPayment)
+                        }
+                        bodyStyle={{ textAlign: 'right' }}
+                        headerStyle={{ textAlign: 'right', width: '6.5rem' }}
+                        headerClassName="[&_.p-column-header-content]:!justify-end"
                       ></Column>
-                      <Column field="Net" header="Net"></Column>
+                      <Column
+                        field="Net"
+                        header="Net"
+                        body={(data: TCharges) => {
+                          const balance = Number(data.Net ?? 0);
+
+                          return (
+                            <span
+                              className={
+                                balance > 0
+                                  ? 'text-sm font-bold text-red-600'
+                                  : 'font-medium text-slate-700'
+                              }
+                            >
+                              {formatChargeAmount(balance)}
+                            </span>
+                          );
+                        }}
+                        bodyStyle={{ textAlign: 'right' }}
+                        headerStyle={{ textAlign: 'right', width: '6.5rem' }}
+                        headerClassName="[&_.p-column-header-content]:!justify-end"
+                      ></Column>
+                      <Column
+                        header="Payment"
+                        body={(data: TCharges) => {
+                          const isSettled = Number(data.Net ?? 0) <= 0;
+
+                          return (
+                            <Tag
+                              color={isSettled ? 'success' : 'error'}
+                              className="!m-0 !inline-flex !items-center !justify-center !gap-1 !whitespace-nowrap !px-2 !py-0.5 !text-xs !font-semibold !leading-5"
+                            >
+                              {isSettled ? (
+                                <FiCheckCircle className="shrink-0" />
+                              ) : (
+                                <FiAlertCircle className="shrink-0" />
+                              )}
+                              <span>{isSettled ? 'Settled' : 'Unsettled'}</span>
+                            </Tag>
+                          );
+                        }}
+                        bodyStyle={{ textAlign: 'center' }}
+                        headerStyle={{ textAlign: 'center', width: '7.25rem' }}
+                        headerClassName="[&_.p-column-header-content]:!justify-center"
+                      ></Column>
                       <Column
                         field="PaymentType"
-                        header="Payment Type"
+                        header="Type"
+                        style={{ width: '5rem' }}
                       ></Column>
                     </DataTable>
                   )}

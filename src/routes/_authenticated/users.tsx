@@ -165,6 +165,7 @@ const Users = () => {
       setIsOverridingPassword(true);
       const res = await PostData("OverrideUserPassword", {
         Id: selectedData.Id,
+        Username: selectedData.Username,
         Password: values.Password,
       });
 

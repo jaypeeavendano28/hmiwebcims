@@ -205,10 +205,10 @@ const reportData = [
     key: 'pharmacy-sales-report',
     description: 'Pharmacy Sales Report',
   },
-  {
-    key: 'pharmacy-daily-sales-report',
-    description: 'Pharmacy Daily Sales Report',
-  },
+  // {
+  //   key: 'pharmacy-daily-sales-report',
+  //   description: 'Pharmacy Daily Sales Report',
+  // },
   {
     key: 'medical-exams-tests',
     description: 'Medical Exams & Tests Census',
@@ -322,6 +322,7 @@ const Reports = () => {
             parameters: {
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
+              BranchCode: store.branchCode,
             },
           });
 
@@ -336,6 +337,7 @@ const Reports = () => {
             parameters: {
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
+              BranchCode: store.branchCode,
             },
           });
 
@@ -376,6 +378,7 @@ const Reports = () => {
             parameters: {
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
+              BranchCode: store.branchCode,
               itemsIds: values.items
                 ? (values.items as number[]).join(',')
                 : '',
@@ -397,6 +400,7 @@ const Reports = () => {
             parameters: {
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
+              BranchCode: store.branchCode,
             },
           });
 
@@ -414,6 +418,7 @@ const Reports = () => {
             parameters: {
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
+              BranchCode: store.branchCode,
             },
           });
 
@@ -1256,10 +1261,7 @@ const printPharmacyDailySalesReport = (
   const totals = headers.map((_, columnIndex) =>
     columnIndex === 0
       ? 'Total'
-      : rows.reduce(
-          (total, row) => total + Number(row[columnIndex] ?? 0),
-          0,
-        ),
+      : rows.reduce((total, row) => total + Number(row[columnIndex] ?? 0), 0),
   );
   const sheetData = [
     ['Sales Daily Report'],

@@ -28,7 +28,19 @@ import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
 import FinalizeForm from './FinalizeForm';
 
-const roundCurrency = (value: number) => Math.round(value * 100) / 100;
+const CURRENCY_DECIMAL_PLACES = 2;
+const CURRENCY_FACTOR = 10 ** CURRENCY_DECIMAL_PLACES;
+const roundCurrency = (value: number) => {
+  const numericValue = Number.isFinite(value) ? value : 0;
+
+  return (
+    Math.sign(numericValue) *
+    (Math.round((Math.abs(numericValue) + Number.EPSILON) * CURRENCY_FACTOR) /
+      CURRENCY_FACTOR)
+  );
+};
+const formatCurrency = (value: unknown) =>
+  roundCurrency(Number(value ?? 0)).toFixed(CURRENCY_DECIMAL_PLACES);
 const getSaleNetAmount = (sale: any) =>
   roundCurrency(
     Number(
@@ -60,17 +72,19 @@ const isTrueFlag = (value: unknown) =>
 
 const computePharmacyLineTotals = (
   item: any,
-  discountRate: number,
   shouldRemoveVat: boolean,
 ) => {
-  const grossAmount = roundCurrency(Number(item.Amount ?? 0));
+  const price = roundCurrency(Number(item.Price ?? 0));
+  const quantity = Number(item.Quantity ?? item.Qty ?? 0);
+  const grossAmount = roundCurrency(price * quantity);
+  const shouldRemoveItemVat =
+    shouldRemoveVat && isFalseFlag(item.VatExcept);
+  const discountableUnitPrice = shouldRemoveItemVat
+    ? roundCurrency(price / 1.12)
+    : price;
+  const discountBase = roundCurrency(discountableUnitPrice * quantity);
   const lessVat =
-    shouldRemoveVat && isFalseFlag(item.VatExcept)
-      ? roundCurrency(grossAmount - grossAmount / 1.12)
-      : 0;
-  const discountBase = roundCurrency(grossAmount - lessVat);
-  const discount = roundCurrency(discountBase * discountRate);
-  const netAmount = roundCurrency(grossAmount - lessVat - discount);
+    shouldRemoveItemVat ? roundCurrency(grossAmount - discountBase) : 0;
   const isVatExempt = isTrueFlag(item.VatExcept) || lessVat > 0;
   const vat = isVatExempt
     ? 0
@@ -80,8 +94,7 @@ const computePharmacyLineTotals = (
     grossAmount,
     vat,
     lessVat,
-    discount,
-    netAmount,
+    discountBase,
     isVatExempt,
   };
 };
@@ -98,25 +111,50 @@ const computePharmacySalesTotals = (
       );
   const discountRate = Number(selectedDiscountType?.PharmacyDiscount ?? 0);
   const shouldRemoveVat = isTrueFlag(selectedDiscountType?.LessVat);
-  const lineTotals = saleItems.map((item) =>
-    computePharmacyLineTotals(item, discountRate, shouldRemoveVat),
+  const calculatedLines = saleItems.map((item) =>
+    computePharmacyLineTotals(item, shouldRemoveVat),
   );
   const grossAmount = roundCurrency(
-    lineTotals.reduce((total, line) => total + line.grossAmount, 0),
+    calculatedLines.reduce((total, line) => total + line.grossAmount, 0),
   );
   const lessVat = roundCurrency(
-    lineTotals.reduce((total, line) => total + line.lessVat, 0),
+    calculatedLines.reduce((total, line) => total + line.lessVat, 0),
   );
   const vat = roundCurrency(
-    lineTotals.reduce((total, line) => total + line.vat, 0),
+    calculatedLines.reduce((total, line) => total + line.vat, 0),
+  );
+  const discountableAmount = roundCurrency(
+    calculatedLines.reduce((total, line) => total + line.discountBase, 0),
   );
   const salesDiscount = roundCurrency(
-    lineTotals.reduce((total, line) => total + line.discount, 0),
+    discountableAmount * discountRate,
   );
+  let allocatedDiscount = 0;
+  const lineTotals = calculatedLines.map((line, index) => {
+    const remainingDiscount = roundCurrency(
+      salesDiscount - allocatedDiscount,
+    );
+    const proposedDiscount =
+      index === calculatedLines.length - 1
+        ? remainingDiscount
+        : roundCurrency(line.discountBase * discountRate);
+    const discount = roundCurrency(
+      Math.min(
+        Math.max(proposedDiscount, 0),
+        Math.max(remainingDiscount, 0),
+        line.discountBase,
+      ),
+    );
+    allocatedDiscount = roundCurrency(allocatedDiscount + discount);
+
+    return {
+      ...line,
+      discount,
+      netAmount: roundCurrency(line.discountBase - discount),
+    };
+  });
   const totalDiscount = roundCurrency(lessVat + salesDiscount);
-  const netAmount = roundCurrency(
-    lineTotals.reduce((total, line) => total + line.netAmount, 0),
-  );
+  const netAmount = roundCurrency(discountableAmount - salesDiscount);
 
   return {
     grossAmount,
@@ -125,6 +163,7 @@ const computePharmacySalesTotals = (
     salesDiscount,
     totalDiscount,
     netAmount,
+    discountableAmount,
     lineTotals,
   };
 };
@@ -265,7 +304,7 @@ export default function PharmacySales() {
       });
       return;
     }
-    const price: number = form2.getFieldValue('Price');
+    const price = roundCurrency(Number(form2.getFieldValue('Price')));
     const qty: number = form2.getFieldValue('Qty');
 
     if (allSelectedAddItemIds.includes(selectedItem?.Id)) {
@@ -293,7 +332,7 @@ export default function PharmacySales() {
         Description: selectedItem?.Description,
         Price: price,
         Quantity: qty,
-        Amount: price * qty,
+        Amount: roundCurrency(price * qty),
         fk_Items_Id: selectedItem?.ItemId,
         VatExcept: selectedItem?.VatExcept,
       },
@@ -319,7 +358,7 @@ export default function PharmacySales() {
       discountTypes.data,
     );
     const isForPayment = v.IsForPayment === true;
-    const amountPaid = Number(v.AmountPaid ?? 0);
+    const amountPaid = roundCurrency(Number(v.AmountPaid ?? 0));
 
     if (!isForPayment && amountPaid - totals.netAmount < 0) {
       notification.error({
@@ -340,7 +379,11 @@ export default function PharmacySales() {
           Date: dayjs(v.Date).format('YYYY-MM-DD'),
           BranchCode: store.branchCode,
           Amount: totals.netAmount,
-          AmountPaid: isForPayment ? v.AmountPaid ?? null : v.AmountPaid,
+          AmountPaid: isForPayment
+            ? isNullOrUndefinedOrBlank(v.AmountPaid)
+              ? null
+              : amountPaid
+            : amountPaid,
           IsForPayment: isForPayment,
           OrNo: isForPayment ? null : v.OrNo,
           GrossAmount: totals.grossAmount,
@@ -488,7 +531,7 @@ export default function PharmacySales() {
     if (!pendingPayment) return;
 
     const amountDue = getSaleNetAmount(pendingPayment);
-    const paidAmount = Number(values.AmountPaid ?? 0);
+    const paidAmount = roundCurrency(Number(values.AmountPaid ?? 0));
 
     if (paidAmount < amountDue) {
       notification.error({
@@ -598,7 +641,7 @@ export default function PharmacySales() {
 
         <Column footer="" />
         <Column footer="" />
-        <Column footer={netAmount} />
+        <Column footer={formatCurrency(netAmount)} />
       </Row>
     </ColumnGroup>
   );
@@ -628,10 +671,26 @@ export default function PharmacySales() {
       <Column field="Customer" header="Customer"></Column>
       <Column field="ItemNames" header="Items"></Column>
       <Column field="Cashier" header="Cashier"></Column>
-      <Column field="GrossAmount" header="Gross"></Column>
-      <Column field="LessVat" header="Less VAT"></Column>
-      <Column field="Discount" header="Discount"></Column>
-      <Column field="Net" header="Net"></Column>
+      <Column
+        field="GrossAmount"
+        header="Gross"
+        body={(data: any) => formatCurrency(data.GrossAmount)}
+      ></Column>
+      <Column
+        field="LessVat"
+        header="Less VAT"
+        body={(data: any) => formatCurrency(data.LessVat)}
+      ></Column>
+      <Column
+        field="Discount"
+        header="Discount"
+        body={(data: any) => formatCurrency(data.Discount)}
+      ></Column>
+      <Column
+        field="Net"
+        header="Net"
+        body={(data: any) => formatCurrency(data.Net)}
+      ></Column>
     </DataTable>
   );
   useEffect(() => {
@@ -675,12 +734,19 @@ export default function PharmacySales() {
     selectedDiscountType,
     discountTypes.data,
   );
-  const getCurrentLineTotals = (item: any) =>
-    computePharmacySalesTotals(
-      [item],
-      selectedDiscountType,
-      discountTypes.data,
-    ).lineTotals[0];
+  const getCurrentLineTotals = (item: any) => {
+    const itemIndex = addedItems.findIndex(
+      (addedItem) => addedItem === item || addedItem.Id === item.Id,
+    );
+
+    return itemIndex >= 0
+      ? currentSaleTotals.lineTotals[itemIndex]
+      : computePharmacySalesTotals(
+          [item],
+          selectedDiscountType,
+          discountTypes.data,
+        ).lineTotals[0];
+  };
 
   return (
     <>
@@ -739,7 +805,7 @@ export default function PharmacySales() {
           <span className="text-slate-500">Customer</span>
           <strong>{pendingPayment?.Customer}</strong>
           <span className="text-slate-500">Amount Due</span>
-          <strong>{getSaleNetAmount(pendingPayment).toFixed(2)}</strong>
+          <strong>{formatCurrency(getSaleNetAmount(pendingPayment))}</strong>
         </div>
         <Form
           form={paymentForm}
@@ -772,19 +838,22 @@ export default function PharmacySales() {
             <InputNumber
               min={0}
               precision={2}
+              step={0.01}
               style={{ width: '100%' }}
             />
           </Form.Item>
           <div className="mb-5 flex items-center justify-between border-t border-slate-200 pt-3">
             <span className="text-slate-500">Change</span>
             <strong>
-              {Math.max(
-                0,
-                roundCurrency(
+              {formatCurrency(
+                Math.max(
+                  0,
+                  roundCurrency(
                   Number(pendingAmountPaid ?? 0) -
                     getSaleNetAmount(pendingPayment),
+                  ),
                 ),
-              ).toFixed(2)}
+              )}
             </strong>
           </div>
           <div className="flex justify-end gap-2">
@@ -898,23 +967,25 @@ export default function PharmacySales() {
                 <Input />
               </Form.Item>
               <Form.Item label="Gross Amount">
-                <p className="text-lg font-bold"> {amount}</p>
+                <p className="text-lg font-bold">{formatCurrency(amount)}</p>
               </Form.Item>
               <Form.Item label="Less VAT">
                 <p className="text-lg font-bold">
-                  {currentSaleTotals.lessVat.toFixed(2)}
+                  {formatCurrency(currentSaleTotals.lessVat)}
                 </p>
               </Form.Item>
               <Form.Item label="Discount">
                 <p className="text-lg font-bold">
-                  {currentSaleTotals.salesDiscount.toFixed(2)}
+                  {formatCurrency(currentSaleTotals.salesDiscount)}
                 </p>
               </Form.Item>
               <Form.Item label="Total Deduction">
-                <p className="text-lg font-bold">{discount.toFixed(2)}</p>
+                <p className="text-lg font-bold">
+                  {formatCurrency(discount)}
+                </p>
               </Form.Item>
               <Form.Item label="Net Amount">
-                <p className="text-lg font-bold"> {net}</p>
+                <p className="text-lg font-bold">{formatCurrency(net)}</p>
               </Form.Item>
               <Form.Item
                 name="AmountPaid"
@@ -939,6 +1010,8 @@ export default function PharmacySales() {
               >
                 <InputNumber
                   style={{ width: '100%' }}
+                  precision={2}
+                  step={0.01}
                   onChange={handleChangeAmountPaid}
                 />
               </Form.Item>
@@ -947,7 +1020,7 @@ export default function PharmacySales() {
                 label="Change"
                 className="text-lg font-bold"
               >
-                {change}
+                {formatCurrency(change)}
               </Form.Item>
               <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
                 <Space>
@@ -977,7 +1050,7 @@ export default function PharmacySales() {
                   options={items.data?.map((d) => ({
                     value: d.Id,
                     // label: d.Description,
-                    label: `${d.Description} - ${d.Price}`,
+                    label: `${d.Description} - ${formatCurrency(d.Price)}`,
                   }))}
                   optionFilterProp="label"
                   // filterOption={(input, option) =>
@@ -1012,7 +1085,7 @@ export default function PharmacySales() {
                   },
                 ]}
               >
-                <InputNumber readOnly precision={2} />
+                <InputNumber readOnly precision={2} step={0.01} />
               </Form.Item>
               <Form.Item
                 name="Qty"
@@ -1047,25 +1120,33 @@ export default function PharmacySales() {
                 body={(data: any) => actionBodyTemplate(data)}
               ></Column>
               <Column field="Description" header="Description"></Column>
-              <Column field="Price" header="Price"></Column>
+              <Column
+                field="Price"
+                header="Price"
+                body={(data: any) => formatCurrency(data.Price)}
+              ></Column>
               <Column field="Quantity" header="Qty"></Column>
-              <Column field="Amount" header="Gross"></Column>
+              <Column
+                field="Amount"
+                header="Gross"
+                body={(data: any) => formatCurrency(data.Amount)}
+              ></Column>
               <Column
                 header="Less VAT"
                 body={(data: any) =>
-                  getCurrentLineTotals(data).lessVat.toFixed(2)
+                  formatCurrency(getCurrentLineTotals(data).lessVat)
                 }
               ></Column>
               <Column
                 header="Discount"
                 body={(data: any) =>
-                  getCurrentLineTotals(data).discount.toFixed(2)
+                  formatCurrency(getCurrentLineTotals(data).discount)
                 }
               ></Column>
               <Column
                 header="Net"
                 body={(data: any) =>
-                  getCurrentLineTotals(data).netAmount.toFixed(2)
+                  formatCurrency(getCurrentLineTotals(data).netAmount)
                 }
               ></Column>
             </DataTable>

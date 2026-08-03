@@ -496,6 +496,12 @@ const Appointments = () => {
             // style={{ minWidth: "12rem" }}
             filter
           ></Column>
+          <Column
+            field="Company"
+            header="Patient Company"
+            // style={{ minWidth: "12rem" }}
+            filter
+          ></Column>
           {/* <Column
             field="QueueNo"
             header="Queue No."

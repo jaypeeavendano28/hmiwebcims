@@ -290,6 +290,7 @@ export type TAppointments = {
   DateUpdated?: string;
   PatientNo?: string;
   Name?: string;
+  Company?: string;
   QueueNo?: string;
   IsSeniorOrPwd?: string;
   TransDate?: string;

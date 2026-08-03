@@ -1,6 +1,6 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import useAppStore from "../../../store";
-import { useEffect, useState } from "react";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import useAppStore from '../../../store';
+import { useEffect, useState } from 'react';
 import {
   Button,
   Checkbox,
@@ -12,19 +12,19 @@ import {
   Space,
   Tooltip,
   notification,
-} from "antd";
-import { THmoCompany, TPriceCategory } from "../../../types";
-import { FilterMatchMode } from "primereact/api";
+} from 'antd';
+import { THmoCompany, TPriceCategory } from '../../../types';
+import { FilterMatchMode } from 'primereact/api';
 import {
   PostData,
   WithAccess,
   isNullOrUndefinedOrBlank,
-} from "../../../helpers";
-import { BiEdit } from "react-icons/bi";
-import Loading from "../../../components/loading";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-export const Route = createFileRoute("/_authenticated/utilities/hmocompany")({
+} from '../../../helpers';
+import { BiEdit } from 'react-icons/bi';
+import Loading from '../../../components/loading';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+export const Route = createFileRoute('/_authenticated/utilities/hmocompany')({
   component: () => <HmoCompany />,
 });
 
@@ -34,7 +34,7 @@ const HmoCompany = () => {
   const [selectedRecord, setSelectedRecord] = useState<THmoCompany | undefined>(
     {
       Id: 0,
-    }
+    },
   );
   const [showModal, setShowModal] = useState(false);
   const [form] = Form.useForm();
@@ -46,8 +46,8 @@ const HmoCompany = () => {
   });
   const handleGetList = async () => {
     setIsProcessing(true);
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetHmoCompany",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetHmoCompany',
       parameters: {},
     });
     if (res) {
@@ -109,7 +109,7 @@ const HmoCompany = () => {
   };
   const handleWithAccess = async (ModuleId: number, Description: string) => {
     const res = await WithAccess({
-      sp: "udp_WithAccess",
+      sp: 'udp_WithAccess',
       parameters: {
         Username: store.username,
         ModuleId: ModuleId,
@@ -118,12 +118,12 @@ const HmoCompany = () => {
     if (res) {
       if (res.status === 0) {
         notification.error({
-          message: "Access denied for module-" + Description,
-          placement: "topRight",
+          message: 'Access denied for module-' + Description,
+          placement: 'topRight',
           duration: 3,
         });
         router.navigate({
-          to: "/",
+          to: '/',
         });
       }
     }
@@ -131,7 +131,7 @@ const HmoCompany = () => {
   const handleSubmit = async (v: THmoCompany) => {
     try {
       setIsProcessing(true);
-      const res = await PostData("SaveHmoCompany", {
+      const res = await PostData('SaveHmoCompany', {
         ...v,
         Id: selectedRecord?.Id,
       });
@@ -143,7 +143,7 @@ const HmoCompany = () => {
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 5,
           });
         }
@@ -152,15 +152,15 @@ const HmoCompany = () => {
       setIsProcessing(false);
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 5,
       });
     }
   };
 
   useEffect(() => {
-    store.setHideSideBar("N");
-    handleWithAccess(22, "Utilities-Hmo/Companies");
+    store.setHideSideBar('N');
+    handleWithAccess(22, 'Utilities-Hmo/Companies');
     handleGetList();
   }, []);
   return (
@@ -184,7 +184,7 @@ const HmoCompany = () => {
         ) : (
           <DataTable
             value={list}
-            tableStyle={{ minWidth: "50rem" }}
+            tableStyle={{ minWidth: '50rem' }}
             paginator
             rows={10}
             rowsPerPageOptions={[10, 25, 50]}
@@ -197,7 +197,7 @@ const HmoCompany = () => {
             expandedRows={expandedRows as any}
             onRowToggle={(e) => setExpandedRows(e.data as any)}
           >
-            <Column expander={list!.length > 0} style={{ width: "5rem" }} />
+            <Column expander={list!.length > 0} style={{ width: '5rem' }} />
             <Column
               field="action"
               header="Action"
@@ -206,6 +206,11 @@ const HmoCompany = () => {
             <Column field="Id" header="Id"></Column>
             <Column field="Name" header="Name" filter></Column>
             <Column field="Address" header="Address"></Column>
+            <Column
+              field="Type"
+              header="Type"
+              body={(data: any) => (data.Type === 'C' ? 'Company' : 'HMO')}
+            ></Column>
           </DataTable>
         )}
       </div>
@@ -256,7 +261,7 @@ const HmoCompany = () => {
             label="Email Address"
             rules={[
               {
-                type: "email",
+                type: 'email',
               },
             ]}
           >
@@ -268,7 +273,7 @@ const HmoCompany = () => {
             rules={[
               {
                 required: true,
-                message: "Please select a type",
+                message: 'Please select a type',
               },
             ]}
           >
