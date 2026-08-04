@@ -4,6 +4,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Popconfirm,
   notification,
   Radio,
   Select,
@@ -14,7 +15,7 @@ import { useForm } from "antd/lib/form/Form";
 import { useEffect, useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { BiEdit } from "react-icons/bi";
+import { BiEdit, BiTrash } from "react-icons/bi";
 import useAppStore from "../../store";
 import { isNullOrUndefinedOrBlank, PostData } from "../../helpers";
 export const Route = createLazyFileRoute(
@@ -23,14 +24,34 @@ export const Route = createLazyFileRoute(
   component: () => <LaboratoryTemplateDetails />,
 });
 
+type LaboratoryTemplateSection = {
+  Id: number;
+  fk_LaboratoryResultTemplates_Id: number;
+  Description: string;
+  ItemIds?: string;
+  Procedures?: string;
+};
+
+type LaboratoryProcedureItem = {
+  Id: number;
+  Description: string;
+};
+
 const LaboratoryTemplateDetails = () => {
   const store = useAppStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [Id] = useState(Route.useParams().Id);
   const [rowId, setRowId] = useState<number>(0);
   const [form] = useForm();
-  const [tests, setTests] = useState([]);
-  const [details, setDetails] = useState([]);
+  const [sectionForm] = useForm();
+  const [tests, setTests] = useState<any[]>([]);
+  const [details, setDetails] = useState<any[]>([]);
+  const [sections, setSections] = useState<LaboratoryTemplateSection[]>([]);
+  const [procedureItems, setProcedureItems] = useState<
+    LaboratoryProcedureItem[]
+  >([]);
+  const [sectionRowId, setSectionRowId] = useState(0);
+  const [isSavingSection, setIsSavingSection] = useState(false);
 
   const handleSaveTest = async (values: any) => {
     if (
@@ -67,6 +88,10 @@ const LaboratoryTemplateDetails = () => {
       ...values,
       Id: rowId,
       fk_LaboratoryResultTemplates_Id: Id,
+      fk_LaboratoryResultTemplateSections_Id:
+        Number(values.fk_LaboratoryResultTemplateSections_Id) > 0
+          ? values.fk_LaboratoryResultTemplateSections_Id
+          : null,
       username: store.username,
       BranchCode: store.branchCode,
     };
@@ -81,6 +106,7 @@ const LaboratoryTemplateDetails = () => {
           IsIndented: "N",
           IsWithResult: "Y",
           IsHeader: "N",
+          fk_LaboratoryResultTemplateSections_Id: 0,
           Sequence: Id === "0" ? Number(values.Sequence) + 1 : undefined,
         });
         notification.success({
@@ -120,6 +146,7 @@ const LaboratoryTemplateDetails = () => {
       IsWithResult: "Y",
       IsHeader: "N",
       Delete: "N",
+      fk_LaboratoryResultTemplateSections_Id: 0,
     });
   };
 
@@ -133,6 +160,7 @@ const LaboratoryTemplateDetails = () => {
       Description: undefined,
       Delete: "N",
       Sequence: undefined,
+      fk_LaboratoryResultTemplateSections_Id: 0,
     });
     setRowId(0);
   };
@@ -149,6 +177,8 @@ const LaboratoryTemplateDetails = () => {
       Delete: "N",
       fk_Analytes_Id: data.fk_Analytes_Id,
       IsHeader: data.IsHeader,
+      fk_LaboratoryResultTemplateSections_Id:
+        data.fk_LaboratoryResultTemplateSections_Id ?? 0,
     });
   };
   const handleGetLaboratoryTemplateDetails = async () => {
@@ -163,6 +193,125 @@ const LaboratoryTemplateDetails = () => {
       setDetails(res.parameters.lst);
     }
   };
+
+  const handleGetSections = async () => {
+    const res = await PostData("GetRecords", {
+      sp: "udp_GetLaboratoryResultTemplateSections",
+      parameters: { TemplateId: Number(Id) },
+    });
+
+    setSections(res?.parameters?.lst ?? []);
+  };
+
+  const handleGetProcedureItems = async () => {
+    const res = await PostData("GetRecords", {
+      sp: "udp_GetLaboratoryProcedureItems",
+      parameters: {},
+    });
+
+    setProcedureItems(res?.parameters?.lst ?? []);
+  };
+
+  const parseItemIds = (value?: string) =>
+    String(value ?? "")
+      .split(",")
+      .map((itemId) => Number(itemId.trim()))
+      .filter((itemId) => itemId > 0);
+
+  const resetSectionForm = () => {
+    sectionForm.resetFields();
+    setSectionRowId(0);
+  };
+
+  const handleEditSection = (section: LaboratoryTemplateSection) => {
+    setSectionRowId(section.Id);
+    sectionForm.setFieldsValue({
+      Description: section.Description,
+      ItemIds: parseItemIds(section.ItemIds),
+    });
+  };
+
+  const handleSaveSection = async (values: any) => {
+    try {
+      setIsSavingSection(true);
+      const res = await PostData("SaveLaboratoryTemplateSection", {
+        ...values,
+        Id: sectionRowId,
+        fk_LaboratoryResultTemplates_Id: Number(Id),
+        ItemIds: values.ItemIds ?? [],
+        Deleted: false,
+      });
+
+      if (res?.status !== 1) {
+        notification.error({
+          message: res?.message ?? "Unable to save the procedure section.",
+          placement: "topRight",
+          duration: 3,
+        });
+        return;
+      }
+
+      notification.success({
+        message: "Procedure section successfully saved!",
+        placement: "topRight",
+        duration: 3,
+      });
+      resetSectionForm();
+      await handleGetSections();
+      await handleGetLaboratoryTemplateDetails();
+    } finally {
+      setIsSavingSection(false);
+    }
+  };
+
+  const handleDeleteSection = async (section: LaboratoryTemplateSection) => {
+    const res = await PostData("SaveLaboratoryTemplateSection", {
+      ...section,
+      fk_LaboratoryResultTemplates_Id: Number(Id),
+      ItemIds: [],
+      Deleted: true,
+    });
+
+    if (res?.status !== 1) {
+      notification.error({
+        message: res?.message ?? "Unable to delete the procedure section.",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
+    notification.success({
+      message: "Procedure section successfully deleted!",
+      placement: "topRight",
+      duration: 3,
+    });
+    resetSectionForm();
+    await handleGetSections();
+  };
+
+  const sectionActionTemplate = (section: LaboratoryTemplateSection) => (
+    <Space size={4}>
+      <Tooltip title="Edit section">
+        <Button
+          type="text"
+          size="small"
+          icon={<BiEdit />}
+          onClick={() => handleEditSection(section)}
+        />
+      </Tooltip>
+      <Popconfirm
+        title="Delete this procedure section?"
+        okText="Yes"
+        cancelText="No"
+        onConfirm={() => handleDeleteSection(section)}
+      >
+        <Tooltip title="Delete section">
+          <Button type="text" danger size="small" icon={<BiTrash />} />
+        </Tooltip>
+      </Popconfirm>
+    </Space>
+  );
   const actionBodyTemplate = (data: any) => {
     //  store.setItemDetails(data);
     return (
@@ -186,6 +335,8 @@ const LaboratoryTemplateDetails = () => {
   useEffect(() => {
     handleInitialized();
     handleGetLaboratoryTemplateDetails();
+    handleGetSections();
+    handleGetProcedureItems();
   }, []);
   return (
     <div className="ml-2 mt-2 mr-2 cardBackground">
@@ -195,13 +346,86 @@ const LaboratoryTemplateDetails = () => {
           {/* <p className="font-bold">{state.details.Description}</p> */}
         </div>
       </div>
+      <div className="border-y border-slate-200 py-3">
+        <div className="mb-2">
+          <p className="m-0 font-semibold text-slate-800">Procedure Sections</p>
+          <p className="m-0 text-xs text-slate-500">
+            Map charge items to the part of this template they should display.
+          </p>
+        </div>
+        <Form
+          form={sectionForm}
+          layout="vertical"
+          onFinish={handleSaveSection}
+        >
+          <div className="grid grid-cols-1 gap-x-3 md:grid-cols-3">
+            <Form.Item
+              name="Description"
+              label="Description"
+              rules={[
+                { required: true, message: "Please enter a description." },
+              ]}
+            >
+              <Input maxLength={150} />
+            </Form.Item>
+            <Form.Item
+              className="md:col-span-2"
+              name="ItemIds"
+              label="Exam/Procedure"
+              rules={[
+                {
+                  required: true,
+                  message: "Please select at least one procedure.",
+                },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                maxTagCount="responsive"
+                options={procedureItems.map((item) => ({
+                  value: item.Id,
+                  label: item.Description,
+                }))}
+              />
+            </Form.Item>
+          </div>
+          <Space>
+            <Button type="primary" htmlType="submit" loading={isSavingSection}>
+              {sectionRowId > 0 ? "Update Section" : "Add Section"}
+            </Button>
+            {sectionRowId > 0 && (
+              <Button onClick={resetSectionForm}>Cancel</Button>
+            )}
+          </Space>
+        </Form>
+        {sections.length > 0 && (
+          <div className="mt-3 overflow-x-auto">
+            <DataTable
+              value={sections}
+              size="small"
+              tableStyle={{ minWidth: "36rem" }}
+            >
+              <Column
+                header="Action"
+                body={sectionActionTemplate}
+                style={{ width: "6rem" }}
+              />
+              <Column field="Description" header="Description" />
+              <Column field="Procedures" header="Exam/Procedure" />
+            </DataTable>
+          </div>
+        )}
+      </div>
       <Form
         form={form}
         layout="vertical"
         scrollToFirstError
         onFinish={handleSaveTest}
       >
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-4 pt-3">
           <Form.Item name="fk_Analytes_Id" label="Test/Analyte">
             <Select
               allowClear
@@ -223,6 +447,20 @@ const LaboratoryTemplateDetails = () => {
           </Form.Item>
           <Form.Item name="Description" label="Description">
             <Input />
+          </Form.Item>
+          <Form.Item
+            name="fk_LaboratoryResultTemplateSections_Id"
+            label="Procedure Section"
+          >
+            <Select
+              options={[
+                { value: 0, label: "All Procedures" },
+                ...sections.map((section) => ({
+                  value: section.Id,
+                  label: section.Description,
+                })),
+              ]}
+            />
           </Form.Item>
           <Form.Item
             name="IsWithResult"
@@ -345,6 +583,7 @@ const LaboratoryTemplateDetails = () => {
             body={(data) => actionBodyTemplate(data)}
           ></Column>
           <Column field="Test" header="Test"></Column>
+          <Column field="SectionDescription" header="Procedure Section"></Column>
           <Column field="IsHeader" header="Is Header?"></Column>
           <Column field="IsBold" header="Is Bold?"></Column>
           <Column field="IsUnderlined" header="Is Underlined?"></Column>

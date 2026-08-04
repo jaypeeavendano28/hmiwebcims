@@ -59,6 +59,16 @@ const App = () => {
     store.setWithQueuing(x!);
     x = await handleWithAccess(49); ///Utilities
     store.setWithUtilities(x!);
+    x = await handleWithAccess(50); ///Material Management
+    store.setWithMaterialManagement(x!);
+    x = await handleWithAccess(51); ///Material Management-Purchase Orders
+    store.setWithMaterialManagementPurchaseOrders(x!);
+    x = await handleWithAccess(52); ///Material Management-Receiving
+    store.setWithMaterialManagementReceiving(x!);
+    x = await handleWithAccess(53); ///Material Management-Stock Issuance
+    store.setWithMaterialManagementStockIssuance(x!);
+    x = await handleWithAccess(54); ///Material Management-Quantity on Hand
+    store.setWithMaterialManagementQuantityOnHand(x!);
   };
 
   useEffect(() => {

@@ -3,6 +3,16 @@ import { devtools, persist } from 'zustand/middleware';
 import { TItems, TPatientInformation } from '../types';
 
 type AppState = {
+  withMaterialManagement: boolean;
+  setWithMaterialManagement: (withMaterialManagement: boolean) => void;
+  withMaterialManagementPurchaseOrders: boolean;
+  setWithMaterialManagementPurchaseOrders: (withAccess: boolean) => void;
+  withMaterialManagementReceiving: boolean;
+  setWithMaterialManagementReceiving: (withAccess: boolean) => void;
+  withMaterialManagementStockIssuance: boolean;
+  setWithMaterialManagementStockIssuance: (withAccess: boolean) => void;
+  withMaterialManagementQuantityOnHand: boolean;
+  setWithMaterialManagementQuantityOnHand: (withAccess: boolean) => void;
   withUtilities: boolean;
   setWithUtilities: (withUtilities: boolean) => void;
   withQueuing: boolean;
@@ -54,6 +64,33 @@ const useAppStore = create<AppState>()(
   devtools(
     persist(
       (set) => ({
+        withMaterialManagement: false,
+        setWithMaterialManagement: (withMaterialManagement) =>
+          set((state) => ({ ...state, withMaterialManagement })),
+        withMaterialManagementPurchaseOrders: false,
+        setWithMaterialManagementPurchaseOrders: (withAccess) =>
+          set((state) => ({
+            ...state,
+            withMaterialManagementPurchaseOrders: withAccess,
+          })),
+        withMaterialManagementReceiving: false,
+        setWithMaterialManagementReceiving: (withAccess) =>
+          set((state) => ({
+            ...state,
+            withMaterialManagementReceiving: withAccess,
+          })),
+        withMaterialManagementStockIssuance: false,
+        setWithMaterialManagementStockIssuance: (withAccess) =>
+          set((state) => ({
+            ...state,
+            withMaterialManagementStockIssuance: withAccess,
+          })),
+        withMaterialManagementQuantityOnHand: false,
+        setWithMaterialManagementQuantityOnHand: (withAccess) =>
+          set((state) => ({
+            ...state,
+            withMaterialManagementQuantityOnHand: withAccess,
+          })),
         withUtilities: false,
         setWithUtilities: (withUtilities) =>
           set((state) => ({ ...state, withUtilities })),

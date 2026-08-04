@@ -7,16 +7,19 @@ import {
   Modal,
   notification,
   Select,
-  Space,
+  Tag,
+  Tooltip,
 } from 'antd';
 import { TAppointments, TChart, TDoctors, TICd10 } from '../../types';
 import { useQuery } from '@tanstack/react-query';
-import { isNullOrUndefinedOrBlank, PostData } from '../../helpers';
+import { PostData } from '../../helpers';
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import useAppStore from '../../store';
 import axios from 'axios';
 import SearchICD from '../../components/SearchICD';
+import { BiArrowBack } from 'react-icons/bi';
+import { MdOutlinePrint, MdSave, MdSearch } from 'react-icons/md';
 
 export const Route = createLazyFileRoute(
   '/_authenticated/chart/$AppointmentId',
@@ -34,7 +37,11 @@ const Chart = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { AppointmentId } = Route.useParams();
   const [Id, setId] = useState<number>(0);
+  const [isPrintingMedicalRecordSheet, setIsPrintingMedicalRecordSheet] =
+    useState(false);
+  const [isPrintingChart, setIsPrintingChart] = useState(false);
   const [form] = Form.useForm();
+
   const handleSubmit = async (v: TChart) => {
     const valuesToSave = {
       ...v,
@@ -48,20 +55,13 @@ const Chart = () => {
       setIsProcessing(true);
       const res = await PostData('SaveChart', valuesToSave);
       if (res) {
-        setIsProcessing(false);
         if (res.status === 1) {
           notification.success({
             message: 'Successfully saved!',
             placement: 'topRight',
             duration: 3,
           });
-          setId(res.parameters.Id);
-          if (!isNullOrUndefinedOrBlank(selected)) {
-            let s: TChart | undefined = selected;
-            s!.UpdatedBy = res.parameters.UpdatedBy;
-            s!.DateUpdated = res.parameters.DateUpdated;
-            setSelected(s);
-          }
+          await handleGetDetails();
         } else {
           notification.error({
             message: res.message,
@@ -71,8 +71,9 @@ const Chart = () => {
         }
       }
     } catch (error: any) {
-      setIsProcessing(false);
       console.log(error.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
   const handleClose = (Icd10: TICd10) => {
@@ -85,8 +86,8 @@ const Chart = () => {
     setShowModal(false);
   };
 
-  const patientInformaation = useQuery<TAppointments>({
-    queryKey: ['patientInformaation'],
+  const appointmentDetails = useQuery<TAppointments>({
+    queryKey: ['chart-appointment-details', AppointmentId],
     queryFn: async () => {
       const res = await PostData('GetRecords', {
         sp: 'udp_GetAppointmentDetails',
@@ -101,7 +102,7 @@ const Chart = () => {
   });
 
   const specialists = useQuery<TDoctors[]>({
-    queryKey: ['specialists'],
+    queryKey: ['chart-specialists'],
     queryFn: async () => {
       const res = await PostData('GetRecords', {
         sp: 'udp_GetDoctors',
@@ -148,13 +149,55 @@ const Chart = () => {
     }
   };
 
+  const handlePrintPatientMedicalRecordSheet = async (id: number) => {
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
+    setIsPrintingMedicalRecordSheet(true);
+    const url = apiUrl + 'GenerateReport';
+    try {
+      // setIsProccessing(true);
+      await axios({
+        url: url,
+        method: 'GET',
+        responseType: 'blob',
+        params: {
+          ReportName: 'PatientMedicalRecordSheet.rdl',
+          AppointmentId: id,
+          BranchCode: store.branchCode,
+        },
+      }).then((response) => {
+        let newBlob;
+        newBlob = new Blob([response.data], {
+          type: 'application/pdf',
+        });
+
+        const data = window.URL.createObjectURL(newBlob);
+
+        const a = document.createElement('a');
+
+        a.setAttribute('href', data);
+        a.setAttribute('target', '_blank');
+
+        a.click();
+        // setIsSubmitting(false);
+      });
+    } catch (error: any) {
+      // setIsSubmitting(false);
+      let errorString = error.response.data;
+      errorString = JSON.parse(await error.response.data.text());
+      return { Status: 0, Message: errorString.Message };
+    } finally {
+      setIsPrintingMedicalRecordSheet(false);
+    }
+  };
+
   const handlePrint = async () => {
     axios.defaults.headers.common['Authorization'] =
       'Bearer ' + store.tokenIdWebCims;
 
     const url = apiUrl + '/api/GenerateReport';
     try {
-      setIsProcessing(true);
+      setIsPrintingChart(true);
       await axios({
         url: url, //your url
         method: 'GET',
@@ -178,203 +221,318 @@ const Chart = () => {
         a.setAttribute('target', '_blank');
 
         a.click();
-        setIsProcessing(false);
       });
     } catch (error: any) {
-      setIsProcessing(false);
       let errorString = error.response.data;
       errorString = JSON.parse(await error.response.data.text());
       return { Status: 0, Message: errorString.Message };
+    } finally {
+      setIsPrintingChart(false);
     }
   };
   useEffect(() => {
     handleGetDetails();
   }, []);
+  const patient = appointmentDetails.data;
+  const patientAge = [
+    patient?.AgeYears ? patient.AgeYears + 'Y' : '',
+    patient?.AgeMonths ? patient.AgeMonths + 'M' : '',
+    patient?.AgeDays ? patient.AgeDays + 'D' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const company = patient?.HmoCompanyName || patient?.Company || '-';
+  const doctorOptions = (specialists.data ?? [])
+    .filter((doctor) => doctor.Id !== undefined)
+    .map((doctor) => ({
+      value: doctor.Id!,
+      label: doctor.NameAndSpecialty || doctor.Name || '',
+    }));
+  const formatAuditDate = (value?: Date) =>
+    value ? dayjs(value).format('MM/DD/YYYY hh:mm A') : '-';
+
   return (
-    <>
-      <div className="grid  grid-cols-6">
-        <div>
-          <div className="flex">
-            Patient:
-            <p className="font-bold">{patientInformaation.data?.Name}</p>
-          </div>
-        </div>
-        <div>
-          <div className="flex">
-            Age:
-            <p className="font-bold">{patientInformaation.data?.AgeYears}</p>
-          </div>
-        </div>
-        <div>
-          <div className="flex">
-            Sex:
-            <p className="font-bold">{patientInformaation.data?.Sex}</p>
-          </div>
-        </div>
-      </div>
-      <div className="text-center font-bold text-md">Chart</div>
+    <div className="cardBackGround min-h-full overflow-hidden">
       <Form form={form} onFinish={handleSubmit} layout="vertical">
-        <div className="grid grid-cols-3 gap-4">
-          <Form.Item
-            name="Specialist"
-            label="Specialist"
-            rules={[
-              {
-                required: true,
-                message: 'Specialist is required!',
-              },
-            ]}
-          >
-            <Select
-              showSearch
-              allowClear
-              filterOption={(input, option) =>
-                (
-                  option!.children
-                    ?.toString()
-                    .toLocaleLowerCase() as unknown as string
-                ).includes(input.toLocaleLowerCase())
-              }
-            >
-              {specialists.data &&
-                specialists.data.map((d: TDoctors) => (
-                  <Select.Option
-                    key={d.Id}
-                    value={d.Id}
-                    title={d.NameAndSpecialty}
-                  >
-                    {d.NameAndSpecialty}
-                  </Select.Option>
-                ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="Started"
-            label="Started"
-            rules={[
-              {
-                required: true,
-                message: 'Started is required!',
-              },
-            ]}
-          >
-            <DatePicker format="MM/DD/YYYY hh:mm A" showTime />
-          </Form.Item>
-          <Form.Item
-            name="Ended"
-            label="Ended"
-            rules={[
-              {
-                required: true,
-                message: 'Ended is required!',
-              },
-            ]}
-          >
-            <DatePicker format="MM/DD/YYYY hh:mm A" showTime />
-          </Form.Item>
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          <Form.Item name="RequestingPhysician" label="Requesting Physician">
-            <Select
-              showSearch
-              allowClear
-              filterOption={(input, option) =>
-                (
-                  option!.children
-                    ?.toString()
-                    .toLocaleLowerCase() as unknown as string
-                ).includes(input.toLocaleLowerCase())
-              }
-            >
-              {specialists.data &&
-                specialists.data.map((d: TDoctors) => (
-                  <Select.Option
-                    key={d.Id}
-                    value={d.Id}
-                    title={d.NameAndSpecialty}
-                  >
-                    {d.NameAndSpecialty}
-                  </Select.Option>
-                ))}
-            </Select>
-          </Form.Item>
-        </div>
-        <Form.Item
-          name="AssessmentDiagnosis"
-          label="Assessment/Diagnosis"
-          rules={[
-            {
-              required: true,
-              message: 'Assessment/Diagnosis is required!',
-            },
-          ]}
-        >
-          <Input.TextArea rows={5} />
-        </Form.Item>
-        <div className="grid grid-cols-3 gap-4">
-          <Form.Item name="Icd10" label="ICD 10">
-            <Input />
-          </Form.Item>
+        <header className="border-b border-slate-200 px-3 py-3 md:px-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Tooltip title="Back">
+                <Button
+                  type="text"
+                  icon={<BiArrowBack size={20} />}
+                  aria-label="Back"
+                  onClick={() => window.history.back()}
+                />
+              </Tooltip>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-lg font-semibold text-slate-900">
+                    Clinical Chart
+                  </h1>
+                  <Tag color={Id > 0 ? 'success' : 'default'}>
+                    {Id > 0 ? 'Saved' : 'New'}
+                  </Tag>
+                </div>
+                <p className="truncate text-xs text-slate-500">
+                  Appointment {patient?.AppointmentNo || AppointmentId}
+                </p>
+              </div>
+            </div>
 
-          <Form.Item name="Ruv" label="RUV">
-            <Input />
-          </Form.Item>
-          <div className="flex items-center">
-            <Button type="primary" onClick={() => setShowModal(true)}>
-              Search ICD10/RVS
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                icon={<MdOutlinePrint />}
+                loading={isPrintingMedicalRecordSheet}
+                onClick={() =>
+                  handlePrintPatientMedicalRecordSheet(parseInt(AppointmentId))
+                }
+              >
+                Medical Record
+              </Button>
+              <Button
+                icon={<MdOutlinePrint />}
+                loading={isPrintingChart}
+                disabled={Id === 0}
+                onClick={handlePrint}
+              >
+                Print Chart
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<MdSave />}
+                loading={isProcessing}
+              >
+                Save Chart
+              </Button>
+            </div>
           </div>
-        </div>
-        <Form.Item name="Planx" label="Plan">
-          <Input.TextArea rows={5} />
-        </Form.Item>
-        <div className="flex justify-end">
-          <Space>
-            <Button loading={isProcessing} type="primary" htmlType="submit">
-              Submit
-            </Button>
-            <Button
-              onClick={handlePrint}
-              loading={isProcessing}
-              disabled={Id === 0}
-              type="primary"
-            >
-              Print
-            </Button>
-          </Space>
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          <div>
-            <p>Added By</p>
-            <p className="font-bold">{selected?.AddedBy}</p>
+        </header>
+
+        <section className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-sm md:grid-cols-3 xl:grid-cols-6">
+            <div className="col-span-2 min-w-0 md:col-span-1 xl:col-span-2">
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                Patient
+              </p>
+              <p className="truncate font-semibold text-slate-900">
+                {patient?.Name || '-'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                Member No.
+              </p>
+              <p className="font-medium text-slate-800">
+                {patient?.MemberNo || '-'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                Age / Sex
+              </p>
+              <p className="font-medium text-slate-800">
+                {patientAge || '-'} / {patient?.Sex || '-'}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                Company
+              </p>
+              <p className="truncate font-medium text-slate-800" title={company}>
+                {company}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                Appointment Date
+              </p>
+              <p className="font-medium text-slate-800">
+                {patient?.DateStr || patient?.DateOnly || '-'}
+              </p>
+            </div>
           </div>
-          <div>
-            <p>Date Added</p>
-            <p className="font-bold">
-              {dayjs(selected?.DateAdded).format('MM/DD/YYYY hh:mm A')}
-            </p>
+        </section>
+
+        <main className="space-y-5 p-4">
+          <section>
+            <div className="mb-3 flex items-center gap-3">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Encounter Details
+              </h2>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-4">
+              <Form.Item
+                name="Specialist"
+                label="Specialist"
+                className="!mb-0"
+                rules={[
+                  {
+                    required: true,
+                    message: 'Specialist is required!',
+                  },
+                ]}
+              >
+                <Select
+                  className="w-full"
+                  showSearch
+                  allowClear
+                  optionFilterProp="label"
+                  options={doctorOptions}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="RequestingPhysician"
+                label="Requesting Physician"
+                className="!mb-0"
+              >
+                <Select
+                  className="w-full"
+                  showSearch
+                  allowClear
+                  optionFilterProp="label"
+                  options={doctorOptions}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="Started"
+                label="Started"
+                className="!mb-0"
+                rules={[
+                  {
+                    required: true,
+                    message: 'Started is required!',
+                  },
+                ]}
+              >
+                <DatePicker
+                  className="w-full"
+                  format="MM/DD/YYYY hh:mm A"
+                  showTime
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="Ended"
+                label="Ended"
+                className="!mb-0"
+                rules={[
+                  {
+                    required: true,
+                    message: 'Ended is required!',
+                  },
+                ]}
+              >
+                <DatePicker
+                  className="w-full"
+                  format="MM/DD/YYYY hh:mm A"
+                  showTime
+                />
+              </Form.Item>
+            </div>
+          </section>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <section className="min-w-0 border-t border-slate-200 pt-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-slate-800">
+                  Assessment / Diagnosis
+                </h2>
+                <Button
+                  icon={<MdSearch />}
+                  onClick={() => setShowModal(true)}
+                >
+                  Search ICD-10 / RVS
+                </Button>
+              </div>
+
+              <Form.Item
+                name="AssessmentDiagnosis"
+                className="!mb-3"
+                rules={[
+                  {
+                    required: true,
+                    message: 'Assessment/Diagnosis is required!',
+                  },
+                ]}
+              >
+                <Input.TextArea rows={8} />
+              </Form.Item>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Form.Item name="Icd10" label="ICD-10" className="!mb-0">
+                  <Input />
+                </Form.Item>
+                <Form.Item name="Ruv" label="RVS / RUV" className="!mb-0">
+                  <Input />
+                </Form.Item>
+              </div>
+            </section>
+
+            <section className="min-w-0 border-t border-slate-200 pt-3">
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold text-slate-800">Plan</h2>
+              </div>
+              <Form.Item name="Planx" className="!mb-0">
+                <Input.TextArea rows={12} />
+              </Form.Item>
+            </section>
           </div>
 
-          <div>
-            <p>Updated By</p>
-            <p className="font-bold">{selected?.UpdatedBy}</p>
-          </div>
-          <div>
-            <p>Date Updated</p>
-            <p className="font-bold">
-              {dayjs(selected?.DateUpdated).format('MM/DD/YYYY hh:mm A')}
-            </p>
-          </div>
-        </div>
+          <section className="border-t border-slate-200 bg-slate-50 px-3 py-3">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs md:grid-cols-4">
+              <div>
+                <p className="font-semibold uppercase text-slate-500">
+                  Added By
+                </p>
+                <p className="mt-1 font-medium text-slate-800">
+                  {selected?.AddedBy || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase text-slate-500">
+                  Date Added
+                </p>
+                <p className="mt-1 font-medium text-slate-800">
+                  {formatAuditDate(selected?.DateAdded)}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase text-slate-500">
+                  Updated By
+                </p>
+                <p className="mt-1 font-medium text-slate-800">
+                  {selected?.UpdatedBy || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase text-slate-500">
+                  Date Updated
+                </p>
+                <p className="mt-1 font-medium text-slate-800">
+                  {formatAuditDate(selected?.DateUpdated)}
+                </p>
+              </div>
+            </div>
+          </section>
+        </main>
       </Form>
+
       <Modal
+        title="Search ICD-10 / RVS"
         open={showModal}
         onCancel={() => setShowModal(false)}
         footer={null}
         width={1200}
+        destroyOnClose
       >
         <SearchICD handleClose={handleClose} />
       </Modal>
-    </>
+    </div>
   );
 };

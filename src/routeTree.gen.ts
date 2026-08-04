@@ -24,6 +24,7 @@ import { Route as AuthenticatedQcountersImport } from './routes/_authenticated/q
 import { Route as AuthenticatedPurchaseordersImport } from './routes/_authenticated/purchaseorders'
 import { Route as AuthenticatedPharmacyImport } from './routes/_authenticated/pharmacy'
 import { Route as AuthenticatedPdfviewerImport } from './routes/_authenticated/pdfviewer'
+import { Route as AuthenticatedMaterialManagementImport } from './routes/_authenticated/material-management'
 import { Route as AuthenticatedListofpatientsImport } from './routes/_authenticated/listofpatients'
 import { Route as AuthenticatedLaboratorytemplatesImport } from './routes/_authenticated/laboratorytemplates'
 import { Route as AuthenticatedItemsImport } from './routes/_authenticated/items'
@@ -50,7 +51,11 @@ import { Route as AuthenticatedQueuingCodeImport } from './routes/_authenticated
 import { Route as AuthenticatedPharmacysalesIdImport } from './routes/_authenticated/pharmacysales.$Id'
 import { Route as AuthenticatedMerschoolAppointmentIdImport } from './routes/_authenticated/merschool.$AppointmentId'
 import { Route as AuthenticatedMerAppointmentIdImport } from './routes/_authenticated/mer.$AppointmentId'
+import { Route as AuthenticatedMaterialManagementStockIssuanceImport } from './routes/_authenticated/material-management/stock-issuance'
 import { Route as AuthenticatedMaterialManagementRenderStockRequestsImport } from './routes/_authenticated/material-management/render-stock-requests'
+import { Route as AuthenticatedMaterialManagementReceivingImport } from './routes/_authenticated/material-management/receiving'
+import { Route as AuthenticatedMaterialManagementQuantityOnHandImport } from './routes/_authenticated/material-management/quantity-on-hand'
+import { Route as AuthenticatedMaterialManagementPurchaseOrderImport } from './routes/_authenticated/material-management/purchase-order'
 import { Route as AuthenticatedItemsdepartmentIdImport } from './routes/_authenticated/itemsdepartment/$Id'
 import { Route as AuthenticatedItemprofileIdImport } from './routes/_authenticated/itemprofile/$Id'
 import { Route as AuthenticatedItempriceIdImport } from './routes/_authenticated/itemprice.$Id'
@@ -287,6 +292,12 @@ const AuthenticatedPdfviewerRoute = AuthenticatedPdfviewerImport.update({
   path: '/pdfviewer',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+
+const AuthenticatedMaterialManagementRoute =
+  AuthenticatedMaterialManagementImport.update({
+    path: '/material-management',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 const AuthenticatedListofpatientsRoute =
   AuthenticatedListofpatientsImport.update({
@@ -634,10 +645,34 @@ const AuthenticatedMerAppointmentIdRoute =
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 
+const AuthenticatedMaterialManagementStockIssuanceRoute =
+  AuthenticatedMaterialManagementStockIssuanceImport.update({
+    path: '/stock-issuance',
+    getParentRoute: () => AuthenticatedMaterialManagementRoute,
+  } as any)
+
 const AuthenticatedMaterialManagementRenderStockRequestsRoute =
   AuthenticatedMaterialManagementRenderStockRequestsImport.update({
-    path: '/material-management/render-stock-requests',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/render-stock-requests',
+    getParentRoute: () => AuthenticatedMaterialManagementRoute,
+  } as any)
+
+const AuthenticatedMaterialManagementReceivingRoute =
+  AuthenticatedMaterialManagementReceivingImport.update({
+    path: '/receiving',
+    getParentRoute: () => AuthenticatedMaterialManagementRoute,
+  } as any)
+
+const AuthenticatedMaterialManagementQuantityOnHandRoute =
+  AuthenticatedMaterialManagementQuantityOnHandImport.update({
+    path: '/quantity-on-hand',
+    getParentRoute: () => AuthenticatedMaterialManagementRoute,
+  } as any)
+
+const AuthenticatedMaterialManagementPurchaseOrderRoute =
+  AuthenticatedMaterialManagementPurchaseOrderImport.update({
+    path: '/purchase-order',
+    getParentRoute: () => AuthenticatedMaterialManagementRoute,
   } as any)
 
 const AuthenticatedItemsdepartmentIdRoute =
@@ -678,32 +713,32 @@ const AuthenticatedAppointmentdetailsIdRoute =
 
 const AuthenticatedMaterialManagementStockIssuanceIndexRoute =
   AuthenticatedMaterialManagementStockIssuanceIndexImport.update({
-    path: '/material-management/stock-issuance/',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/',
+    getParentRoute: () => AuthenticatedMaterialManagementStockIssuanceRoute,
   } as any)
 
 const AuthenticatedMaterialManagementReceivingIndexRoute =
   AuthenticatedMaterialManagementReceivingIndexImport.update({
-    path: '/material-management/receiving/',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/',
+    getParentRoute: () => AuthenticatedMaterialManagementReceivingRoute,
   } as any)
 
 const AuthenticatedMaterialManagementQuantityOnHandIndexRoute =
   AuthenticatedMaterialManagementQuantityOnHandIndexImport.update({
-    path: '/material-management/quantity-on-hand/',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/',
+    getParentRoute: () => AuthenticatedMaterialManagementQuantityOnHandRoute,
   } as any)
 
 const AuthenticatedMaterialManagementPurchaseOrderIndexRoute =
   AuthenticatedMaterialManagementPurchaseOrderIndexImport.update({
-    path: '/material-management/purchase-order/',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/',
+    getParentRoute: () => AuthenticatedMaterialManagementPurchaseOrderRoute,
   } as any)
 
 const AuthenticatedMaterialManagementStockIssuanceTransNoLazyRoute =
   AuthenticatedMaterialManagementStockIssuanceTransNoLazyImport.update({
-    path: '/material-management/stock-issuance/$transNo',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/$transNo',
+    getParentRoute: () => AuthenticatedMaterialManagementStockIssuanceRoute,
   } as any).lazy(() =>
     import(
       './routes/_authenticated/material-management/stock-issuance/$transNo.lazy'
@@ -712,8 +747,8 @@ const AuthenticatedMaterialManagementStockIssuanceTransNoLazyRoute =
 
 const AuthenticatedMaterialManagementReceivingTransNoLazyRoute =
   AuthenticatedMaterialManagementReceivingTransNoLazyImport.update({
-    path: '/material-management/receiving/$transNo',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/$transNo',
+    getParentRoute: () => AuthenticatedMaterialManagementReceivingRoute,
   } as any).lazy(() =>
     import(
       './routes/_authenticated/material-management/receiving/$transNo.lazy'
@@ -722,8 +757,8 @@ const AuthenticatedMaterialManagementReceivingTransNoLazyRoute =
 
 const AuthenticatedMaterialManagementPurchaseOrderTransNoLazyRoute =
   AuthenticatedMaterialManagementPurchaseOrderTransNoLazyImport.update({
-    path: '/material-management/purchase-order/$transNo',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/$transNo',
+    getParentRoute: () => AuthenticatedMaterialManagementPurchaseOrderRoute,
   } as any).lazy(() =>
     import(
       './routes/_authenticated/material-management/purchase-order/$transNo.lazy'
@@ -732,26 +767,26 @@ const AuthenticatedMaterialManagementPurchaseOrderTransNoLazyRoute =
 
 const AuthenticatedMaterialManagementStockIssuanceNewRoute =
   AuthenticatedMaterialManagementStockIssuanceNewImport.update({
-    path: '/material-management/stock-issuance/new',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/new',
+    getParentRoute: () => AuthenticatedMaterialManagementStockIssuanceRoute,
   } as any)
 
 const AuthenticatedMaterialManagementReceivingNewRoute =
   AuthenticatedMaterialManagementReceivingNewImport.update({
-    path: '/material-management/receiving/new',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/new',
+    getParentRoute: () => AuthenticatedMaterialManagementReceivingRoute,
   } as any)
 
 const AuthenticatedMaterialManagementPurchaseOrderNewRoute =
   AuthenticatedMaterialManagementPurchaseOrderNewImport.update({
-    path: '/material-management/purchase-order/new',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/new',
+    getParentRoute: () => AuthenticatedMaterialManagementPurchaseOrderRoute,
   } as any)
 
 const AuthenticatedMaterialManagementPurchaseOrderReceiveTransNoLazyRoute =
   AuthenticatedMaterialManagementPurchaseOrderReceiveTransNoLazyImport.update({
-    path: '/material-management/purchase-order/receive/$transNo',
-    getParentRoute: () => AuthenticatedRoute,
+    path: '/receive/$transNo',
+    getParentRoute: () => AuthenticatedMaterialManagementPurchaseOrderRoute,
   } as any).lazy(() =>
     import(
       './routes/_authenticated/material-management/purchase-order/receive/$transNo.lazy'
@@ -820,6 +855,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/listofpatients': {
       preLoaderRoute: typeof AuthenticatedListofpatientsImport
+      parentRoute: typeof AuthenticatedImport
+    }
+    '/_authenticated/material-management': {
+      preLoaderRoute: typeof AuthenticatedMaterialManagementImport
       parentRoute: typeof AuthenticatedImport
     }
     '/_authenticated/pdfviewer': {
@@ -910,9 +949,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedItemsdepartmentIdImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/_authenticated/material-management/purchase-order': {
+      preLoaderRoute: typeof AuthenticatedMaterialManagementPurchaseOrderImport
+      parentRoute: typeof AuthenticatedMaterialManagementImport
+    }
+    '/_authenticated/material-management/quantity-on-hand': {
+      preLoaderRoute: typeof AuthenticatedMaterialManagementQuantityOnHandImport
+      parentRoute: typeof AuthenticatedMaterialManagementImport
+    }
+    '/_authenticated/material-management/receiving': {
+      preLoaderRoute: typeof AuthenticatedMaterialManagementReceivingImport
+      parentRoute: typeof AuthenticatedMaterialManagementImport
+    }
     '/_authenticated/material-management/render-stock-requests': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementRenderStockRequestsImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementImport
+    }
+    '/_authenticated/material-management/stock-issuance': {
+      preLoaderRoute: typeof AuthenticatedMaterialManagementStockIssuanceImport
+      parentRoute: typeof AuthenticatedMaterialManagementImport
     }
     '/_authenticated/mer/$AppointmentId': {
       preLoaderRoute: typeof AuthenticatedMerAppointmentIdImport
@@ -1056,47 +1111,47 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/material-management/purchase-order/new': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementPurchaseOrderNewImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementPurchaseOrderImport
     }
     '/_authenticated/material-management/receiving/new': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementReceivingNewImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementReceivingImport
     }
     '/_authenticated/material-management/stock-issuance/new': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementStockIssuanceNewImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementStockIssuanceImport
     }
     '/_authenticated/material-management/purchase-order/$transNo': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementPurchaseOrderTransNoLazyImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementPurchaseOrderImport
     }
     '/_authenticated/material-management/receiving/$transNo': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementReceivingTransNoLazyImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementReceivingImport
     }
     '/_authenticated/material-management/stock-issuance/$transNo': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementStockIssuanceTransNoLazyImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementStockIssuanceImport
     }
     '/_authenticated/material-management/purchase-order/': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementPurchaseOrderIndexImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementPurchaseOrderImport
     }
     '/_authenticated/material-management/quantity-on-hand/': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementQuantityOnHandIndexImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementQuantityOnHandImport
     }
     '/_authenticated/material-management/receiving/': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementReceivingIndexImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementReceivingImport
     }
     '/_authenticated/material-management/stock-issuance/': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementStockIssuanceIndexImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementStockIssuanceImport
     }
     '/_authenticated/material-management/purchase-order/receive/$transNo': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementPurchaseOrderReceiveTransNoLazyImport
-      parentRoute: typeof AuthenticatedImport
+      parentRoute: typeof AuthenticatedMaterialManagementPurchaseOrderImport
     }
   }
 }
@@ -1118,6 +1173,28 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedItemsRoute,
     AuthenticatedLaboratorytemplatesRoute,
     AuthenticatedListofpatientsRoute,
+    AuthenticatedMaterialManagementRoute.addChildren([
+      AuthenticatedMaterialManagementPurchaseOrderRoute.addChildren([
+        AuthenticatedMaterialManagementPurchaseOrderNewRoute,
+        AuthenticatedMaterialManagementPurchaseOrderTransNoLazyRoute,
+        AuthenticatedMaterialManagementPurchaseOrderIndexRoute,
+        AuthenticatedMaterialManagementPurchaseOrderReceiveTransNoLazyRoute,
+      ]),
+      AuthenticatedMaterialManagementQuantityOnHandRoute.addChildren([
+        AuthenticatedMaterialManagementQuantityOnHandIndexRoute,
+      ]),
+      AuthenticatedMaterialManagementReceivingRoute.addChildren([
+        AuthenticatedMaterialManagementReceivingNewRoute,
+        AuthenticatedMaterialManagementReceivingTransNoLazyRoute,
+        AuthenticatedMaterialManagementReceivingIndexRoute,
+      ]),
+      AuthenticatedMaterialManagementRenderStockRequestsRoute,
+      AuthenticatedMaterialManagementStockIssuanceRoute.addChildren([
+        AuthenticatedMaterialManagementStockIssuanceNewRoute,
+        AuthenticatedMaterialManagementStockIssuanceTransNoLazyRoute,
+        AuthenticatedMaterialManagementStockIssuanceIndexRoute,
+      ]),
+    ]),
     AuthenticatedPdfviewerRoute,
     AuthenticatedPharmacyRoute,
     AuthenticatedPurchaseordersRoute,
@@ -1140,7 +1217,6 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedItempriceIdRoute,
     AuthenticatedItemprofileIdRoute,
     AuthenticatedItemsdepartmentIdRoute,
-    AuthenticatedMaterialManagementRenderStockRequestsRoute,
     AuthenticatedMerAppointmentIdRoute,
     AuthenticatedMerschoolAppointmentIdRoute,
     AuthenticatedPharmacysalesIdRoute,
@@ -1176,17 +1252,6 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedUltrasoundIdLazyRoute,
     AuthenticatedUploaddocumentsIdLazyRoute,
     AuthenticatedXrayresultIdLazyRoute,
-    AuthenticatedMaterialManagementPurchaseOrderNewRoute,
-    AuthenticatedMaterialManagementReceivingNewRoute,
-    AuthenticatedMaterialManagementStockIssuanceNewRoute,
-    AuthenticatedMaterialManagementPurchaseOrderTransNoLazyRoute,
-    AuthenticatedMaterialManagementReceivingTransNoLazyRoute,
-    AuthenticatedMaterialManagementStockIssuanceTransNoLazyRoute,
-    AuthenticatedMaterialManagementPurchaseOrderIndexRoute,
-    AuthenticatedMaterialManagementQuantityOnHandIndexRoute,
-    AuthenticatedMaterialManagementReceivingIndexRoute,
-    AuthenticatedMaterialManagementStockIssuanceIndexRoute,
-    AuthenticatedMaterialManagementPurchaseOrderReceiveTransNoLazyRoute,
   ]),
   LoginRoute,
 ])
