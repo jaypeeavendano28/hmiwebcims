@@ -497,6 +497,7 @@ export type TCharges = {
   PhicAmount?: number;
   Editable?: boolean;
   IsPackage?: string;
+  HasActiveQueue?: boolean;
 };
 
 export type TQCounters = {
@@ -999,6 +1000,7 @@ export type TArPayments = {
 export type TChart = {
   Id: number;
   fk_Appointments_Id?: number;
+  fk_Charges_Id?: number;
   Specialist?: number;
   Started?: Date;
   Ended?: Date;
@@ -1011,6 +1013,9 @@ export type TChart = {
   DateAdded?: Date;
   UpdatedBy?: string;
   DateUpdated?: Date;
+  SpecialistName?: string;
+  RequestingPhysicianName?: string;
+  ChargeDescription?: string;
 };
 
 export type TICd10 = {

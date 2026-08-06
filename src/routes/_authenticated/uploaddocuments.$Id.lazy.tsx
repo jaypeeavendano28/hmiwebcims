@@ -1,5 +1,17 @@
 import { createLazyFileRoute, useRouter } from '@tanstack/react-router';
-import { Button, Form, Input, Modal, notification, Select, Space } from 'antd';
+import {
+  Button,
+  Form,
+  Input,
+  Modal,
+  notification,
+  Popconfirm,
+  Select,
+  Space,
+  Switch,
+  Tag,
+  Tooltip,
+} from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { isNullOrUndefinedOrBlank, PostData, WithAccess } from '../../helpers';
 import { TAppointments, TDepartments, TPatientInformation } from '../../types';
@@ -8,6 +20,25 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import Loading from '../../components/loading';
 import useAppStore from '../../store';
+import { BiEdit, BiTrash } from 'react-icons/bi';
+import { MdUploadFile } from 'react-icons/md';
+
+type UploadedPdfRecord = {
+  Id: number;
+  fk_Appointments_Id: number;
+  fk_Departments_Id: number;
+  Description?: string;
+  ShowInCompanyPortal?: string;
+  AppointmentType?: string;
+  DateStr?: string;
+  Department?: string;
+  AddedBy?: string;
+  DateAdded?: string;
+  UpdatedBy?: string;
+  DateUpdated?: string;
+  ResultId?: number;
+  ResultType?: string;
+};
 export const Route = createLazyFileRoute('/_authenticated/uploaddocuments/$Id')(
   {
     component: () => <UploadDocuments />,
@@ -17,12 +48,18 @@ const UploadDocuments = () => {
   const store = useAppStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [uploadedPdf, setUploadPdf] = useState([]);
+  const [uploadedPdf, setUploadPdf] = useState<UploadedPdfRecord[]>([]);
   const [pdfBase64, setPdfBase64] = useState<string | undefined>();
   const [pdfBase642, setPdfBase642] = useState<string | undefined>();
+  const [hasReplacementFile, setHasReplacementFile] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [visibilityUpdatingId, setVisibilityUpdatingId] = useState(0);
   const fileInput = useRef<HTMLInputElement | null>(null);
   const [selectedRow, setSelectedRow] = useState<TAppointments | undefined>();
-  const [selectedPdf, setSeletedPdf] = useState<any | undefined>();
+  const [selectedPdf, setSelectedPdf] = useState<
+    UploadedPdfRecord | undefined
+  >();
+  const [editingPdf, setEditingPdf] = useState<UploadedPdfRecord | undefined>();
   const [showModal, setShowModal] = useState(false);
   const [departments, setDepartments] = useState<TDepartments[] | undefined>();
   const [appointments, setAppointments] = useState<
@@ -34,28 +71,34 @@ const UploadDocuments = () => {
     TPatientInformation | undefined
   >();
 
+  const getPdfContent = async (pdfId: number) => {
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetPdfFile',
+      parameters: {
+        Id: pdfId,
+      },
+    });
+
+    return res?.parameters?.lst?.[0]?.pdf ?? res?.parameters?.lst?.[0]?.Pdf;
+  };
+
   const handleGetPdfFile = async () => {
+    if (!selectedPdf?.Id) {
+      setPdfBase642(undefined);
+      return;
+    }
+
     try {
       setLoading(true);
-      console.log('selectedPdf.Id', selectedPdf.Id);
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetPdfFile',
-        parameters: {
-          Id: selectedPdf.Id,
-        },
-      });
-      if (res) {
-        const x = res.parameters.lst[0].pdf;
-
-        setPdfBase642(x);
-        setLoading(false);
-      }
+      setPdfBase642(await getPdfContent(selectedPdf.Id));
     } catch (error: any) {
       notification.error({
         message: error.message,
         placement: 'topRight',
         duration: 3,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,7 +148,13 @@ const UploadDocuments = () => {
         },
       });
       if (res) {
-        setUploadPdf(res.parameters.lst);
+        const documents = res.parameters.lst as UploadedPdfRecord[];
+        setUploadPdf(documents);
+        setSelectedPdf((current) =>
+          current
+            ? documents.find((document) => document.Id === current.Id)
+            : undefined,
+        );
       }
     } catch (error: any) {
       notification.error({
@@ -122,10 +171,60 @@ const UploadDocuments = () => {
       reader.readAsDataURL(blob);
     });
   }
-  const handleUpload = async () => {
+  const closeDocumentModal = () => {
+    setShowModal(false);
+    setEditingPdf(undefined);
+    setSelectedRow(undefined);
+    setPdfBase64(undefined);
+    setHasReplacementFile(false);
+    form.resetFields();
+  };
+
+  const openNewDocument = () => {
+    setEditingPdf(undefined);
+    setSelectedRow(undefined);
+    setPdfBase64(undefined);
+    setHasReplacementFile(false);
+    form.resetFields();
+    form.setFieldsValue({ ShowInCompanyPortal: 'N' });
+    setShowModal(true);
+  };
+
+  const openEditDocument = async (document: UploadedPdfRecord) => {
+    setEditingPdf(document);
+    setSelectedRow(
+      appointments?.find(
+        (appointment) =>
+          Number(appointment.Id) === Number(document.fk_Appointments_Id),
+      ),
+    );
+    setHasReplacementFile(false);
+    form.setFieldsValue({
+      Department: document.fk_Departments_Id,
+      ShowInCompanyPortal:
+        document.ShowInCompanyPortal?.toUpperCase() === 'Y' ? 'Y' : 'N',
+      Description: document.Description,
+    });
+    setShowModal(true);
+
+    try {
+      setLoading(true);
+      setPdfBase64(await getPdfContent(document.Id));
+    } catch (error: any) {
+      notification.error({
+        message: error.message,
+        placement: 'topRight',
+        duration: 3,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveDocument = async () => {
     try {
       const v = await form.validateFields();
-      if (isNullOrUndefinedOrBlank(pdfBase64)) {
+      if (!editingPdf && isNullOrUndefinedOrBlank(pdfBase64)) {
         notification.error({
           message: 'Please select a file to upload!',
           placement: 'topRight',
@@ -141,22 +240,30 @@ const UploadDocuments = () => {
         });
         return;
       }
-      const res = await PostData('UploadPdfFile', {
-        fk_Appointments_Id: selectedRow!.Id,
-        fk_Departments_Id: v.Department,
-        Pdf: pdfBase64,
-        ShowInCompanyPortal: v.ShowInCompanyPortal,
-        Description: v.Description,
-      });
+
+      setIsSaving(true);
+      const res = await PostData(
+        editingPdf ? 'UpdatePdfFile' : 'UploadPdfFile',
+        {
+          Id: editingPdf?.Id,
+          fk_Appointments_Id: selectedRow!.Id,
+          fk_Departments_Id: v.Department,
+          Pdf: editingPdf && !hasReplacementFile ? null : pdfBase64,
+          ShowInCompanyPortal: v.ShowInCompanyPortal,
+          Description: v.Description,
+        },
+      );
       if (res) {
         if (res.status === 1) {
           notification.success({
-            message: 'Successfully uploaded!',
+            message: editingPdf
+              ? 'Document successfully updated!'
+              : 'Document successfully uploaded!',
             placement: 'topRight',
             duration: 3,
           });
-          form.setFieldValue('Description', undefined);
-          setPdfBase64(undefined);
+          await handleGetInitialized();
+          closeDocumentModal();
         } else {
           notification.error({
             message: res.message,
@@ -165,7 +272,89 @@ const UploadDocuments = () => {
           });
         }
       }
-    } catch (error) {}
+    } catch (error: any) {
+      if (error?.errorFields) {
+        return;
+      }
+
+      notification.error({
+        message: error?.message ?? 'Unable to save the document.',
+        placement: 'topRight',
+        duration: 3,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteDocument = async (document: UploadedPdfRecord) => {
+    try {
+      const res = await PostData('DeletePdfFile', { Id: document.Id });
+      if (res?.status !== 1) {
+        notification.error({
+          message: res?.message ?? 'Unable to delete the document.',
+          placement: 'topRight',
+          duration: 3,
+        });
+        return;
+      }
+
+      notification.success({
+        message: 'Document successfully deleted!',
+        placement: 'topRight',
+        duration: 3,
+      });
+      if (selectedPdf?.Id === document.Id) {
+        setSelectedPdf(undefined);
+        setPdfBase642(undefined);
+      }
+      await handleGetInitialized();
+    } catch (error: any) {
+      notification.error({
+        message: error?.message ?? 'Unable to delete the document.',
+        placement: 'topRight',
+        duration: 3,
+      });
+    }
+  };
+
+  const handleVisibilityChange = async (
+    document: UploadedPdfRecord,
+    visible: boolean,
+  ) => {
+    try {
+      setVisibilityUpdatingId(document.Id);
+      const res = await PostData('SetPdfFileVisibility', {
+        Id: document.Id,
+        ShowInCompanyPortal: visible ? 'Y' : 'N',
+      });
+
+      if (res?.status !== 1) {
+        notification.error({
+          message: res?.message ?? 'Unable to update portal visibility.',
+          placement: 'topRight',
+          duration: 3,
+        });
+        return;
+      }
+
+      notification.success({
+        message: visible
+          ? 'Document shown in the portal.'
+          : 'Document hidden from the portal.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      await handleGetInitialized();
+    } catch (error: any) {
+      notification.error({
+        message: error?.message ?? 'Unable to update portal visibility.',
+        placement: 'topRight',
+        duration: 3,
+      });
+    } finally {
+      setVisibilityUpdatingId(0);
+    }
   };
 
   // const handleUploadPdf = async (image: any) => {
@@ -232,8 +421,12 @@ const UploadDocuments = () => {
 
     const p: string = (await blobToBase64(files?.[0])) as never as string;
     setPdfBase64(p);
+    setHasReplacementFile(true);
   };
   const handleSelectPdf = () => {
+    if (fileInput.current) {
+      fileInput.current.value = '';
+    }
     fileInput.current?.click();
   };
   const handleWithAccess = async () => {
@@ -288,13 +481,10 @@ const UploadDocuments = () => {
       <div className="mt-2">
         <Button
           type="primary"
-          onClick={() => {
-            setPdfBase64(undefined);
-            form.resetFields();
-            setShowModal(true);
-          }}
+          icon={<MdUploadFile />}
+          onClick={openNewDocument}
         >
-          New
+          Upload Document
         </Button>
       </div>
       <div className="mt-2">
@@ -309,9 +499,44 @@ const UploadDocuments = () => {
           filterDisplay="row"
           selectionMode="single"
           selection={selectedPdf}
-          onSelectionChange={(e) => setSeletedPdf(e.value)}
+          onSelectionChange={(e) =>
+            setSelectedPdf(e.value as UploadedPdfRecord)
+          }
           dataKey="Id"
         >
+          <Column
+            header="Action"
+            body={(document: UploadedPdfRecord) => (
+              <Space size={4} onClick={(event) => event.stopPropagation()}>
+                <Tooltip title="Update document">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<BiEdit className="text-lg text-emerald-600" />}
+                    onClick={() => void openEditDocument(document)}
+                  />
+                </Tooltip>
+                <Popconfirm
+                  title="Delete this document?"
+                  description="This will also hide it from the portal."
+                  okText="Delete"
+                  cancelText="Cancel"
+                  okButtonProps={{ danger: true }}
+                  onConfirm={() => void handleDeleteDocument(document)}
+                >
+                  <Tooltip title="Delete document">
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<BiTrash className="text-lg" />}
+                    />
+                  </Tooltip>
+                </Popconfirm>
+              </Space>
+            )}
+            style={{ width: 88 }}
+          />
           <Column
             field="AppointmentType"
             header="Appointment Type"
@@ -320,6 +545,35 @@ const UploadDocuments = () => {
           <Column field="DateStr" header="Appointment Date" filter></Column>
           <Column field="Description" header="Description" filter></Column>
           <Column field="Department" header="Department" filter></Column>
+          <Column
+            field="ShowInCompanyPortal"
+            header="Show in Portal"
+            body={(document: UploadedPdfRecord) => {
+              const isVisible =
+                document.ShowInCompanyPortal?.toUpperCase() === 'Y';
+
+              return (
+                <Space size={6} onClick={(event) => event.stopPropagation()}>
+                  <Tooltip
+                    title={isVisible ? 'Hide from portal' : 'Show in portal'}
+                  >
+                    <Switch
+                      size="small"
+                      checked={isVisible}
+                      loading={visibilityUpdatingId === document.Id}
+                      onChange={(checked) =>
+                        void handleVisibilityChange(document, checked)
+                      }
+                    />
+                  </Tooltip>
+                  <Tag color={isVisible ? 'green' : 'default'}>
+                    {isVisible ? 'Shown' : 'Hidden'}
+                  </Tag>
+                </Space>
+              );
+            }}
+            filter
+          />
           <Column field="AddedBy" header="Added By" filter></Column>
           <Column field="DateAdded" header="Date Added" filter></Column>
         </DataTable>
@@ -328,23 +582,26 @@ const UploadDocuments = () => {
       <div className="mt-2">
         {loading ? (
           <Loading size={64} />
-        ) : (
+        ) : pdfBase642 ? (
           <iframe
+            title="Uploaded document preview"
             style={{
               width: '100%',
               height: '600px',
             }}
             src={pdfBase642}
           />
+        ) : (
+          <div className="flex h-40 items-center justify-center border border-dashed border-slate-300 text-sm text-slate-500">
+            Select a document to preview it.
+          </div>
         )}
       </div>
 
       <Modal
+        title={editingPdf ? 'Update Document' : 'Upload Document'}
         open={showModal}
-        onCancel={() => {
-          handleGetInitialized();
-          setShowModal(false);
-        }}
+        onCancel={closeDocumentModal}
         destroyOnClose
         footer={false}
         width={screen.width - 100}
@@ -428,20 +685,33 @@ const UploadDocuments = () => {
             </Form>
             <Space>
               <Button type="primary" onClick={handleSelectPdf}>
-                Select a file
+                {editingPdf ? 'Replace PDF' : 'Select PDF'}
               </Button>
-              <Button type="primary" onClick={handleUpload}>
-                Upload
+              <Button
+                type="primary"
+                loading={isSaving}
+                onClick={handleSaveDocument}
+              >
+                {editingPdf ? 'Update' : 'Upload'}
               </Button>
             </Space>
             <div className="mt-2">
-              <iframe
-                style={{
-                  width: '100%',
-                  height: '600px',
-                }}
-                src={pdfBase64}
-              />
+              {loading ? (
+                <Loading size={64} />
+              ) : pdfBase64 ? (
+                <iframe
+                  title="Document upload preview"
+                  style={{
+                    width: '100%',
+                    height: '600px',
+                  }}
+                  src={pdfBase64}
+                />
+              ) : (
+                <div className="flex h-40 items-center justify-center border border-dashed border-slate-300 text-sm text-slate-500">
+                  Select a PDF to preview it.
+                </div>
+              )}
             </div>
           </div>
         </div>

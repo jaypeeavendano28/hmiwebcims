@@ -35,6 +35,7 @@ import ChargesPerPatient from '../../components/ChargesPerPatient';
 import ExistingLabResults from '../../components/ExistingLabResults';
 import FinalizeForm from '../../components/FinalizeForm';
 import { BiArrowBack } from 'react-icons/bi';
+import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + '/api/';
 const devApi = import.meta.env.VITE_DEV_API + '/api/';
@@ -77,7 +78,35 @@ const getPositiveNumber = (value: unknown) => {
   return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
 };
 const isQualityControlMedtech = (value: unknown) =>
-  ['1', 'TRUE', 'Y'].includes(String(value ?? '').trim().toUpperCase());
+  ['1', 'TRUE', 'Y'].includes(
+    String(value ?? '')
+      .trim()
+      .toUpperCase(),
+  );
+const getLaboratoryDetailKey = (row: any) => {
+  const analyteId = getPositiveNumber(
+    row?.TestId ?? row?.fk_Analytes_Id ?? row?.AnalyteId,
+  );
+
+  if (analyteId > 0) {
+    return `analyte:${analyteId}`;
+  }
+
+  const test = String(row?.Test ?? row?.Description ?? '')
+    .trim()
+    .toUpperCase();
+  const sequence = Number(row?.Sequence ?? 0);
+
+  return `layout:${test}:${sequence}`;
+};
+
+const filterLaboratoryDetails = (details: any[], allowedDetails: any[]) => {
+  const allowedKeys = new Set(allowedDetails.map(getLaboratoryDetailKey));
+
+  return details.filter((detail) =>
+    allowedKeys.has(getLaboratoryDetailKey(detail)),
+  );
+};
 
 const LaboratoryResults = () => {
   const [allowSave, setAllowSave] = useState(false);
@@ -181,9 +210,7 @@ const LaboratoryResults = () => {
     rows.map((row) => {
       const analyteId = getRowAnalyteId(row);
       const suffix =
-        String(row?.Suffix ?? '').trim() ||
-        suffixes[analyteId] ||
-        '';
+        String(row?.Suffix ?? '').trim() || suffixes[analyteId] || '';
       const showHighLow =
         String(row?.ShowHighLow ?? '').trim() ||
         highLowSettings[analyteId] ||
@@ -269,86 +296,96 @@ const LaboratoryResults = () => {
     setAllowSave(false);
   };
 
-  const handleOpenResult = async (Id: number) => {
-    setResultId(Id);
-    let res = await PostData('GetRecords', {
-      sp: 'udp_GetLabResultMain',
+  const getLaboratoryTemplateDetails = async (
+    templateId?: string | number,
+    selectedChargeId?: string | number,
+  ) => {
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetLaboratoryResultTemplate',
       parameters: {
-        Id: Id,
+        TemplateId: templateId,
+        PatientId: appointmentDetails?.fk_PatientInformation_Id,
+        Barcode: '',
+        ChargeId: getPositiveNumber(selectedChargeId) || '',
+        AppointmentId: appointmentDetails?.Id,
       },
     });
-    if (res) {
-      const x: TLaboratoryResultMain = res.parameters.lst[0];
-      setSelectedTemplateId(
-        getPositiveNumber(x.fk_LaboratoryResultTemplates_Id) || undefined,
-      );
-      setChargeId(
-        getPositiveNumber(x.fk_tblChargesMain_ChargeId) ||
-          getPositiveNumber(requestedChargeId),
-      );
-      form.setFieldsValue({
-        ReportDate: dayjs(x.ReportDate),
-        DateReceived: dayjs(x.DateReceived),
-        Pathologist: x.Pathologist,
-        Medtech: x.Medtech,
-        Qa: x.Qa,
-        ResultNo: x.ResultNo,
-        RequestingPhysician: x.RequestingPhysician,
-        Specimen: x.Specimen,
-        Remarks: x.Remarks,
-        LabNo: x.LabNo,
-        FinalizedBy: x.FinalizedBy,
-        DateFinalized: x.DateFinalized,
-      });
 
-      if (!isNullOrUndefinedOrBlank(x.FinalizedBy)) {
-        setIsFinalized(true);
-        setAllowSave(false);
-      } else {
-        setIsFinalized(false);
-        setAllowSave(true);
-      }
-    }
-    res = await PostData('GetRecords', {
+    return res?.parameters?.lst ?? [];
+  };
+
+  const handleOpenResult = async (
+    resultId: number,
+    selectedChargeId?: number,
+  ) => {
+    setResultId(resultId);
+    const mainResult = await PostData('GetRecords', {
       sp: 'udp_GetLabResultMain',
       parameters: {
-        Id: Id,
+        Id: resultId,
       },
     });
-    if (res) {
-      const x: TLaboratoryResultMain = res.parameters.lst[0];
-      setSelectedTemplateId(
-        getPositiveNumber(x.fk_LaboratoryResultTemplates_Id) || undefined,
-      );
-      setChargeId(
-        getPositiveNumber(x.fk_tblChargesMain_ChargeId) ||
-          getPositiveNumber(requestedChargeId),
-      );
-      form.setFieldsValue({
-        ReportDate: dayjs(x.ReportDate),
-        DateReceived: dayjs(x.DateReceived),
-        DateCollected: isNullOrUndefinedOrBlank(x.DateCollected)
-          ? undefined
-          : dayjs(x.DateCollected),
-        Pathologist: x.Pathologist,
-        Medtech: x.Medtech,
-        Qa: x.Qa,
-        ResultNo: x.ResultNo,
-        RequestingPhysician: x.RequestingPhysician,
-        Specimen: x.Specimen,
-        Remarks: x.Remarks,
-      });
+    const x: TLaboratoryResultMain | undefined =
+      mainResult?.parameters?.lst?.[0];
+
+    if (!x) {
+      setRowsCol1([]);
+      return;
     }
-    res = await PostData('GetRecords', {
+
+    const templateId = getPositiveNumber(x.fk_LaboratoryResultTemplates_Id);
+    const activeChargeId =
+      getPositiveNumber(selectedChargeId) ||
+      getPositiveNumber(x.fk_tblChargesMain_ChargeId) ||
+      getPositiveNumber(requestedChargeId);
+
+    setSelectedTemplateId(templateId || undefined);
+    setChargeId(activeChargeId);
+    form.setFieldsValue({
+      ReportDate: dayjs(x.ReportDate),
+      DateReceived: dayjs(x.DateReceived),
+      DateCollected: isNullOrUndefinedOrBlank(x.DateCollected)
+        ? undefined
+        : dayjs(x.DateCollected),
+      Pathologist: x.Pathologist,
+      Medtech: x.Medtech,
+      Qa: x.Qa,
+      ResultNo: x.ResultNo,
+      RequestingPhysician: x.RequestingPhysician,
+      Specimen: x.Specimen,
+      Remarks: x.Remarks,
+      LabNo: x.LabNo,
+      FinalizedBy: x.FinalizedBy,
+      DateFinalized: x.DateFinalized,
+    });
+
+    if (!isNullOrUndefinedOrBlank(x.FinalizedBy)) {
+      setIsFinalized(true);
+      setAllowSave(false);
+    } else {
+      setIsFinalized(false);
+      setAllowSave(true);
+    }
+
+    const resultDetails = await PostData('GetRecords', {
       sp: 'udp_GetLabResultDetails',
       parameters: {
-        Id: Id,
+        Id: resultId,
       },
     });
-    if (res) {
-      setRowsCol1(attachAnalyteSuffixes(res.parameters.lst ?? []));
+
+    let details = resultDetails?.parameters?.lst ?? [];
+
+    if (templateId > 0 && activeChargeId > 0) {
+      const allowedDetails = await getLaboratoryTemplateDetails(
+        templateId,
+        activeChargeId,
+      );
+      details = filterLaboratoryDetails(details, allowedDetails);
     }
-    await refreshOnlineResultStatus(Id);
+
+    setRowsCol1(attachAnalyteSuffixes(details));
+    await refreshOnlineResultStatus(resultId);
   };
   const handleGetAppointmentDetails = async () => {
     let res = await PostData('GetRecords', {
@@ -425,19 +462,11 @@ const LaboratoryResults = () => {
       return;
     }
 
-    const res = await PostData('GetRecords', {
-      sp: 'udp_GetLaboratoryResultTemplate',
-      parameters: {
-        TemplateId: nextTemplateId,
-        PatientId: appointmentDetails?.fk_PatientInformation_Id,
-        Barcode: '',
-        ChargeId: nextChargeId || '',
-        AppointmentId: appointmentDetails?.Id,
-      },
-    });
-    if (res) {
-      setRowsCol1(attachAnalyteSuffixes(res.parameters.lst ?? []));
-    }
+    const details = await getLaboratoryTemplateDetails(
+      nextTemplateId,
+      nextChargeId,
+    );
+    setRowsCol1(attachAnalyteSuffixes(details));
   };
   const getResultConventionalValue = (value: unknown) =>
     isNullOrUndefinedOrBlank(value) ? value : String(value);
@@ -1025,7 +1054,10 @@ const LaboratoryResults = () => {
       }
 
       if (existingResultId > 0) {
-        await handleOpenResult(existingResultId);
+        await handleOpenResult(
+          existingResultId,
+          hasRequestedCharge ? requestedChargeId : undefined,
+        );
       } else {
         await handleNew(nextTemplateId, requestedChargeId);
       }
@@ -1083,9 +1115,17 @@ const LaboratoryResults = () => {
             <Button
               className="mb-2"
               icon={<BiArrowBack />}
-              onClick={() => router.history.back()}
+              onClick={() =>
+                router.navigate({
+                  to: '/registeredpatients/$station',
+                  params: {
+                    station: '1',
+                  },
+                  search: getCompletedResultsSearch(),
+                })
+              }
             >
-              Back
+              Back to list
             </Button>
             <Divider>Charges</Divider>
             <Tabs
@@ -1097,7 +1137,7 @@ const LaboratoryResults = () => {
                   children: (
                     <ChargesPerPatient
                       AppointmentId={appointmentDetails?.Id}
-                      Counter="LAB"
+                      Counter={['LAB']}
                       handleNewResult={handleNewResult}
                       Key={key}
                     />

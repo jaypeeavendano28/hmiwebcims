@@ -50,7 +50,7 @@ import Webcam from 'react-webcam';
 import axios, { AxiosError } from 'axios';
 import AddCharge from '../../components/AddCharge';
 import { FaRegEdit } from 'react-icons/fa';
-import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiRefreshCw } from 'react-icons/fi';
 import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
 import ResultStatus from '../../components/ResultStatus';
@@ -167,22 +167,6 @@ export const AppointmentDetails = ({
   const [showStickyAppointment, setShowStickyAppointment] = useState(false);
   const [showFullAppointmentForm, setShowFullAppointmentForm] = useState(false);
   const appointmentInformationRef = useRef<HTMLElement | null>(null);
-
-  // clear old Queueno in appointments if the DateAssignedQueueNo is not equal today
-  useEffect(() => {
-    const clearOldQueueNo = async () => {
-      if (Id !== '0') {
-        await PostData('GetRecords', {
-          sp: 'udp_ClearOldQueueNo',
-          parameters: {
-            AppointmentId: Id,
-          },
-        });
-      }
-    };
-
-    void clearOldQueueNo();
-  }, [Id]);
 
   useQuery({
     queryKey: ['patientDetails'],
@@ -2122,14 +2106,17 @@ export const AppointmentDetails = ({
                       {charges?.length ?? 0} item(s)
                     </span>
                   </div>
-                  {/* <div className="text-right">
-                    <div className="text-[11px] font-medium uppercase text-slate-500">
-                      Total Charges
+
+                  <Button
+                    loading={isLoading}
+                    onClick={handleGetCharges}
+                    type="text"
+                  >
+                    <div className="flex items-center gap-x-2">
+                      <FiRefreshCw />
+                      <div>Refresh</div>
                     </div>
-                    <div className="text-base font-bold tabular-nums text-slate-800">
-                      {formatChargeAmount(chargeTotals.gross)}
-                    </div>
-                  </div> */}
+                  </Button>
                 </div>
                 <div className="p-2">
                   {isLoading ? (
@@ -2331,11 +2318,7 @@ export const AppointmentDetails = ({
                   </h2>
                 </div>
                 <div className="p-4">
-                  <ResultStatus
-                    AppointmentId={appointmentDetails?.Id}
-                    AppointmentType={appointmentDetails?.AppointmentType}
-                    QueueNo={appointmentDetails?.QueueNo}
-                  />
+                  <ResultStatus AppointmentId={appointmentDetails?.Id} />
                 </div>
               </section>
             </>

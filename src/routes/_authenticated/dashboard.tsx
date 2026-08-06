@@ -16,6 +16,7 @@ import axios from 'axios';
 import { apiUrl, PostData } from '../../helpers';
 import Cookies from 'js-cookie';
 import { Chart } from 'primereact/chart';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import dayjs, { Dayjs } from 'dayjs';
 import { TBranches } from '../../types';
 import {
@@ -23,7 +24,7 @@ import {
   FiRepeat,
   FiSearch,
   FiUserPlus,
-  FiUsers,
+  // FiUsers,
 } from 'react-icons/fi';
 
 type DashboardSummary = {
@@ -49,11 +50,18 @@ type ProcedureUtilization = {
   ChargeCount: number;
 };
 
+type AppointmentTypeBreakdown = {
+  AppointmentType: string;
+  Description: string;
+  AppointmentCount: number;
+};
+
 type DashboardData = {
   Summary: DashboardSummary;
   Grouping: 'day' | 'month';
   AppointmentTrend: AppointmentTrend[];
   Procedures: ProcedureUtilization[];
+  AppointmentTypes: AppointmentTypeBreakdown[];
 };
 
 type DashboardFilter = {
@@ -71,6 +79,21 @@ const emptySummary: DashboardSummary = {
 
 const chartTextColor = '#334155';
 const chartGridColor = '#e2e8f0';
+const appointmentTypeColors = [
+  '#2563eb',
+  '#16a34a',
+  '#d97706',
+  '#dc2626',
+  '#0891b2',
+  '#7c3aed',
+  '#64748b',
+  '#be185d',
+];
+const formatChartValue = (value: number | string) => {
+  const numericValue = Number(value);
+
+  return numericValue > 0 ? numericValue.toLocaleString() : null;
+};
 
 export const Route = createFileRoute('/_authenticated/dashboard')({
   component: () => <Dashboard />,
@@ -82,8 +105,8 @@ const Dashboard = () => {
   const [procedureSearch, setProcedureSearch] = useState('');
   const [filter, setFilter] = useState<DashboardFilter>({
     branchCode: branchCode || '01',
-    dateFrom: dayjs().startOf('year'),
-    dateTo: dayjs().endOf('year'),
+    dateFrom: dayjs().startOf('day'),
+    dateTo: dayjs().endOf('day'),
   });
 
   useEffect(() => {
@@ -138,6 +161,7 @@ const Dashboard = () => {
   const grouping = dashboard.data?.Grouping ?? 'month';
   const appointmentTrend = dashboard.data?.AppointmentTrend ?? [];
   const procedures = dashboard.data?.Procedures ?? [];
+  const appointmentTypes = dashboard.data?.AppointmentTypes ?? [];
 
   const completeTrend = useMemo(() => {
     const trendByPeriod = new Map(
@@ -198,19 +222,39 @@ const Dashboard = () => {
     [completeTrend, grouping],
   );
 
-  const patientMixData = useMemo(
+  // const patientMixData = useMemo(
+  //   () => ({
+  //     labels: ['New patients', 'Recurring visits'],
+  //     datasets: [
+  //       {
+  //         data: [summary.NewPatients, summary.RecurringAppointments],
+  //         backgroundColor: ['#16a34a', '#d97706'],
+  //         borderColor: '#ffffff',
+  //         borderWidth: 2,
+  //       },
+  //     ],
+  //   }),
+  //   [summary.NewPatients, summary.RecurringAppointments],
+  // );
+
+  const appointmentTypeData = useMemo(
     () => ({
-      labels: ['New patients', 'Recurring visits'],
+      labels: appointmentTypes.map(
+        (item) => item.Description || item.AppointmentType || 'Unspecified',
+      ),
       datasets: [
         {
-          data: [summary.NewPatients, summary.RecurringAppointments],
-          backgroundColor: ['#16a34a', '#d97706'],
+          data: appointmentTypes.map((item) => item.AppointmentCount),
+          backgroundColor: appointmentTypes.map(
+            (_, index) =>
+              appointmentTypeColors[index % appointmentTypeColors.length],
+          ),
           borderColor: '#ffffff',
           borderWidth: 2,
         },
       ],
     }),
-    [summary.NewPatients, summary.RecurringAppointments],
+    [appointmentTypes],
   );
 
   const topProcedures = useMemo(
@@ -238,7 +282,9 @@ const Dashboard = () => {
     if (!searchValue) return procedures;
 
     return procedures.filter((item) =>
-      `${item.Procedure} ${item.Department}`.toLowerCase().includes(searchValue),
+      `${item.Procedure} ${item.Department}`
+        .toLowerCase()
+        .includes(searchValue),
     );
   }, [procedureSearch, procedures]);
 
@@ -248,6 +294,14 @@ const Dashboard = () => {
       legend: {
         position: 'bottom',
         labels: { color: chartTextColor, usePointStyle: true },
+      },
+      datalabels: {
+        align: 'center',
+        anchor: 'center',
+        clamp: true,
+        color: '#ffffff',
+        font: { size: 11, weight: 700 },
+        formatter: formatChartValue,
       },
     },
     scales: {
@@ -273,14 +327,31 @@ const Dashboard = () => {
         position: 'bottom',
         labels: { color: chartTextColor, usePointStyle: true },
       },
+      datalabels: {
+        color: '#ffffff',
+        font: { size: 11, weight: 700 },
+        formatter: formatChartValue,
+      },
     },
   };
 
   const procedureChartOptions = {
     maintainAspectRatio: false,
     indexAxis: 'y',
+    layout: {
+      padding: { right: 34 },
+    },
     plugins: {
       legend: { display: false },
+      datalabels: {
+        align: 'end',
+        anchor: 'end',
+        clamp: true,
+        color: chartTextColor,
+        font: { size: 11, weight: 700 },
+        offset: 4,
+        formatter: formatChartValue,
+      },
     },
     scales: {
       x: {
@@ -302,12 +373,12 @@ const Dashboard = () => {
       icon: <FiCalendar />,
       iconClass: 'bg-blue-50 text-blue-700',
     },
-    {
-      label: 'Unique Patients',
-      value: summary.UniquePatients,
-      icon: <FiUsers />,
-      iconClass: 'bg-slate-100 text-slate-700',
-    },
+    // {
+    //   label: 'Unique Patients',
+    //   value: summary.UniquePatients,
+    //   icon: <FiUsers />,
+    //   iconClass: 'bg-slate-100 text-slate-700',
+    // },
     {
       label: 'New Patients',
       value: summary.NewPatients,
@@ -354,6 +425,7 @@ const Dashboard = () => {
               <DatePicker.RangePicker
                 allowClear={false}
                 value={[filter.dateFrom, filter.dateTo]}
+                format={'MM/DD/YYYY'}
                 onChange={(dates) => {
                   const dateFrom = dates?.[0];
                   const dateTo = dates?.[1];
@@ -382,7 +454,7 @@ const Dashboard = () => {
         )}
 
         <Spin spinning={dashboard.isFetching}>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid gap-3 lg:grid-cols-3">
             {summaryCards.map((item) => (
               <section
                 key={item.label}
@@ -407,7 +479,7 @@ const Dashboard = () => {
             ))}
           </div>
 
-          <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
+          <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.7fr)_minmax(280px,0.7fr)]">
             <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-3">
                 <h2 className="text-sm font-semibold text-slate-900">
@@ -422,12 +494,13 @@ const Dashboard = () => {
                   type="bar"
                   data={appointmentChartData}
                   options={stackedChartOptions}
+                  plugins={[ChartDataLabels]}
                   style={{ height: '100%' }}
                 />
               </div>
             </section>
 
-            <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+            {/* <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-3">
                 <h2 className="text-sm font-semibold text-slate-900">
                   Patient Visit Type
@@ -442,6 +515,32 @@ const Dashboard = () => {
                     type="doughnut"
                     data={patientMixData}
                     options={doughnutChartOptions}
+                    style={{ height: '100%' }}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  </div>
+                )}
+              </div>
+            </section> */}
+
+            <section className="col-span-2 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Appointment Types
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Appointments grouped by registration type
+                </p>
+              </div>
+              <div className="h-[330px]">
+                {appointmentTypes.length > 0 ? (
+                  <Chart
+                    type="doughnut"
+                    data={appointmentTypeData}
+                    options={doughnutChartOptions}
+                    plugins={[ChartDataLabels]}
                     style={{ height: '100%' }}
                   />
                 ) : (
@@ -480,6 +579,7 @@ const Dashboard = () => {
                     type="bar"
                     data={procedureChartData}
                     options={procedureChartOptions}
+                    plugins={[ChartDataLabels]}
                     style={{ height: '100%' }}
                   />
                 ) : (

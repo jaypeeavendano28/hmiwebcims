@@ -26,6 +26,7 @@ import ChargesPerPatient from "../../components/ChargesPerPatient";
 import FinalizeForm from "../../components/FinalizeForm";
 import { ExistingRadiologyResults } from "../../components/ExistingRadiologyResult";
 import { BiArrowBack } from "react-icons/bi";
+import { getCompletedResultsSearch } from "../../helpers/resultNavigation";
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + "/api/";
 const devApi = import.meta.env.VITE_DEV_API + "/api/";
@@ -509,7 +510,13 @@ const UltrasoundResult = () => {
             <Button
               className="mb-2"
               icon={<BiArrowBack />}
-              onClick={() => router.history.back()}
+              onClick={() =>
+                router.navigate({
+                  to: "/registeredpatients/$station",
+                  params: { station: "1" },
+                  search: getCompletedResultsSearch(),
+                })
+              }
             >
               Back
             </Button>
@@ -525,7 +532,7 @@ const UltrasoundResult = () => {
                       AppointmentId={appointmentDetails?.Id}
                       handleNewResult={handleNewResult}
                       Key={Key}
-                      Counter="ULT"
+                      Counter={["ULT"]}
                     />
                   ),
                 },

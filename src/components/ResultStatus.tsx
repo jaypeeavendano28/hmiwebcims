@@ -2,24 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 import { DataTable } from 'primereact/datatable';
 import { PostData } from '../helpers';
 import { Column } from 'primereact/column';
-import { Space, Tooltip } from 'antd';
+import { Modal, notification, Space, Tooltip } from 'antd';
 
 // import { BiNote } from 'react-icons/bi';
 import { PiQueueLight } from 'react-icons/pi';
 // import { useRouter } from '@tanstack/react-router';
 import { TCharges } from '../types';
-import useAppStore from '../store';
-import { Modal } from 'antd';
 import { useState } from 'react';
 import dayjs from 'dayjs';
 
 type Props = {
   AppointmentId?: number;
-  AppointmentType?: string;
-  QueueNo?: string;
 };
 
-export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
+export default function ({ AppointmentId }: Props) {
   // const router = useRouter();
   const resultStatus = useQuery({
     queryKey: ['resultStatus', AppointmentId],
@@ -38,8 +34,13 @@ export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
     staleTime: 0,
   });
 
-  const [queueLoading, setQueueLoading] = useState(false);
-  const actionBodyTemplate = (data: any) => {
+  const [queueingChargeId, setQueueingChargeId] = useState<number>();
+  const actionBodyTemplate = (data: TCharges) => {
+    const canQueueFollowUp =
+      data.Status?.trim().toUpperCase() === 'TO FOLLOW' &&
+      data.IsPackage?.trim().toUpperCase() !== 'Y' &&
+      !data.HasActiveQueue;
+
     return (
       <Space>
         {/* {(data.fk_Departments_Id === 1000 ||
@@ -53,11 +54,15 @@ export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
             />
           </Tooltip>
         )} */}
-        {data.Status === 'TO FOLLOW' && QueueNo === '' && (
+        {canQueueFollowUp && (
           <Tooltip title="Send to Queue">
             <PiQueueLight
               size={16}
-              className="cursor-pointer"
+              className={
+                queueingChargeId === data.Id
+                  ? 'pointer-events-none opacity-50'
+                  : 'cursor-pointer'
+              }
               onClick={() => confirmSendToQueue(data)}
             />
           </Tooltip>
@@ -92,59 +97,56 @@ export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
   //   }
   // }
 
-  const store = useAppStore();
-
-  const handleSendToQueue = async (data: TCharges, close: () => void) => {
+  const handleSendToQueue = async (data: TCharges) => {
     try {
-      setQueueLoading(true);
+      setQueueingChargeId(data.Id);
 
       const payload = {
-        BranchCode: store.branchCode,
-        AppointmentType: AppointmentType,
         AppointmentId: AppointmentId,
         ItemId: data.fk_Items_Id,
+        ChargeId: data.Id,
       };
 
       const res = await PostData('follow-up', payload);
 
-      if (res) {
-        close(); // closes modal
-        // better than reload:
-        resultStatus.refetch();
+      if (res?.status !== 1) {
+        throw new Error(res?.message ?? 'Unable to send the follow-up to queue.');
       }
+
+      notification.success({
+        message: res.message ?? 'Follow-up sent to queue.',
+        placement: 'topRight',
+      });
+      await resultStatus.refetch();
+    } catch (error) {
+      notification.error({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Unable to send the follow-up to queue.',
+        placement: 'topRight',
+      });
+      throw error;
     } finally {
-      setQueueLoading(false);
-      window.location.reload();
+      setQueueingChargeId(undefined);
     }
   };
 
   const confirmSendToQueue = (data: TCharges) => {
-    let modalRef: any;
-
-    const close = () => modalRef?.destroy();
-
-    modalRef = Modal.confirm({
+    Modal.confirm({
       title: 'Send to Queue?',
       content: 'This patient will be added to the follow-up queue. Continue?',
-      okText: queueLoading ? 'Processing...' : 'Yes',
+      okText: 'Yes',
       cancelText: 'No',
       centered: true,
-
-      // 👇 disables buttons while loading
       okButtonProps: {
-        loading: queueLoading,
         type: 'primary',
         style: {
           backgroundColor: '#1677ff',
           borderColor: '#1677ff',
         },
       },
-
-      onOk: async () => {
-        await handleSendToQueue(data, close);
-      },
-
-      onCancel: close,
+      onOk: () => handleSendToQueue(data),
     });
   };
 
@@ -167,7 +169,7 @@ export default function ({ AppointmentId, AppointmentType, QueueNo }: Props) {
         <Column
           field="action"
           header="Action"
-          body={(data: any) => actionBodyTemplate(data)}
+          body={(data: TCharges) => actionBodyTemplate(data)}
         ></Column>
       </DataTable>
     </div>

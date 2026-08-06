@@ -57,7 +57,31 @@ type ProcedureStatusFormValues = {
 };
 
 const procedureStatusOptions = ['DONE', 'TO FOLLOW', 'DEFERRED'];
-const resultCounterCodes = ['LAB', 'XRAY', 'ULT', 'CARDIO'];
+const consultationCounterCodes = [
+  'CONCARDIO',
+  'CONDERMA',
+  'CONEENT',
+  'CONFAMMEN',
+  'CONGASTRO',
+  'CONINTMED',
+  'CONOPTHA',
+  'CONORTHO',
+  'CONPEDIA',
+  'CONREHAB',
+  'CONSUR',
+  'CONPULMPO',
+  'CONSULTATION',
+  'PHYS',
+];
+const resultCounterCodes = [
+  'LAB',
+  'XRAY',
+  'ULT',
+  'CARDIO',
+  ...consultationCounterCodes,
+];
+const isConsultationCounter = (counterCode?: string) =>
+  consultationCounterCodes.includes(String(counterCode ?? '').trim());
 const allQueueDetailsOption = 0;
 const normalizeStatusText = (value: unknown) =>
   String(value ?? '')
@@ -482,32 +506,28 @@ const PatientsPerCounter: FC<Props> = ({
     void router.navigate(locationOptions);
   };
   const handleLabResult = (data: any) => {
-    openResultLocation(
-      {
-        to: '/laboratoryresults/$Id',
-        params: {
-          Id: data.fk_Appointments_Id.toString(),
-        },
-        search: {
-          templateId: Number(data.LabTemplateId ?? 0),
-          chargeId: Number(data.ChargeId ?? 0),
-        },
+    openResultLocation({
+      to: '/laboratoryresults/$Id',
+      params: {
+        Id: data.fk_Appointments_Id.toString(),
       },
-    );
+      search: {
+        templateId: Number(data.LabTemplateId ?? 0),
+        chargeId: Number(data.ChargeId ?? 0),
+      },
+    });
   };
 
   const handleXrayResult = (data: any) => {
-    openResultLocation(
-      {
-        to: '/xrayresult/$Id',
-        params: {
-          Id: data.fk_Appointments_Id.toString(),
-        },
-        search: {
-          chargeId: Number(data.ChargeId ?? 0),
-        },
+    openResultLocation({
+      to: '/xrayresult/$Id',
+      params: {
+        Id: data.fk_Appointments_Id.toString(),
       },
-    );
+      search: {
+        chargeId: Number(data.ChargeId ?? 0),
+      },
+    });
   };
 
   const handleCardioResult = (data: any) => {
@@ -518,37 +538,51 @@ const PatientsPerCounter: FC<Props> = ({
     //   },
     // });
 
-    openResultLocation(
-      {
-        to: '/cardiologyresult/$Id',
-        params: {
-          Id: data.fk_Appointments_Id.toString(),
-        },
-        search: {
-          exam: data.Exam,
-          chargeId: Number(data.ChargeId ?? 0),
-          resultId: Number(data.ResultId ?? 0),
-        },
+    openResultLocation({
+      to: '/cardiologyresult/$Id',
+      params: {
+        Id: data.fk_Appointments_Id.toString(),
       },
-    );
+      search: {
+        exam: data.Exam,
+        chargeId: Number(data.ChargeId ?? 0),
+        resultId: Number(data.ResultId ?? 0),
+      },
+    });
   };
 
   const handleUltrasoundResult = (data: any) => {
-    openResultLocation(
-      {
-        to: '/ultrasound/$Id',
-        params: {
-          Id: data.fk_Appointments_Id.toString(),
-        },
-        search: {
-          chargeId: Number(data.ChargeId ?? 0),
-        },
+    openResultLocation({
+      to: '/ultrasound/$Id',
+      params: {
+        Id: data.fk_Appointments_Id.toString(),
       },
-    );
+      search: {
+        chargeId: Number(data.ChargeId ?? 0),
+      },
+    });
+  };
+
+  const handleConsultationResult = (data: any) => {
+    openResultLocation({
+      to: '/consultation/$Id',
+      params: {
+        Id: data.fk_Appointments_Id.toString(),
+      },
+      search: {
+        chargeId: Number(data.ChargeId ?? 0),
+      },
+    });
   };
 
   const openProcedureWorkspace = (data: any) => {
-    switch (data.CounterCode ?? CounterCode) {
+    const counterCode = data.CounterCode ?? CounterCode;
+    if (isConsultationCounter(counterCode)) {
+      handleConsultationResult(data);
+      return;
+    }
+
+    switch (counterCode) {
       case 'LAB':
         handleLabResult(data);
         break;
@@ -571,46 +605,49 @@ const PatientsPerCounter: FC<Props> = ({
       return;
     }
 
-    switch (data.CounterCode ?? CounterCode) {
+    const counterCode = data.CounterCode ?? CounterCode;
+    if (isConsultationCounter(counterCode)) {
+      openResultLocation({
+        to: '/consultation/$Id',
+        params: {
+          Id: appointmentId,
+        },
+      });
+      return;
+    }
+
+    switch (counterCode) {
       case 'LAB':
-        openResultLocation(
-          {
-            to: '/laboratoryresults/$Id',
-            params: {
-              Id: appointmentId,
-            },
+        openResultLocation({
+          to: '/laboratoryresults/$Id',
+          params: {
+            Id: appointmentId,
           },
-        );
+        });
         break;
       case 'XRAY':
-        openResultLocation(
-          {
-            to: '/xrayresult/$Id',
-            params: {
-              Id: appointmentId,
-            },
+        openResultLocation({
+          to: '/xrayresult/$Id',
+          params: {
+            Id: appointmentId,
           },
-        );
+        });
         break;
       case 'CARDIO':
-        openResultLocation(
-          {
-            to: '/cardiologyresult/$Id',
-            params: {
-              Id: appointmentId,
-            },
+        openResultLocation({
+          to: '/cardiologyresult/$Id',
+          params: {
+            Id: appointmentId,
           },
-        );
+        });
         break;
       case 'ULT':
-        openResultLocation(
-          {
-            to: '/ultrasound/$Id',
-            params: {
-              Id: appointmentId,
-            },
+        openResultLocation({
+          to: '/ultrasound/$Id',
+          params: {
+            Id: appointmentId,
           },
-        );
+        });
         break;
     }
   };
@@ -751,6 +788,15 @@ const PatientsPerCounter: FC<Props> = ({
               />
             </Tooltip>
           </>
+        )}
+        {isConsultationCounter(rowCounterCode) && effectiveIsDone && (
+          <Tooltip title="Result">
+            <Button
+              type="primary"
+              icon={<BiNotepad />}
+              onClick={() => handleConsultationResult(data)}
+            />
+          </Tooltip>
         )}
         {(rowCounterCode === 'DIA' || rowCounterCode === 'AMB') && (
           <>

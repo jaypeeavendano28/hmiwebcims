@@ -30,6 +30,7 @@ import ChargesPerPatient from '../../components/ChargesPerPatient';
 import { ExistingCadioResults } from '../../components/ExistingCardioResult';
 import FinalizeForm from '../../components/FinalizeForm';
 import { BiArrowBack } from 'react-icons/bi';
+import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
 
 export const Route = createLazyFileRoute(
   '/_authenticated/cardiologyresult/$Id',
@@ -2027,7 +2028,13 @@ const CardiologyResult = () => {
             <Button
               className="mb-2"
               icon={<BiArrowBack />}
-              onClick={() => router.history.back()}
+              onClick={() =>
+                router.navigate({
+                  to: '/registeredpatients/$station',
+                  params: { station: '1' },
+                  search: getCompletedResultsSearch(),
+                })
+              }
             >
               Back
             </Button>
@@ -2044,7 +2051,7 @@ const CardiologyResult = () => {
                       AppointmentId={appointmentDetails.data?.Id}
                       handleNewResult={handleNewResult}
                       Key={chargesKey}
-                      Counter="CARDIO"
+                      Counter={["CARDIO"]}
                     />
                   ),
                 },

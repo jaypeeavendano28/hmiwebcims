@@ -32,6 +32,7 @@ function RootComponent() {
     "/ultrasound/",
     "/xrayresult/",
     "/laboratoryresults/",
+    "/consultation/",
   ].some((path) => location.pathname.includes(path));
   const hideSidebar =
     !isExaminationRoute && (store.hideSideBar === "Y" || isStandalone);

@@ -15,7 +15,7 @@ import {
   notification,
 } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
-import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
+import { PostData, apiUrl, isNullOrUndefinedOrBlank } from '../../helpers';
 import useAppStore from '../../store';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -30,6 +30,7 @@ import { FaFileMedical, FaFileWaveform } from 'react-icons/fa6';
 import Cookies from 'js-cookie';
 import { TbCurrencyPeso } from 'react-icons/tb';
 import ResultStatus from '../../components/ResultStatus';
+import axios from 'axios';
 // import axios from 'axios';
 export const Route = createFileRoute('/_authenticated/appointments')({
   component: () => <Appointments />,
@@ -154,49 +155,49 @@ const Appointments = () => {
     }
   };
 
-  // const [isProcessing, setIsProccessing] = useState(false);
+  const [isProcessing, setIsProccessing] = useState(false);
 
-  // const handlePrintPatientMedicalRecordSheet = async (id: number) => {
-  //   axios.defaults.headers.common['Authorization'] =
-  //     'Bearer ' + store.tokenIdWebCims;
-  //   setIsProccessing(true);
-  //   const url = apiUrl + 'GenerateReport';
-  //   try {
-  //     // setIsProccessing(true);
-  //     await axios({
-  //       url: url,
-  //       method: 'GET',
-  //       responseType: 'blob',
-  //       params: {
-  //         ReportName: 'PatientMedicalRecordSheet.rdl',
-  //         AppointmentId: id,
-  //         BranchCode: store.branchCode,
-  //       },
-  //     }).then((response) => {
-  //       let newBlob;
-  //       newBlob = new Blob([response.data], {
-  //         type: 'application/pdf',
-  //       });
+  const handlePrintPatientMedicalRecordSheet = async (id: number) => {
+    axios.defaults.headers.common['Authorization'] =
+      'Bearer ' + store.tokenIdWebCims;
+    setIsProccessing(true);
+    const url = apiUrl + 'GenerateReport';
+    try {
+      // setIsProccessing(true);
+      await axios({
+        url: url,
+        method: 'GET',
+        responseType: 'blob',
+        params: {
+          ReportName: 'PatientMedicalRecordSheet.rdl',
+          AppointmentId: id,
+          BranchCode: store.branchCode,
+        },
+      }).then((response) => {
+        let newBlob;
+        newBlob = new Blob([response.data], {
+          type: 'application/pdf',
+        });
 
-  //       const data = window.URL.createObjectURL(newBlob);
+        const data = window.URL.createObjectURL(newBlob);
 
-  //       const a = document.createElement('a');
+        const a = document.createElement('a');
 
-  //       a.setAttribute('href', data);
-  //       a.setAttribute('target', '_blank');
+        a.setAttribute('href', data);
+        a.setAttribute('target', '_blank');
 
-  //       a.click();
-  //       // setIsSubmitting(false);
-  //     });
-  //   } catch (error: any) {
-  //     // setIsSubmitting(false);
-  //     let errorString = error.response.data;
-  //     errorString = JSON.parse(await error.response.data.text());
-  //     return { Status: 0, Message: errorString.Message };
-  //   } finally {
-  //     setIsProccessing(false);
-  //   }
-  // };
+        a.click();
+        // setIsSubmitting(false);
+      });
+    } catch (error: any) {
+      // setIsSubmitting(false);
+      let errorString = error.response.data;
+      errorString = JSON.parse(await error.response.data.text());
+      return { Status: 0, Message: errorString.Message };
+    } finally {
+      setIsProccessing(false);
+    }
+  };
   const handleRequest = (data: any) => {
     setSelectedRecord(data);
     setShowRequest(true);
@@ -235,16 +236,16 @@ const Appointments = () => {
             <FaFileMedical size={24} />
           </Link>
         </Tooltip>
-        <Tooltip title="Chart">
+        {/* <Tooltip title="Consultation Results">
           <Link
-            to="/chart/$AppointmentId"
+            to="/consultation/$Id"
             params={{
-              AppointmentId: data.Id!.toString(),
+              Id: data.Id!.toString(),
             }}
           >
             <FaFileWaveform size={24} />
           </Link>
-        </Tooltip>
+        </Tooltip> */}
         <Tooltip title="Patient Medical Record Sheet">
           {/* <Link
             to="/chart/$AppointmentId"
@@ -254,14 +255,14 @@ const Appointments = () => {
           >
             <FaFileWaveform size={24} />
           </Link> */}
-          {/* <Button
+          <Button
             className="!p-0 !h-5"
             type="link"
             disabled={isProcessing}
             onClick={() => handlePrintPatientMedicalRecordSheet(data.Id!)}
           >
             <FaFileWaveform size={24} className="text-blue-600" />
-          </Button> */}
+          </Button>
         </Tooltip>
         <Tooltip title="Request for medicines">
           <Link>

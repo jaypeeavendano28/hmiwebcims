@@ -992,7 +992,7 @@ const RegisteredPatients = () => {
         <div className="grid gap-4 md:grid-cols-12">
           <Form.Item
             name="DateRange"
-            label="Date Range"
+            label={isDone ? "Appointment Date" : "Date Range"}
             className="md:col-span-2"
           >
             <DatePicker.RangePicker

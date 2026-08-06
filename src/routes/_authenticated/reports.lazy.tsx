@@ -264,11 +264,6 @@ const Reports = () => {
       label: item.Description ?? item.Id,
       value: item.Id,
     })) ?? [];
-  const hmoOptions =
-    hmos?.map((item) => ({
-      label: item.Name ?? item.Id,
-      value: item.Id,
-    })) ?? [];
   const companyOptions =
     hmos
       ?.filter((item) => item.Type === 'C')
@@ -276,21 +271,8 @@ const Reports = () => {
         label: item.Name ?? item.Id,
         value: item.Id,
       })) ?? [];
-  const handleSelectAllItems = () => {
-    form.setFieldsValue({
-      items: itemOptions.map((item) => item.value),
-    });
-  };
-  const handleSelectHmoAllItems = () => {
-    form.setFieldsValue({
-      hmo: hmoOptions.map((item) => item.value),
-    });
-  };
-  const handleSelectCompanyAllItems = () => {
-    form.setFieldsValue({
-      hmo: companyOptions.map((item) => item.value),
-    });
-  };
+  const getSelectedIds = (selectedIds?: number[]) =>
+    selectedIds?.length ? selectedIds.join(',') : '';
 
   const handleExportExcel = async (values: any) => {
     setLoading(true);
@@ -300,7 +282,7 @@ const Reports = () => {
         case 'medical-exams-tests': {
           const res = await axios.post(
             `${apiUrl}census-medical-exam-test`,
-            values.items ?? [],
+            Array.isArray(values.items) ? values.items : [],
             {
               headers: { 'Content-Type': 'application/json' },
               params: {
@@ -379,10 +361,8 @@ const Reports = () => {
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
               BranchCode: store.branchCode,
-              itemsIds: values.items
-                ? (values.items as number[]).join(',')
-                : '',
-              hmoIds: values.hmo ? (values.hmo as number[]).join(',') : '',
+              itemsIds: getSelectedIds(values.items),
+              hmoIds: getSelectedIds(values.hmo),
             },
           });
 
@@ -419,6 +399,8 @@ const Reports = () => {
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
               BranchCode: store.branchCode,
+              ItemsIds: getSelectedIds(values.items),
+              HmoIds: getSelectedIds(values.hmo),
             },
           });
 
@@ -541,10 +523,8 @@ const Reports = () => {
               BranchCode: store.branchCode,
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
-              ItemsIds: values.items
-                ? (values.items as number[]).join(',')
-                : '',
-              HmoIds: values.hmo ? (values.hmo as number[]).join(',') : '',
+              ItemsIds: getSelectedIds(values.items),
+              HmoIds: getSelectedIds(values.hmo),
             },
           }).then((response) => {
             let newBlob;
@@ -603,10 +583,8 @@ const Reports = () => {
               BranchCode: store.branchCode,
               dateFrom: dayjs(from).format('MM/DD/YYYY'),
               dateTo: dayjs(to).format('MM/DD/YYYY'),
-              ItemsIds: values.items
-                ? (values.items as number[]).join(',')
-                : '',
-              HmoIds: values.hmo ? (values.hmo as number[]).join(',') : '',
+              ItemsIds: getSelectedIds(values.items),
+              HmoIds: getSelectedIds(values.hmo),
             },
           }).then((response) => {
             let newBlob;
@@ -666,89 +644,44 @@ const Reports = () => {
               selectedReport === 'billing-charge-to-company' ||
               selectedReport === 'cash-all-dept') && (
               <>
-                <Form.Item name="items" label="Items" className="!mb-2">
+                <Form.Item name="items" label="Items" className="!mb-3">
                   <Select
                     mode="multiple"
                     allowClear
                     showSearch
-                    placeholder="Select items"
+                    placeholder="All items"
                     options={itemOptions}
                     optionFilterProp="label"
                   />
                 </Form.Item>
-                <div className="mb-3 flex justify-end gap-2">
-                  <Button
-                    size="small"
-                    onClick={handleSelectAllItems}
-                    disabled={!itemOptions.length}
-                  >
-                    Select All
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={() => form.setFieldsValue({ items: [] })}
-                  >
-                    Clear
-                  </Button>
-                </div>
               </>
             )}
             {selectedReport === 'billing-charge-to-company' && (
               <>
-                <Form.Item name="hmo" label="Hmo/Companies" className="!mb-2">
+                <Form.Item name="hmo" label="Companies" className="!mb-3">
                   <Select
                     mode="multiple"
                     allowClear
                     showSearch
-                    placeholder="Select items"
-                    options={hmoOptions}
-                    optionFilterProp="label"
-                  />
-                </Form.Item>
-                <div className="mb-3 flex justify-end gap-2">
-                  <Button
-                    size="small"
-                    onClick={handleSelectHmoAllItems}
-                    disabled={!hmoOptions.length}
-                  >
-                    Select All
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={() => form.setFieldsValue({ hmo: [] })}
-                  >
-                    Clear
-                  </Button>
-                </div>
-              </>
-            )}
-            {selectedReport === 'cash-all-dept' && (
-              <>
-                <Form.Item name="hmo" label="Companies" className="!mb-2">
-                  <Select
-                    mode="multiple"
-                    allowClear
-                    showSearch
-                    placeholder="Select items"
+                    placeholder="All companies"
                     options={companyOptions}
                     optionFilterProp="label"
                   />
                 </Form.Item>
-                <div className="mb-3 flex justify-end gap-2">
-                  <Button
-                    size="small"
-                    onClick={handleSelectCompanyAllItems}
-                    disabled={!companyOptions.length}
-                  >
-                    Select All
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={() => form.setFieldsValue({ hmo: [] })}
-                  >
-                    Clear
-                  </Button>
-                </div>
+              </>
+            )}
+            {selectedReport === 'cash-all-dept' && (
+              <>
+                <Form.Item name="hmo" label="Companies" className="!mb-3">
+                  <Select
+                    mode="multiple"
+                    allowClear
+                    showSearch
+                    placeholder="All companies"
+                    options={companyOptions}
+                    optionFilterProp="label"
+                  />
+                </Form.Item>
               </>
             )}
 

@@ -4,9 +4,7 @@ import { PostData, WithAccess, isNullOrUndefinedOrBlank } from '../../helpers';
 import useAppStore from '../../store';
 import {
   Button,
-  Card,
   DatePicker,
-  Divider,
   Form,
   Input,
   InputNumber,
@@ -32,6 +30,13 @@ import { BsMegaphoneFill } from 'react-icons/bs';
 import Cookies from 'js-cookie';
 import ListOfOr from '../../components/ListOfOr';
 import axios from 'axios';
+import {
+  FiFileText,
+  FiPlus,
+  FiPrinter,
+  FiRefreshCw,
+  FiSave,
+} from 'react-icons/fi';
 
 export const Route = createFileRoute('/_authenticated/cashier')({
   component: () => <Cashier />,
@@ -148,40 +153,6 @@ const Cashier = () => {
     if (res) {
       setCharges(res.parameters.lst);
     }
-  };
-  const CardTitile = () => {
-    return (
-      <div className="mb-2">
-        <p className="text-center">Payment Details</p>
-        <Space>
-          <Button
-            type="primary"
-            onClick={() => {
-              form1.setFieldValue('Date', dayjs());
-              setAppointmentId(0);
-              setNewMode(true);
-              handleGetLastOrNo();
-            }}
-            disabled={newMode}
-          >
-            New
-          </Button>
-          <Popconfirm
-            title="Refresh fields now?"
-            onConfirm={() => {
-              handleRefresh();
-            }}
-            okText="Yes"
-            cancelText="No"
-            disabled={!newMode}
-          >
-            <Button disabled={!newMode} type="primary">
-              Refresh Fields
-            </Button>
-          </Popconfirm>
-        </Space>
-      </div>
-    );
   };
   const actionBodyTemplate = (data: any) => {
     return (
@@ -513,8 +484,8 @@ const Cashier = () => {
         responseType: 'blob',
         params: {
           ReportName: 'Cashier.rdl',
-          DateFrom: dayjs(from).format('MM/DD/YYYY'),
-          DateTo: dayjs(to).format('MM/DD/YYYY'),
+          DateFrom: dayjs(from).startOf('minute').format('YYYY-MM-DDTHH:mm:ss'),
+          DateTo: dayjs(to).endOf('minute').format('YYYY-MM-DDTHH:mm:ss'),
           BranchCode: store.branchCode,
           Type: store.userId,
         },
@@ -545,87 +516,106 @@ const Cashier = () => {
   };
 
   return (
-    <div className="cardBackGround">
-      <Divider>Cashier</Divider>
-      <div className="flex items-center gap-x-3 mb-2">
-        <Button type="primary" onClick={() => setShowListOfOr(true)}>
-          List of Official Receipts
-        </Button>
-        {/* <Button
-        type="primary"
-        onClick={handlePrint}
-        loading={isProcessing}
-        className="ml-2"
-      >
-        Print
-      </Button> */}
-        <Popover
-          open={open}
-          content={
-            <div>
-              <Form
-                onFinish={(values: any) => {
-                  handlePrint(values);
-                  setOpen(false);
-                }}
-                initialValues={{ date: [dayjs(), dayjs()] }}
-                requiredMark={false}
-              >
-                <Form.Item
-                  name="date"
-                  className="!mb-2"
-                  rules={[
-                    {
-                      required: true,
-                      message: 'Please select Month and Year',
-                    },
-                  ]}
+    <div className="min-h-full bg-slate-50 px-4 py-4 sm:px-6">
+      <div className="mx-auto max-w-[1800px]">
+        <header className="mb-4 flex flex-col justify-between gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">Cashier</h1>
+            <p className="mt-1 text-xs font-medium uppercase text-slate-500">
+              Branch {store.branchCode}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button icon={<FiFileText />} onClick={() => setShowListOfOr(true)}>
+              Official Receipts
+            </Button>
+            <Popover
+              open={open}
+              content={
+                <Form
+                  className="w-[420px] max-w-[calc(100vw-48px)]"
+                  onFinish={(values: any) => {
+                    handlePrint(values);
+                    setOpen(false);
+                  }}
+                  initialValues={{
+                    date: [dayjs().startOf('day'), dayjs().endOf('day')],
+                  }}
+                  requiredMark={false}
                 >
-                  <DatePicker.RangePicker
-                    format="MM/DD/YYYY"
-                    className="!w-full"
-                  />
-                </Form.Item>
-                <div className="flex gap-x-2 items-center justify-end">
-                  <Button onClick={() => setOpen(false)} size="small">
-                    Close
-                  </Button>
-                  <Button
-                    htmlType="submit"
-                    loading={isProcessing}
-                    type="primary"
-                    size="small"
+                  <p className="mb-2 text-sm font-semibold text-slate-800">
+                    Cashier report period
+                  </p>
+                  <Form.Item
+                    name="date"
+                    className="!mb-3"
+                    rules={[
+                      {
+                        required: true,
+                        message: 'Please select the report period',
+                      },
+                    ]}
                   >
-                    Print
-                  </Button>
-                </div>
-              </Form>
+                    <DatePicker.RangePicker
+                      format="MM/DD/YYYY hh:mm A"
+                      showTime={{ format: 'hh:mm A', use12Hours: true }}
+                      className="!w-full"
+                    />
+                  </Form.Item>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button onClick={() => setOpen(false)} size="small">
+                      Close
+                    </Button>
+                    <Button
+                      htmlType="submit"
+                      loading={isProcessing}
+                      type="primary"
+                      size="small"
+                      icon={<FiPrinter />}
+                    >
+                      Print
+                    </Button>
+                  </div>
+                </Form>
+              }
+              trigger="click"
+              arrow={false}
+              placement="bottomRight"
+            >
+              <Button
+                type="primary"
+                icon={<FiPrinter />}
+                loading={isProcessing}
+                onClick={() => setOpen(true)}
+              >
+                Cashier Report
+              </Button>
+            </Popover>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(380px,0.8fr)_minmax(0,1.7fr)]">
+          <section className="min-w-0 overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+            <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
+              <h2 className="text-sm font-semibold text-slate-900">In Queue</h2>
+              <span className="min-w-8 rounded bg-slate-100 px-2 py-1 text-center text-xs font-semibold text-slate-700">
+                {inQueue?.length ?? 0}
+              </span>
             </div>
-          }
-          trigger="click"
-          arrow={false}
-          placement="right"
-        >
-          <Button
-            type="primary"
-            loading={isProcessing}
-            onClick={() => setOpen(true)}
-          >
-            Generate Report
-          </Button>
-        </Popover>
-      </div>
-      <div className="grid lg:grid-cols-12 gap-4">
-        <div className="col-span-4">
-          <Card title="In Queue">
+
             <Form
               form={form}
+              layout="vertical"
+              className="grid grid-cols-1 gap-x-4 border-b border-slate-200 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2"
+              style={{ padding: '16px 20px 8px' }}
               initialValues={{ Date: dayjs() }}
               onFinish={() => q.invalidateQueries({ queryKey: ['inQueue'] })}
             >
               <Form.Item
                 name="TypeOfAppointment"
-                label="Type of Appointment"
+                label="Appointment Type"
+                className="!mb-3"
                 rules={[
                   {
                     required: true,
@@ -636,100 +626,167 @@ const Cashier = () => {
                 <Select onChange={handleTypeChange}>
                   <Select.Option value="D">Diagnostic</Select.Option>
                   <Select.Option value="H">Hemodialysis/ASC</Select.Option>
-                  <Select.Option value="P">PHARMACY</Select.Option>
+                  <Select.Option value="P">Pharmacy</Select.Option>
                 </Select>
               </Form.Item>
-              <Form.Item name="Date" label="Date">
-                <DatePicker format="MM/DD/YYYY" />
+              <Form.Item name="Date" label="Date" className="!mb-3">
+                <DatePicker format="MM/DD/YYYY" className="w-full" />
               </Form.Item>
             </Form>
-            <DataTable
-              value={inQueue}
-              // tableStyle={{ minWidth: "50rem" }}
-              // paginator
-              rows={10}
-              rowsPerPageOptions={[10, 25, 50]}
-              filterDisplay="row"
-              emptyMessage="No Records!"
-              stripedRows
-              size="small"
-              rowExpansionTemplate={rowExpansionTemplate}
-              expandedRows={expandedRows as any}
-              onRowToggle={(e) => setExpandedRows(e.data as any)}
-              // filters={filters}
-            >
-              <Column
-                expander={inQueue?.length > 0}
-                style={{ width: '2rem' }}
-              />
-              <Column
-                field="action"
-                header="Action"
-                body={(data) => actionBodyTemplate(data)}
-              ></Column>
-              <Column field="QueueNo" header="Queue No."></Column>
-              <Column field="IsSeniorOrPwd" header="Senior/Pwd"></Column>
-              <Column field="StatusDesc" header="Status"></Column>
-            </DataTable>
-          </Card>
-        </div>
-        <div className="col-span-8">
-          <Card title={<CardTitile />}>
+
+            <div className="overflow-x-auto px-4 py-3">
+              <DataTable
+                value={inQueue}
+                tableStyle={{ minWidth: '22rem' }}
+                rows={10}
+                rowsPerPageOptions={[10, 25, 50]}
+                filterDisplay="row"
+                emptyMessage="No records"
+                stripedRows
+                size="small"
+                rowExpansionTemplate={rowExpansionTemplate}
+                expandedRows={expandedRows as any}
+                onRowToggle={(e) => setExpandedRows(e.data as any)}
+              >
+                <Column
+                  expander={(inQueue?.length ?? 0) > 0}
+                  style={{ width: '2.5rem' }}
+                />
+                <Column
+                  field="action"
+                  header="Action"
+                  body={(data) => actionBodyTemplate(data)}
+                  style={{ width: '4.5rem' }}
+                />
+                <Column field="QueueNo" header="Queue No." />
+                <Column field="IsSeniorOrPwd" header="Senior/PWD" />
+                <Column field="StatusDesc" header="Status" />
+              </DataTable>
+            </div>
+          </section>
+
+          <section className="min-w-0 overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+            <div className="flex min-h-14 flex-col justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Payment Details
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {AppointmentId === undefined
+                    ? 'No appointment selected'
+                    : AppointmentId === 0
+                      ? 'Manual payment'
+                      : `Appointment #${AppointmentId}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="primary"
+                  icon={<FiPlus />}
+                  onClick={() => {
+                    form1.setFieldValue('Date', dayjs());
+                    setAppointmentId(0);
+                    setNewMode(true);
+                    handleGetLastOrNo();
+                  }}
+                  disabled={newMode}
+                >
+                  New
+                </Button>
+                <Popconfirm
+                  title="Refresh fields now?"
+                  onConfirm={() => {
+                    handleRefresh();
+                  }}
+                  okText="Yes"
+                  cancelText="No"
+                  disabled={!newMode}
+                >
+                  <Button icon={<FiRefreshCw />} disabled={!newMode}>
+                    Reset
+                  </Button>
+                </Popconfirm>
+              </div>
+            </div>
+
             <Form
               form={form1}
               layout="vertical"
               initialValues={{ Date: dayjs() }}
               scrollToFirstError
               onFinish={handleSavePayment}
+              style={{ padding: 20 }}
             >
-              <div className="grid lg:grid-cols-2 gap-2">
-                <div>
-                  <div>
-                    <Form.Item
-                      name="CashierLocation"
-                      label="Cashier Location"
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Cashier location is required!',
-                        },
-                      ]}
-                    >
-                      <Select onChange={handleGetLastOrNo}>
-                        {cashierLocations.map((v: any) => (
-                          <Select.Option key={v.Code} value={v.Code}>
-                            {v.Description}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </div>
+              <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(320px,0.8fr)_minmax(440px,1.2fr)]">
+                <div className="min-w-0 2xl:border-r 2xl:border-slate-200 2xl:pr-6">
+                  <h3 className="mb-3 text-xs font-semibold uppercase text-slate-500">
+                    Receipt Information
+                  </h3>
 
-                  <div className="grid lg:grid-cols-3 gap-2">
-                    <Form.Item name="Date" label="Date">
+                  <Form.Item
+                    name="CashierLocation"
+                    label="Cashier Location"
+                    className="!mb-3"
+                    rules={[
+                      {
+                        required: true,
+                        message: 'Cashier location is required!',
+                      },
+                    ]}
+                  >
+                    <Select onChange={handleGetLastOrNo}>
+                      {cashierLocations.map((v: any) => (
+                        <Select.Option key={v.Code} value={v.Code}>
+                          {v.Description}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
+                    <Form.Item name="Date" label="Date" className="!mb-3">
                       <DatePicker
                         format="MM/DD/YYYY"
+                        className="w-full"
                         onChange={() => {
                           handleGetInQueue();
                         }}
                       />
                     </Form.Item>
-                    <Form.Item name="fk_Appointments_Id" label="Appointment Id">
-                      <Input readOnly />
+                    <Form.Item
+                      name="OrNo"
+                      label="O.R. No."
+                      className="!mb-3"
+                      rules={[{ required: true }]}
+                    >
+                      <Input />
                     </Form.Item>
-                    <div className="flex justify-start items-center">
-                      <Tooltip title="Search Patient">
-                        <Button
-                          type="primary"
-                          icon={<BiSearch />}
-                          onClick={() => setShowPatient(true)}
-                        />
-                      </Tooltip>
-                    </div>
                   </div>
+
+                  <Form.Item
+                    name="fk_Appointments_Id"
+                    label="Appointment ID"
+                    className="!mb-3"
+                  >
+                    <Input
+                      readOnly
+                      suffix={
+                        <Tooltip title="Search patient">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<BiSearch />}
+                            onClick={() => setShowPatient(true)}
+                          />
+                        </Tooltip>
+                      }
+                    />
+                  </Form.Item>
+
                   <Form.Item
                     name="Payee"
                     label="Payee"
+                    className="!mb-0"
                     rules={[
                       {
                         required: true,
@@ -740,30 +797,32 @@ const Cashier = () => {
                   >
                     <Input />
                   </Form.Item>
-                  <Form.Item
-                    name="OrNo"
-                    label="O.R. No."
-                    rules={[
-                      {
-                        required: true,
-                      },
-                    ]}
-                  >
-                    <Input />
-                  </Form.Item>
                 </div>
-                <div>
-                  <div>
+
+                <div className="min-w-0 2xl:pl-1">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase text-slate-500">
+                        Charges
+                      </h3>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {charges?.length ?? 0} item(s)
+                      </p>
+                    </div>
                     <Button
-                      type="primary"
+                      icon={<FiPlus />}
                       onClick={() => setShowAddCharges(true)}
                       disabled={AppointmentId === undefined}
                     >
-                      Add Charges
+                      Add Charge
                     </Button>
+                  </div>
+
+                  <div className="overflow-x-auto border-y border-slate-200">
                     <DataTable
                       value={charges}
-                      emptyMessage="No Records!"
+                      tableStyle={{ minWidth: '28rem' }}
+                      emptyMessage="No records"
                       stripedRows
                       size="small"
                       filterDisplay="row"
@@ -771,75 +830,85 @@ const Cashier = () => {
                       expandedRows={expandedRows as any}
                       onRowToggle={(e) => setExpandedRows(e.data as any)}
                     >
-                      {/* <Column
-                        field="action"
-                        header="Action"
-                        body={(data: any) => actionBodyTemplate(data)}
-                      ></Column> */}
-                      <Column field="Description" header="Description"></Column>
-                      <Column field="Net" header="Gross"></Column>
+                      <Column field="Description" header="Description" />
+                      <Column
+                        field="Net"
+                        header="Amount"
+                        className="text-right"
+                        alignHeader="right"
+                        body={(data: TCharges) =>
+                          Number(data.Net ?? 0).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        }
+                        style={{ width: '9rem' }}
+                      />
                     </DataTable>
                   </div>
-                  <div className="flex justify-end font-bold text-xl">
-                    Total:
-                    {amount.toLocaleString('en-US', {
-                      maximumFractionDigits: 2,
-                    })}
+
+                  <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
+                    <div className="rounded border border-blue-200 bg-blue-50 px-4 py-3">
+                      <p className="text-xs font-medium uppercase text-blue-700">
+                        Amount Due
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold text-slate-950">
+                        {amount.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+
+                    <div>
+                      <Form.Item
+                        name="Cash"
+                        label="Cash Amount"
+                        className="!mb-2"
+                        rules={[{ required: true }]}
+                      >
+                        <InputNumber
+                          style={{ width: '100%' }}
+                          onBlur={handleComputeChange}
+                        />
+                      </Form.Item>
+                      <div className="flex items-center justify-between border-t border-slate-200 pt-2">
+                        <span className="text-sm font-medium text-slate-600">
+                          Change
+                        </span>
+                        <span
+                          className={`text-xl font-semibold ${
+                            change < 0 ? 'text-red-600' : 'text-green-700'
+                          }`}
+                        >
+                          {change.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <Divider>Payment Options</Divider>
-                  <Form.Item
-                    name="Cash"
-                    label="Cash Amount"
-                    rules={[
-                      {
-                        required: true,
-                      },
-                    ]}
-                  >
-                    <InputNumber
-                      style={{ width: '100%' }}
-                      onBlur={handleComputeChange}
-                    />
-                  </Form.Item>
-                  <div className="flex justify-end font-bold text-xl">
-                    Change:{' '}
-                    {change.toLocaleString('en-US', {
-                      maximumFractionDigits: 2,
-                    })}
-                  </div>
-
-                  <div className="flex justify-end mt-2">
-                    <Space>
-                      <Button
-                        type="primary"
-                        //  htmlType="submit"
-                        // disabled={change < 0}
-                        loading={isSubmitting}
-                        onClick={() => handleSavePayment()}
-                      >
-                        Submit
-                      </Button>
-                      {/* <Button
-                        type="primary"
-                        //  htmlType="submit"
-                        disabled={
-                          AppointmentId! <= 0 || AppointmentId === undefined
-                        }
-                        loading={isSubmitting}
-                        onClick={handlePrintCheckList}
-                      >
-                        Print Check List
-                      </Button> */}
-                    </Space>
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<FiSave />}
+                      loading={isSubmitting}
+                      onClick={() => handleSavePayment()}
+                    >
+                      Save Payment
+                    </Button>
                   </div>
                 </div>
               </div>
             </Form>
-          </Card>
+          </section>
         </div>
       </div>
       <Modal
+        title="Queue Call"
         open={showModal}
         destroyOnClose
         onCancel={() => {
@@ -850,8 +919,8 @@ const Cashier = () => {
         footer={false}
       >
         <Calling size={200} />
-        <div className="font-bold text-2xl text-center">
-          Calling-{selectedRecord?.QueueNo}
+        <div className="text-center text-2xl font-semibold text-slate-900">
+          Calling {selectedRecord?.QueueNo}
         </div>
         <div className="flex justify-center mt-4 space-x-2">
           <Button
@@ -876,9 +945,10 @@ const Cashier = () => {
         </div>
       </Modal>
       <Modal
+        title="Select Appointment"
         open={showPatients}
         onCancel={() => setShowPatient(false)}
-        width={1200}
+        width="min(1200px, calc(100vw - 32px))"
         footer={false}
         destroyOnClose
       >
@@ -888,10 +958,12 @@ const Cashier = () => {
         />
       </Modal>
       <Modal
+        title="Add Charge"
         open={showAddCharges}
         onCancel={() => setShowAddCharges(false)}
         destroyOnClose
         footer={false}
+        width={520}
       >
         <Form form={formOthers} layout="vertical" onFinish={handleAddCharges}>
           <Form.Item
@@ -924,7 +996,7 @@ const Cashier = () => {
             />
           </Form.Item>
           <div className="flex justify-end">
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" icon={<FiPlus />}>
               Add
             </Button>
           </div>
@@ -934,7 +1006,7 @@ const Cashier = () => {
         open={showListOfOr}
         onCancel={() => setShowListOfOr(false)}
         footer={false}
-        width={screen.width - 200}
+        width="min(1500px, calc(100vw - 32px))"
         destroyOnClose
       >
         <ListOfOr />

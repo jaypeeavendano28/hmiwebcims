@@ -18,7 +18,7 @@ type Props = {
   AppointmentId?: number;
   handleNewResult?: (data: any) => void;
   Key?: string;
-  Counter?: string;
+  Counter?: string[];
 };
 const ChargesPerPatient: FC<Props> = ({
   AppointmentId,
@@ -30,7 +30,11 @@ const ChargesPerPatient: FC<Props> = ({
   const [form] = Form.useForm();
   const [showModal, setShowModal] = useState(false);
   const [charges, setCharges] = useState([]);
-  const filteredCharges = charges.filter((c: any) => Counter === c.QCounter);
+  const isIncludedCounter = (qCounter?: string) =>
+    Counter?.includes(String(qCounter ?? '').trim()) ?? false;
+  const filteredCharges = charges.filter((c: any) =>
+    isIncludedCounter(c.QCounter),
+  );
 
   console.log(charges);
 
@@ -109,7 +113,7 @@ const ChargesPerPatient: FC<Props> = ({
     //  store.setItemDetails(data);
     return (
       <Space size={2} className="justify-end">
-        {Counter === data.QCounter && (
+        {isIncludedCounter(data.QCounter) && (
           <Tooltip title="Set Status">
             <Button
               type="link"
@@ -131,7 +135,7 @@ const ChargesPerPatient: FC<Props> = ({
           </Tooltip>
         )}
 
-        {Counter === data.QCounter &&
+        {isIncludedCounter(data.QCounter) &&
           handleNewResult &&
           !isPackageCharge(data.IsPackage) && (
             <>
@@ -159,7 +163,7 @@ const ChargesPerPatient: FC<Props> = ({
         Id: selectedRow.Id,
         Status: v.Status,
         StatusRemarks: v.StatusRemarks,
-        QCounter: Counter ?? selectedRow.QCounter,
+        QCounter: selectedRow.QCounter,
       });
 
       if (res) {

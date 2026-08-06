@@ -142,6 +142,9 @@ const AuthenticatedFormsAppointmentIdLazyImport = createFileRoute(
 const AuthenticatedDoctorsprofileIdLazyImport = createFileRoute(
   '/_authenticated/doctorsprofile/$Id',
 )()
+const AuthenticatedConsultationIdLazyImport = createFileRoute(
+  '/_authenticated/consultation/$Id',
+)()
 const AuthenticatedChartAppointmentIdLazyImport = createFileRoute(
   '/_authenticated/chart/$AppointmentId',
 )()
@@ -510,6 +513,16 @@ const AuthenticatedDoctorsprofileIdLazyRoute =
     getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/doctorsprofile.$Id.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
+const AuthenticatedConsultationIdLazyRoute =
+  AuthenticatedConsultationIdLazyImport.update({
+    path: '/consultation/$Id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/consultation.$Id.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -1045,6 +1058,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChartAppointmentIdLazyImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/_authenticated/consultation/$Id': {
+      preLoaderRoute: typeof AuthenticatedConsultationIdLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
     '/_authenticated/doctorsprofile/$Id': {
       preLoaderRoute: typeof AuthenticatedDoctorsprofileIdLazyImport
       parentRoute: typeof AuthenticatedImport
@@ -1236,6 +1253,7 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedCardiologyresultIdLazyRoute,
     AuthenticatedCardioresultIdLazyRoute,
     AuthenticatedChartAppointmentIdLazyRoute,
+    AuthenticatedConsultationIdLazyRoute,
     AuthenticatedDoctorsprofileIdLazyRoute,
     AuthenticatedFormsAppointmentIdLazyRoute,
     AuthenticatedLaboratoryresultsIdLazyRoute,
