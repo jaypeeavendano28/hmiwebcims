@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createLazyFileRoute, useRouter } from '@tanstack/react-router';
 import {
   AutoComplete,
@@ -886,6 +886,7 @@ const CardiologyResult = () => {
   const searchChargeId = Number(search.chargeId ?? 0);
   const exam = normalizeExam(search.exam?.toLowerCase());
   const router = useRouter();
+  const queryClient = useQueryClient();
   const store = useAppStore();
   const formRef = useRef<HTMLFormElement>(null);
   const [vitalSignsForm] = Form.useForm<TAppointmentVitalSigns>();
@@ -905,6 +906,7 @@ const CardiologyResult = () => {
   );
   const [chargeDescription, setChargeDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingVitalSigns, setIsSavingVitalSigns] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -1541,6 +1543,81 @@ const CardiologyResult = () => {
     setDateFinalized('');
   };
 
+  const handleDeleteResult = async () => {
+    if (!exam || resultId === 0) {
+      notification.info({
+        message: 'Please click the charges result first.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    const deletedResultId = resultId;
+    const selectedChargeId = chargeId;
+    setIsDeleting(true);
+
+    try {
+      const res = await PostData('DeleteCardiologyResult', {
+        Id: deletedResultId,
+        ChargeId: selectedChargeId,
+        ResultType: onlineResultTypes[exam],
+      });
+
+      if (res?.status !== 1) {
+        notification.error({
+          message: res?.message ?? 'Unable to delete cardiology result.',
+          placement: 'topRight',
+          duration: 3,
+        });
+        return;
+      }
+
+      resetResultForm();
+      setResultId(0);
+      setChargesKey(Math.random().toString());
+
+      const activeResultQueryKey =
+        exam === '2decho'
+          ? 'cardiology-2decho-result'
+          : exam === 'treadmill'
+            ? 'cardiology-treadmill-result'
+            : 'cardiology-ecg-result';
+
+      queryClient.removeQueries({
+        queryKey: [activeResultQueryKey, deletedResultId],
+        exact: true,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['udp_GetCardiologyResultsByPatientId'],
+      });
+
+      navigateToCardiologyResult({
+        appointmentId: getPositiveNumber(Id),
+        selectedExam: exam,
+        selectedChargeId,
+        selectedResultId: 0,
+      });
+
+      notification.success({
+        message: 'Cardiology result successfully deleted!',
+        placement: 'topRight',
+        duration: 3,
+      });
+    } catch (error) {
+      notification.error({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Unable to delete cardiology result.',
+        placement: 'topRight',
+        duration: 3,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getChargeDetails = async (
     appointmentId: number,
     selectedChargeId: number,
@@ -2145,7 +2222,10 @@ const CardiologyResult = () => {
                     htmlType="submit"
                     loading={isSaving}
                     disabled={
-                      isFinalized || isOnlineResultShown || isFinalizing
+                      isFinalized ||
+                      isOnlineResultShown ||
+                      isFinalizing ||
+                      isDeleting
                     }
                   >
                     Submit
@@ -2154,7 +2234,7 @@ const CardiologyResult = () => {
                     type="primary"
                     htmlType="button"
                     loading={isFinalizing}
-                    disabled={resultId === 0 || isSaving}
+                    disabled={resultId === 0 || isSaving || isDeleting}
                     onClick={() => setShowFinalize(true)}
                   >
                     {isOnlineResultShown
@@ -2165,11 +2245,40 @@ const CardiologyResult = () => {
                     type="primary"
                     htmlType="button"
                     loading={isPrinting}
-                    disabled={resultId === 0 || isSaving || isFinalizing}
+                    disabled={
+                      resultId === 0 ||
+                      isSaving ||
+                      isFinalizing ||
+                      isDeleting
+                    }
                     onClick={handlePrint}
                   >
                     Print
                   </Button>
+                  <Popconfirm
+                    title={`Delete this ${examLabels[exam]} result?`}
+                    description="The saved result and its online PDF will be removed."
+                    okText="Yes"
+                    cancelText="No"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={handleDeleteResult}
+                  >
+                    <Button
+                      danger
+                      type="primary"
+                      htmlType="button"
+                      loading={isDeleting}
+                      disabled={
+                        resultId === 0 ||
+                        isFinalized ||
+                        isSaving ||
+                        isFinalizing ||
+                        isPrinting
+                      }
+                    >
+                      Delete Result
+                    </Button>
+                  </Popconfirm>
                 </div>
               </form>
             </>

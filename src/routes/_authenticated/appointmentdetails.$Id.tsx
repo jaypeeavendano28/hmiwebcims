@@ -1221,6 +1221,10 @@ export const AppointmentDetails = ({
         <div>
           <strong>{data.HmoCompany}</strong>
         </div>
+        <div>Diagnosis</div>
+        <div className="whitespace-pre-wrap break-words">
+          <strong>{data.Diagnosis?.trim() || '-'}</strong>
+        </div>
         <div>Added By</div>
         <div>
           <strong>{data.AddedBy}</strong>

@@ -409,6 +409,24 @@ const LaboratoryResults = () => {
       setTemplates(res.parameters.lst);
     }
   };
+  const getSharedLaboratoryHeader = async () => {
+    const appointmentId = getPositiveNumber(appointmentDetails?.Id ?? Id);
+
+    if (appointmentId <= 0) {
+      return undefined;
+    }
+
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetLaboratorySharedHeaderByAppointment',
+      parameters: {
+        AppointmentId: appointmentId,
+      },
+    });
+
+    return res?.parameters?.lst?.[0] as
+      | Partial<TLaboratoryResultMain>
+      | undefined;
+  };
   const handleNew = async (
     templateId?: string | number,
     selectedChargeId?: string | number,
@@ -432,14 +450,24 @@ const LaboratoryResults = () => {
     form.resetFields();
     setRowsCol1([]);
     await handleLoadTemplate(nextTemplateId, nextChargeId);
+    const sharedHeader = await getSharedLaboratoryHeader();
     form.resetFields();
     form.setFieldsValue({
       ReportDate: dayjs(),
       DateReceived: dayjs(),
       TemplateId: nextTemplateId,
-      RequestingPhysician: DEFAULT_REQUESTING_PHYSICIAN_ID,
-      Pathologist: DEFAULT_PATHOLOGIST_ID,
-      Qa: getPositiveNumber(branchDetails.QualityControl) || undefined,
+      LabNo: sharedHeader?.LabNo || undefined,
+      RequestingPhysician:
+        getPositiveNumber(sharedHeader?.RequestingPhysician) ||
+        DEFAULT_REQUESTING_PHYSICIAN_ID,
+      Medtech: getPositiveNumber(sharedHeader?.Medtech) || undefined,
+      Qa:
+        getPositiveNumber(sharedHeader?.Qa) ||
+        getPositiveNumber(branchDetails.QualityControl) ||
+        undefined,
+      Pathologist:
+        getPositiveNumber(sharedHeader?.Pathologist) || DEFAULT_PATHOLOGIST_ID,
+      Remarks: sharedHeader?.Remarks || undefined,
     });
     setResultNo('');
     setResultId(0);

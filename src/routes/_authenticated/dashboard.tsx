@@ -257,6 +257,17 @@ const Dashboard = () => {
     [appointmentTypes],
   );
 
+  const appointmentTypeTotal = useMemo(() => {
+    if (summary.TotalAppointments > 0) {
+      return summary.TotalAppointments;
+    }
+
+    return appointmentTypes.reduce(
+      (total, item) => total + Number(item.AppointmentCount || 0),
+      0,
+    );
+  }, [appointmentTypes, summary.TotalAppointments]);
+
   const topProcedures = useMemo(
     () => procedures.slice(0, 12).reverse(),
     [procedures],
@@ -319,21 +330,48 @@ const Dashboard = () => {
     },
   };
 
-  const doughnutChartOptions = {
-    maintainAspectRatio: false,
-    cutout: '62%',
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: { color: chartTextColor, usePointStyle: true },
+  const appointmentTypeChartOptions = useMemo(
+    () => ({
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: chartTextColor, usePointStyle: true },
+        },
+        tooltip: {
+          callbacks: {
+            label: (context: any) => {
+              const count = Number(context.parsed || 0);
+              const percentage =
+                appointmentTypeTotal > 0
+                  ? (count / appointmentTypeTotal) * 100
+                  : 0;
+
+              return `${context.label}: ${count.toLocaleString()} (${percentage.toFixed(1)}%)`;
+            },
+          },
+        },
+        datalabels: {
+          color: '#ffffff',
+          font: { size: 11, weight: 700 },
+          formatter: (value: number | string) => {
+            const count = Number(value);
+
+            if (count <= 0) return null;
+
+            const percentage =
+              appointmentTypeTotal > 0
+                ? (count / appointmentTypeTotal) * 100
+                : 0;
+
+            return [count.toLocaleString(), `${percentage.toFixed(1)}%`];
+          },
+        },
       },
-      datalabels: {
-        color: '#ffffff',
-        font: { size: 11, weight: 700 },
-        formatter: formatChartValue,
-      },
-    },
-  };
+    }),
+    [appointmentTypeTotal],
+  );
 
   const procedureChartOptions = {
     maintainAspectRatio: false,
@@ -531,7 +569,8 @@ const Dashboard = () => {
                   Appointment Types
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Appointments grouped by registration type
+                  Share of {appointmentTypeTotal.toLocaleString()} total
+                  appointments by registration type
                 </p>
               </div>
               <div className="h-[330px]">
@@ -539,7 +578,7 @@ const Dashboard = () => {
                   <Chart
                     type="doughnut"
                     data={appointmentTypeData}
-                    options={doughnutChartOptions}
+                    options={appointmentTypeChartOptions}
                     plugins={[ChartDataLabels]}
                     style={{ height: '100%' }}
                   />

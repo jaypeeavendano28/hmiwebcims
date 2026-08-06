@@ -11,6 +11,7 @@ import {
   Modal,
   Popconfirm,
   Popover,
+  Radio,
   Select,
   Space,
   Tooltip,
@@ -339,7 +340,9 @@ const Cashier = () => {
         setSetIsSubmitting(false);
         if (res.status === 1) {
           notification.success({
-            message: 'Payment successfully saved!',
+            message: res.parameters?.OrNo
+              ? `Payment successfully saved. O.R. No. ${res.parameters.OrNo}`
+              : 'Payment successfully saved!',
             placement: 'topRight',
             duration: 3,
           });
@@ -470,46 +473,80 @@ const Cashier = () => {
     }
   }, []);
 
+  const [cashierForm] = Form.useForm();
+  const cashierLocation = Form.useWatch('CashierLocation', form1);
+
+  const cashierFilterType = Form.useWatch('filterType', cashierForm) as
+    | 'date'
+    | 'orno';
+
   const handlePrint = async (values: any) => {
     axios.defaults.headers.common['Authorization'] =
       'Bearer ' + store.tokenIdWebCims;
 
-    const url = apiUrl + '/api/GenerateReport';
-    const [from, to] = values.date;
+    const useOrNoRange = values.filterType === 'orno';
+
+    let dateFrom: string | undefined;
+    let dateTo: string | undefined;
+
+    if (!useOrNoRange) {
+      const [from, to] = values.date;
+
+      dateFrom = dayjs(from).startOf('minute').format('YYYY-MM-DDTHH:mm:ss');
+
+      dateTo = dayjs(to).endOf('minute').format('YYYY-MM-DDTHH:mm:ss');
+    }
+
     try {
       setIsProccessing(true);
-      await axios({
-        url: url, //your url
+
+      const response = await axios({
+        url: apiUrl + '/api/GenerateReport',
         method: 'GET',
         responseType: 'blob',
         params: {
           ReportName: 'Cashier.rdl',
-          DateFrom: dayjs(from).startOf('minute').format('YYYY-MM-DDTHH:mm:ss'),
-          DateTo: dayjs(to).endOf('minute').format('YYYY-MM-DDTHH:mm:ss'),
+          DateFrom: dateFrom,
+          DateTo: dateTo,
+          OrNoFrom: useOrNoRange ? values.orNoFrom : undefined,
+          OrNoTo: useOrNoRange ? values.orNoTo : undefined,
           BranchCode: store.branchCode,
           Type: store.userId,
+          Cashier: values.Cashier,
         },
-      }).then((response) => {
-        let newBlob;
-        newBlob = new Blob([response.data], {
-          type: 'application/pdf',
-        });
-
-        const data = window.URL.createObjectURL(newBlob);
-
-        const a = document.createElement('a');
-
-        a.setAttribute('href', data);
-        a.setAttribute('target', '_blank');
-
-        a.click();
-        // setIsSubmitting(false);
       });
+
+      const blob = new Blob([response.data], {
+        type: 'application/pdf',
+      });
+
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      window.open(blobUrl, '_blank');
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 1000);
+
+      setOpen(false);
     } catch (error: any) {
-      // setIsSubmitting(false);
-      let errorString = error.response.data;
-      errorString = JSON.parse(await error.response.data.text());
-      return { Status: 0, Message: errorString.Message };
+      let message = 'Unable to generate cashier report.';
+
+      if (error.response?.data instanceof Blob) {
+        const errorText = await error.response.data.text();
+
+        try {
+          const errorData = JSON.parse(errorText);
+          message = errorData.Message ?? message;
+        } catch {
+          message = errorText || message;
+        }
+      }
+
+      return {
+        Status: 0,
+        Message: message,
+      };
     } finally {
       setIsProccessing(false);
     }
@@ -534,39 +571,163 @@ const Cashier = () => {
               open={open}
               content={
                 <Form
+                  form={cashierForm}
                   className="w-[420px] max-w-[calc(100vw-48px)]"
-                  onFinish={(values: any) => {
-                    handlePrint(values);
-                    setOpen(false);
-                  }}
+                  onFinish={handlePrint}
                   initialValues={{
+                    filterType: 'date',
                     date: [dayjs().startOf('day'), dayjs().endOf('day')],
+                    orNoFrom: '',
+                    orNoTo: '',
                   }}
                   requiredMark={false}
                 >
                   <p className="mb-2 text-sm font-semibold text-slate-800">
-                    Cashier report period
+                    Cashier report filter
                   </p>
+
+                  <Form.Item name="filterType" className="!mb-3">
+                    <Radio.Group
+                      optionType="button"
+                      buttonStyle="solid"
+                      className="w-full"
+                    >
+                      <Radio.Button value="date" className="w-1/2 text-center">
+                        Date range
+                      </Radio.Button>
+
+                      <Radio.Button value="orno" className="w-1/2 text-center">
+                        OR number range
+                      </Radio.Button>
+                    </Radio.Group>
+                  </Form.Item>
+
                   <Form.Item
-                    name="date"
+                    name="Cashier"
                     className="!mb-3"
+                    initialValue={cashierLocation}
                     rules={[
                       {
                         required: true,
-                        message: 'Please select the report period',
+                        message: 'Cashier location is required!',
                       },
                     ]}
                   >
-                    <DatePicker.RangePicker
-                      format="MM/DD/YYYY hh:mm A"
-                      showTime={{ format: 'hh:mm A', use12Hours: true }}
-                      className="!w-full"
-                    />
+                    <Select
+                      onChange={handleGetLastOrNo}
+                      placeholder="Select cashier location"
+                    >
+                      {cashierLocations.map((v: any) => (
+                        <Select.Option key={v.Code} value={v.Code}>
+                          {v.Description}
+                        </Select.Option>
+                      ))}
+                    </Select>
                   </Form.Item>
+
+                  {cashierFilterType === 'orno' ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Form.Item
+                        name="orNoFrom"
+                        label="OR No. from"
+                        className="!mb-3"
+                        rules={[
+                          {
+                            required: true,
+                            message: 'Enter starting OR No.',
+                          },
+                          {
+                            pattern: /^\d+$/,
+                            message: 'Numbers only',
+                          },
+                        ]}
+                        getValueFromEvent={(event) =>
+                          event.target.value.replace(/\D/g, '')
+                        }
+                      >
+                        <Input
+                          placeholder="00100"
+                          inputMode="numeric"
+                          autoComplete="off"
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        name="orNoTo"
+                        label="OR No. to"
+                        className="!mb-3"
+                        dependencies={['orNoFrom']}
+                        rules={[
+                          {
+                            required: true,
+                            message: 'Enter ending OR No.',
+                          },
+                          {
+                            pattern: /^\d+$/,
+                            message: 'Numbers only',
+                          },
+                          ({ getFieldValue }) => ({
+                            validator(_, value) {
+                              const orNoFrom = getFieldValue('orNoFrom');
+
+                              if (
+                                !value ||
+                                !orNoFrom ||
+                                Number(value) >= Number(orNoFrom)
+                              ) {
+                                return Promise.resolve();
+                              }
+
+                              return Promise.reject(
+                                new Error(
+                                  'Must be greater than or equal to the starting OR No.',
+                                ),
+                              );
+                            },
+                          }),
+                        ]}
+                        getValueFromEvent={(event) =>
+                          event.target.value.replace(/\D/g, '')
+                        }
+                      >
+                        <Input
+                          placeholder="00200"
+                          inputMode="numeric"
+                          autoComplete="off"
+                        />
+                      </Form.Item>
+                    </div>
+                  ) : (
+                    <Form.Item
+                      name="date"
+                      className="!mb-3"
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Please select the report period',
+                        },
+                      ]}
+                    >
+                      <DatePicker.RangePicker
+                        format="MM/DD/YYYY hh:mm A"
+                        showTime={{
+                          format: 'hh:mm A',
+                          use12Hours: true,
+                        }}
+                        className="!w-full"
+                      />
+                    </Form.Item>
+                  )}
+
                   <div className="flex items-center justify-end gap-2">
-                    <Button onClick={() => setOpen(false)} size="small">
+                    <Button
+                      onClick={() => setOpen(false)}
+                      size="small"
+                      disabled={isProcessing}
+                    >
                       Close
                     </Button>
+
                     <Button
                       htmlType="submit"
                       loading={isProcessing}
