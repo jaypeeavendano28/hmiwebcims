@@ -8,6 +8,7 @@ import {
 import {
   TAppointments,
   TBranches,
+  // TDoctors,
   TLaboratoryResultMain,
   TLaboratoryResultTemplates,
   TMedtechs,
@@ -36,6 +37,8 @@ import ExistingLabResults from '../../components/ExistingLabResults';
 import FinalizeForm from '../../components/FinalizeForm';
 import { BiArrowBack } from 'react-icons/bi';
 import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
+import { useQuery } from '@tanstack/react-query';
+import AddReqPhysician from '../../components/add-req-physician';
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + '/api/';
 const devApi = import.meta.env.VITE_DEV_API + '/api/';
@@ -599,12 +602,14 @@ const LaboratoryResults = () => {
     }
   };
 
-  const handleInitialize = async () => {
-    let res = await PostData('GetRecords', {
-      sp: 'udp_GetDoctors',
-      parameters: {},
-    });
-    if (res) {
+  useQuery({
+    queryKey: ['requesting-physicians'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetDoctors',
+        parameters: {},
+      });
+
       const requestingPhysicians = res.parameters.lst;
       setRequestingPhysician(requestingPhysicians);
 
@@ -620,7 +625,33 @@ const LaboratoryResults = () => {
           DEFAULT_REQUESTING_PHYSICIAN_ID,
         );
       }
-    }
+    },
+    refetchOnWindowFocus: false,
+  });
+
+  const handleInitialize = async () => {
+    let res: any;
+    // let res = await PostData('GetRecords', {
+    //   sp: 'udp_GetDoctors',
+    //   parameters: {},
+    // });
+    // if (res) {
+    //   const requestingPhysicians = res.parameters.lst;
+    //   setRequestingPhysician(requestingPhysicians);
+
+    //   if (
+    //     requestingPhysicians.some(
+    //       (doctor: any) =>
+    //         getPositiveNumber(doctor.Id) === DEFAULT_REQUESTING_PHYSICIAN_ID,
+    //     ) &&
+    //     isNullOrUndefinedOrBlank(form.getFieldValue('RequestingPhysician'))
+    //   ) {
+    //     form.setFieldValue(
+    //       'RequestingPhysician',
+    //       DEFAULT_REQUESTING_PHYSICIAN_ID,
+    //     );
+    //   }
+    // }
 
     res = await PostData('GetRecords', {
       sp: 'udp_GetListOfMedtechs',
@@ -1322,26 +1353,30 @@ const LaboratoryResults = () => {
                 placeholder="Please select"
               />
             </Form.Item> */}
-                <Form.Item
-                  label="Requesting Physician"
-                  name="RequestingPhysician"
-                >
-                  <Select
-                    showSearch
-                    allowClear
-                    filterOption={(inputValue, option: any) =>
-                      option.title
-                        .toUpperCase()
-                        .indexOf(inputValue.toUpperCase()) !== -1
-                    }
+                <div className="flex gap-x-1 ">
+                  <Form.Item
+                    label="Requesting Physician"
+                    name="RequestingPhysician"
+                    className="flex-grow"
                   >
-                    {RequestingPhysician.map((d: any) => (
-                      <Select.Option key={d.Id} value={d.Id} title={d.Name}>
-                        {d.Name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+                    <Select
+                      showSearch
+                      allowClear
+                      filterOption={(inputValue, option: any) =>
+                        option.title
+                          .toUpperCase()
+                          .indexOf(inputValue.toUpperCase()) !== -1
+                      }
+                    >
+                      {RequestingPhysician.map((d: any) => (
+                        <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                          {d.Name}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <AddReqPhysician />
+                </div>
                 <Form.Item
                   label="Medical Technologist"
                   name="Medtech"

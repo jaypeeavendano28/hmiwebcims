@@ -1,6 +1,10 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
+import {
+  PostData,
+  blobToDataUrl,
+  isNullOrUndefinedOrBlank,
+} from '../../helpers';
 import { useForm } from 'antd/es/form/Form';
 import {
   TAppointments,
@@ -32,6 +36,7 @@ import axios from 'axios';
 import useAppStore from '../../store';
 import { useAuth } from '../../hooks/userAuth';
 import { useQuery } from '@tanstack/react-query';
+import FinalizeForm from '../../components/FinalizeForm';
 
 export const Route = createFileRoute('/_authenticated/mer/$AppointmentId')({
   component: () => <Mer />,
@@ -40,6 +45,8 @@ const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API;
 const devApi = import.meta.env.VITE_DEV_API;
 const apiUrl = isDev ? devApi : prodApi;
+const onlineResultType = 'MER';
+const onlineResultDescription = 'Medical Evaluation Report';
 const otherMedicalHistory: TMerOthers[] = [
   { Id: 1, Description: 'Smoker' },
   { Id: 2, Description: 'Alcohol beverage drinker' },
@@ -48,6 +55,11 @@ const otherMedicalHistory: TMerOthers[] = [
 const encodeReportLineBreaks = (value?: string) =>
   value?.replace(/\r?\n/g, '\\n');
 const decodeReportLineBreaks = (value?: string) => value?.replace(/\\n/g, '\n');
+const getPositiveNumber = (value: unknown) => {
+  const numericValue = Number(value ?? 0);
+
+  return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
+};
 const Mer = () => {
   const [peStatus, setPeStatus] = useState([]);
   const [chestXrayStatus, setChestXrayStatus] = useState<
@@ -71,6 +83,8 @@ const Mer = () => {
   >();
   const [formOtherServices] = useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFinalize, setShowFinalize] = useState(false);
+  const [isOnlineResultShown, setIsOnlineResultShown] = useState(false);
   const [showOtherServices, setShowOtherServices] = useState(false);
   const auth = useAuth();
   const router = useRouter();
@@ -86,6 +100,22 @@ const Mer = () => {
   const [doctors, setDoctors] = useState<TDoctors[] | undefined>([]);
   const { AppointmentId } = Route.useParams();
   const [form] = useForm();
+  const merNo = Form.useWatch('MerNo', form);
+  const merResultId = getPositiveNumber(AppointmentId);
+
+  const refreshOnlineResultStatus = async () => {
+    if (merResultId <= 0) {
+      setIsOnlineResultShown(false);
+      return;
+    }
+
+    const res = await PostData('GetPdfFileStatus', {
+      ResultId: merResultId,
+      ResultType: onlineResultType,
+    });
+
+    setIsOnlineResultShown(Boolean(res?.parameters?.Shown));
+  };
 
   const occupation = useQuery({
     queryKey: ['occupation'],
@@ -258,6 +288,7 @@ const Mer = () => {
           DisplaySignatureIfAny: x.DisplaySignatureIfAny,
           LmpRemarks: x.LmpRemarks,
         });
+        await refreshOnlineResultStatus();
       } else {
         form.setFieldsValue({
           MerDate: dayjs(),
@@ -279,6 +310,7 @@ const Mer = () => {
             VaRight: '20/20',
           });
         }
+        setIsOnlineResultShown(false);
       }
     }
   };
@@ -401,43 +433,110 @@ const Mer = () => {
       });
     }
   };
-  const handlePrint = async () => {
+  const fetchMerPdf = async () => {
     axios.defaults.headers.common['Authorization'] =
       'Bearer ' + store.tokenIdWebCims;
 
     const url = apiUrl + '/api/GenerateReport';
+    const response = await axios({
+      url: url,
+      method: 'GET',
+      responseType: 'blob',
+      params: {
+        ReportName: 'mer.rdl',
+        AppointmentId: AppointmentId,
+        BranchCode: store.branchCode,
+      },
+    });
+
+    return new Blob([response.data], {
+      type: 'application/pdf',
+    });
+  };
+
+  const handlePrint = async () => {
     try {
       setIsSubmitting(true);
-      await axios({
-        url: url,
-        method: 'GET',
-        responseType: 'blob',
-        params: {
-          ReportName: 'mer.rdl',
-          AppointmentId: AppointmentId,
-          BranchCode: store.branchCode,
-        },
-      }).then((response) => {
-        let newBlob;
-        newBlob = new Blob([response.data], {
-          type: 'application/pdf',
-        });
+      const data = window.URL.createObjectURL(await fetchMerPdf());
 
-        const data = window.URL.createObjectURL(newBlob);
+      const a = document.createElement('a');
 
-        const a = document.createElement('a');
+      a.setAttribute('href', data);
+      a.setAttribute('target', '_blank');
 
-        a.setAttribute('href', data);
-        a.setAttribute('target', '_blank');
-
-        a.click();
-        setIsSubmitting(false);
-      });
+      a.click();
+      setIsSubmitting(false);
     } catch (error: any) {
       setIsSubmitting(false);
       let errorString = error.response.data;
       errorString = JSON.parse(await error.response.data.text());
       return { Status: 0, Message: errorString.Message };
+    }
+  };
+
+  const handleOnlineResult = async (v: any) => {
+    setShowFinalize(false);
+    if (merResultId <= 0 || isNullOrUndefinedOrBlank(merNo)) {
+      notification.error({
+        message: 'Please save the MER first.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      let res;
+      if (isOnlineResultShown) {
+        res = await PostData('UnshowPdfFile', {
+          ResultId: merResultId,
+          ResultType: onlineResultType,
+          Username: v.Username,
+          Password: v.Password,
+        });
+      } else {
+        const pdf = await blobToDataUrl(await fetchMerPdf());
+        res = await PostData('UploadPdfFile', {
+          ResultId: merResultId,
+          ResultType: onlineResultType,
+          fk_Appointments_Id: merResultId,
+          Description: onlineResultDescription,
+          ShowInCompanyPortal: 'Y',
+          Pdf: pdf,
+          Username: v.Username,
+          Password: v.Password,
+        });
+      }
+
+      if (res) {
+        setIsSubmitting(false);
+        if (res.status === 1) {
+          notification.success({
+            message: isOnlineResultShown
+              ? 'Result hidden from online results.'
+              : 'Result shown to online results.',
+            placement: 'topRight',
+            duration: 3,
+          });
+          await refreshOnlineResultStatus();
+        } else {
+          notification.error({
+            message: res.message,
+            placement: 'topRight',
+            duration: 3,
+          });
+        }
+      }
+      setIsSubmitting(false);
+    } catch (error: any) {
+      setIsSubmitting(false);
+      notification.error({
+        message: error.message,
+        placement: 'topRight',
+        duration: 3,
+      });
     }
   };
 
@@ -573,6 +672,7 @@ const Mer = () => {
           form.setFieldsValue({
             MerNo: res.parameters.MerNo,
           });
+          await refreshOnlineResultStatus();
 
           notification.success({
             message: 'Successfully saved!',
@@ -1707,15 +1807,31 @@ const Mer = () => {
 
           <div className="flex justify-start items-center">
             <Space>
-              <Button type="primary" htmlType="submit" loading={isSubmitting}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={isSubmitting}
+                disabled={isOnlineResultShown}
+              >
                 Submit
               </Button>
               <Button
                 type="primary"
                 onClick={handlePrint}
                 loading={isSubmitting}
+                disabled={isNullOrUndefinedOrBlank(merNo)}
               >
                 Print
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => setShowFinalize(true)}
+                loading={isSubmitting}
+                disabled={isNullOrUndefinedOrBlank(merNo)}
+              >
+                {isOnlineResultShown
+                  ? 'Unshow Online Result'
+                  : 'Show to Online Results'}
               </Button>
             </Space>
           </div>
@@ -2303,6 +2419,22 @@ const Mer = () => {
             </Form.Item>
           </div>
         </Form>
+      </Modal>
+      <Modal
+        open={showFinalize}
+        destroyOnClose
+        onCancel={() => setShowFinalize(false)}
+        footer={false}
+      >
+        <FinalizeForm
+          handleFinalizeResult={handleOnlineResult}
+          title={
+            isOnlineResultShown
+              ? 'Unshow Online Result'
+              : 'Show to Online Results'
+          }
+          submitText={isOnlineResultShown ? 'Unshow' : 'Show'}
+        />
       </Modal>
     </div>
   );

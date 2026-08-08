@@ -31,6 +31,7 @@ import { ExistingCadioResults } from '../../components/ExistingCardioResult';
 import FinalizeForm from '../../components/FinalizeForm';
 import { BiArrowBack } from 'react-icons/bi';
 import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
+import AddReqPhysician from '../../components/add-req-physician';
 
 export const Route = createLazyFileRoute(
   '/_authenticated/cardiologyresult/$Id',
@@ -465,7 +466,7 @@ const ExamDetailsFields = ({
   onRequestingPhysicianChange,
   onCardiologistChange,
 }: ExamDetailsFieldsProps) => (
-  <div className="mb-4 grid w-full grid-cols-1 gap-3 md:grid-cols-3">
+  <div className="mb-4 grid w-full grid-cols-1 gap-2">
     <input
       name="DateOfExamination"
       readOnly
@@ -501,26 +502,29 @@ const ExamDetailsFields = ({
       />
     </div>
 
-    <div>
+    <div className="col-span-3">
       <label
         className="mb-1 block text-sm font-semibold text-slate-700"
         htmlFor="requesting-physician"
       >
         Requesting Physician <span className="text-red-600">*</span>
       </label>
-      <Select
-        allowClear
-        className="w-full"
-        id="requesting-physician"
-        optionFilterProp="label"
-        options={requestingPhysicians.map((doctor) => ({
-          label: doctor.Name ?? '',
-          value: doctor.Id,
-        }))}
-        showSearch
-        value={requestingPhysician}
-        onChange={onRequestingPhysicianChange}
-      />
+      <div className="flex">
+        <Select
+          allowClear
+          className="w-full"
+          id="requesting-physician"
+          optionFilterProp="label"
+          options={requestingPhysicians.map((doctor) => ({
+            label: doctor.Name ?? '',
+            value: doctor.Id,
+          }))}
+          showSearch
+          value={requestingPhysician}
+          onChange={onRequestingPhysicianChange}
+        />
+        <AddReqPhysician />
+      </div>
     </div>
 
     <div>
@@ -2128,7 +2132,7 @@ const CardiologyResult = () => {
                       AppointmentId={appointmentDetails.data?.Id}
                       handleNewResult={handleNewResult}
                       Key={chargesKey}
-                      Counter={["CARDIO"]}
+                      Counter={['CARDIO']}
                     />
                   ),
                 },
@@ -2246,10 +2250,7 @@ const CardiologyResult = () => {
                     htmlType="button"
                     loading={isPrinting}
                     disabled={
-                      resultId === 0 ||
-                      isSaving ||
-                      isFinalizing ||
-                      isDeleting
+                      resultId === 0 || isSaving || isFinalizing || isDeleting
                     }
                     onClick={handlePrint}
                   >

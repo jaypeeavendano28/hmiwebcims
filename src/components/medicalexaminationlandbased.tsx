@@ -908,17 +908,17 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
             >
               <Input />
             </Form.Item>
-            <Form.Item
-              name="NearVisionCorrectedODJ"
-              label="NEAR VISION CORRECTED OS"
-            >
-              <Input />
-            </Form.Item>
 
             <Form.Item
               name="NearVisionCorrectedOSJ"
               label="NEAR VISION UNCORRECTED OS
 "
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="NearVisionCorrectedODJ"
+              label="NEAR VISION CORRECTED OS"
             >
               <Input />
             </Form.Item>
