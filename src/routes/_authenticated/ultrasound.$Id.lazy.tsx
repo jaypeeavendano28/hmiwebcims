@@ -533,6 +533,7 @@ const UltrasoundResult = () => {
                       handleNewResult={handleNewResult}
                       Key={Key}
                       Counter={["ULT"]}
+                      activeChargeId={chargeId}
                     />
                   ),
                 },

@@ -22,7 +22,7 @@ import {
 import { BsCheckLg, BsClipboardCheck, BsMegaphoneFill } from 'react-icons/bs';
 import Calling from './calling';
 import { BiEdit, BiNotepad } from 'react-icons/bi';
-import { useRouter } from '@tanstack/react-router';
+import { Link, useRouter } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 import { FaUpload } from 'react-icons/fa6';
 import { GiMedicines } from 'react-icons/gi';
@@ -31,6 +31,7 @@ import RequestForMedicines from './RequestForMedicines';
 type Props = {
   CounterCode?: string;
   DepartmentId?: number;
+  DepartmentName?: string;
   DateFrom: string;
   DateTo: string;
   Station: string;
@@ -82,6 +83,11 @@ const resultCounterCodes = [
 ];
 const isConsultationCounter = (counterCode?: string) =>
   consultationCounterCodes.includes(String(counterCode ?? '').trim());
+const isConsultationDepartment = (departmentName?: string) =>
+  String(departmentName ?? '')
+    .trim()
+    .toUpperCase()
+    .includes('CONSULTATION');
 const allQueueDetailsOption = 0;
 const normalizeStatusText = (value: unknown) =>
   String(value ?? '')
@@ -100,6 +106,7 @@ const getVisibleQueueDetails = (details: TQueueDetail[]) =>
 const PatientsPerCounter: FC<Props> = ({
   CounterCode,
   DepartmentId,
+  DepartmentName,
   DateFrom,
   DateTo,
   Station,
@@ -577,7 +584,11 @@ const PatientsPerCounter: FC<Props> = ({
 
   const openProcedureWorkspace = (data: any) => {
     const counterCode = data.CounterCode ?? CounterCode;
-    if (isConsultationCounter(counterCode)) {
+    if (
+      isConsultationCounter(counterCode) ||
+      isConsultationDepartment(DepartmentName) ||
+      isConsultationDepartment(data.DepartmentName)
+    ) {
       handleConsultationResult(data);
       return;
     }
@@ -606,7 +617,11 @@ const PatientsPerCounter: FC<Props> = ({
     }
 
     const counterCode = data.CounterCode ?? CounterCode;
-    if (isConsultationCounter(counterCode)) {
+    if (
+      isConsultationCounter(counterCode) ||
+      isConsultationDepartment(DepartmentName) ||
+      isConsultationDepartment(data.DepartmentName)
+    ) {
       openResultLocation({
         to: '/consultation/$Id',
         params: {
@@ -704,6 +719,14 @@ const PatientsPerCounter: FC<Props> = ({
   };
   const actionBodyTemplate = (data: TAppointments) => {
     const rowCounterCode = data.CounterCode ?? CounterCode;
+    const appointmentId = String((data as any).fk_Appointments_Id ?? '');
+    const isConsultationResult =
+      isConsultationCounter(rowCounterCode) ||
+      isConsultationDepartment(DepartmentName) ||
+      isConsultationDepartment((data as any).DepartmentName);
+    const hasResultWorkspace =
+      resultCounterCodes.includes(rowCounterCode ?? '') || isConsultationResult;
+
     return (
       <Space>
         {!IsMobile && !effectiveIsDone && (
@@ -733,36 +756,48 @@ const PatientsPerCounter: FC<Props> = ({
             </Dropdown>
           </Tooltip>
         )}
-        {!resultCounterCodes.includes(rowCounterCode ?? '') &&
-          canSetProcedureStatus(data) && (
-            <Tooltip title="Set Status">
-              <Button
-                type="primary"
-                icon={<BiEdit />}
-                onClick={() => openSetProcedureStatus(data)}
-                loading={isStatusSubmitting}
-              />
-            </Tooltip>
-          )}
+        {!hasResultWorkspace && canSetProcedureStatus(data) && (
+          <Tooltip title="Set Status">
+            <Button
+              type="primary"
+              icon={<BiEdit />}
+              onClick={() => openSetProcedureStatus(data)}
+              loading={isStatusSubmitting}
+            />
+          </Tooltip>
+        )}
         {rowCounterCode === 'LAB' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
-              <Button
-                type="primary"
-                icon={<BiNotepad />}
-                onClick={() => handleLabResult(data)}
-              />
+              <Link
+                to="/laboratoryresults/$Id"
+                params={{
+                  Id: appointmentId,
+                }}
+                search={{
+                  templateId: Number(data.LabTemplateId ?? 0),
+                  chargeId: Number(data.ChargeId ?? 0),
+                }}
+              >
+                <Button type="primary" icon={<BiNotepad />} />
+              </Link>
             </Tooltip>
           </>
         )}
         {rowCounterCode === 'XRAY' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
-              <Button
-                type="primary"
-                icon={<BiNotepad />}
-                onClick={() => handleXrayResult(data)}
-              />
+              <Link
+                to="/xrayresult/$Id"
+                params={{
+                  Id: appointmentId,
+                }}
+                search={{
+                  chargeId: Number(data.ChargeId ?? 0),
+                }}
+              >
+                <Button type="primary" icon={<BiNotepad />} />
+              </Link>
             </Tooltip>
           </>
         )}
@@ -770,32 +805,52 @@ const PatientsPerCounter: FC<Props> = ({
         {rowCounterCode === 'ULT' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
-              <Button
-                type="primary"
-                icon={<BiNotepad />}
-                onClick={() => handleUltrasoundResult(data)}
-              />
+              <Link
+                to="/ultrasound/$Id"
+                params={{
+                  Id: appointmentId,
+                }}
+                search={{
+                  chargeId: Number(data.ChargeId ?? 0),
+                }}
+              >
+                <Button type="primary" icon={<BiNotepad />} />
+              </Link>
             </Tooltip>
           </>
         )}
         {rowCounterCode === 'CARDIO' && effectiveIsDone && (
           <>
             <Tooltip title="Result">
-              <Button
-                type="primary"
-                icon={<BiNotepad />}
-                onClick={() => handleCardioResult(data)}
-              />
+              <Link
+                to="/cardiologyresult/$Id"
+                params={{
+                  Id: appointmentId,
+                }}
+                search={{
+                  exam: data.Exam,
+                  chargeId: Number(data.ChargeId ?? 0),
+                  resultId: Number(data.ResultId ?? 0),
+                }}
+              >
+                <Button type="primary" icon={<BiNotepad />} />
+              </Link>
             </Tooltip>
           </>
         )}
-        {isConsultationCounter(rowCounterCode) && effectiveIsDone && (
+        {isConsultationResult && effectiveIsDone && (
           <Tooltip title="Result">
-            <Button
-              type="primary"
-              icon={<BiNotepad />}
-              onClick={() => handleConsultationResult(data)}
-            />
+            <Link
+              to="/consultation/$Id"
+              params={{
+                Id: appointmentId,
+              }}
+              search={{
+                chargeId: Number(data.ChargeId ?? 0),
+              }}
+            >
+              <Button type="primary" icon={<BiNotepad />} />
+            </Link>
           </Tooltip>
         )}
         {(rowCounterCode === 'DIA' || rowCounterCode === 'AMB') && (
@@ -919,7 +974,7 @@ const PatientsPerCounter: FC<Props> = ({
         rowExpansionTemplate={Compact ? undefined : descriptionsRowTemplate}
         expandedRows={Compact ? undefined : (expandedDescriptionRows as any)}
         tableStyle={{
-          fontSize: Compact ? '11px' : '12px',
+          fontSize: Compact ? '13px' : '14px',
           fontWeight: 'bold',
           minWidth: Compact ? '1180px' : undefined,
         }}

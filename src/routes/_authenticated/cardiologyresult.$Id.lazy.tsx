@@ -2133,6 +2133,7 @@ const CardiologyResult = () => {
                       handleNewResult={handleNewResult}
                       Key={chargesKey}
                       Counter={['CARDIO']}
+                      activeChargeId={chargeId}
                     />
                   ),
                 },

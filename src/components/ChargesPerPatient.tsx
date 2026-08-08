@@ -1,5 +1,5 @@
-import { FC, useEffect, useState } from "react";
-import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
+import { FC, useEffect, useState } from 'react';
+import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
 import {
   Button,
   Form,
@@ -9,22 +9,24 @@ import {
   Select,
   Space,
   Tooltip,
-} from "antd";
-import { BiEdit, BiNotepad } from "react-icons/bi";
-import { BsCalendar3, BsCheckCircleFill, BsCircleFill } from "react-icons/bs";
-import dayjs from "dayjs";
+} from 'antd';
+import { BiEdit, BiNotepad } from 'react-icons/bi';
+import { BsCalendar3, BsCheckCircleFill, BsCircleFill } from 'react-icons/bs';
+import dayjs from 'dayjs';
 
 type Props = {
   AppointmentId?: number;
   handleNewResult?: (data: any) => void;
   Key?: string;
   Counter?: string[];
+  activeChargeId?: number | string;
 };
 const ChargesPerPatient: FC<Props> = ({
   AppointmentId,
   handleNewResult,
   Key,
   Counter,
+  activeChargeId,
 }) => {
   const [selectedRow, setSelectedRow] = useState<any | undefined>({});
   const [form] = Form.useForm();
@@ -35,73 +37,72 @@ const ChargesPerPatient: FC<Props> = ({
   const filteredCharges = charges.filter((c: any) =>
     isIncludedCounter(c.QCounter),
   );
-
-  console.log(charges);
+  const selectedChargeId = Number(activeChargeId ?? 0);
 
   const getStatusDetails = (status?: unknown) => {
-    const statusText = String(status ?? "").trim();
+    const statusText = String(status ?? '').trim();
     const normalizedStatus = statusText.toUpperCase();
 
-    if (normalizedStatus === "DONE") {
+    if (normalizedStatus === 'DONE') {
       return {
-        label: "Done",
+        label: 'Done',
         icon: <BsCheckCircleFill className="text-teal-600" />,
-        textClassName: "text-slate-700",
+        textClassName: 'text-slate-700',
       };
     }
 
-    if (normalizedStatus === "TO FOLLOW") {
+    if (normalizedStatus === 'TO FOLLOW') {
       return {
-        label: "To Follow",
+        label: 'To Follow',
         icon: <BsCircleFill className="text-slate-500" size={9} />,
-        textClassName: "text-slate-600",
+        textClassName: 'text-slate-600',
       };
     }
 
-    if (normalizedStatus === "DEFERRED") {
+    if (normalizedStatus === 'DEFERRED') {
       return {
-        label: "Deferred",
+        label: 'Deferred',
         icon: <BsCircleFill className="text-rose-500" size={9} />,
-        textClassName: "text-rose-600",
+        textClassName: 'text-rose-600',
       };
     }
 
     return {
-      label: statusText || "N/A",
+      label: statusText || 'N/A',
       icon: <BsCircleFill className="text-slate-300" size={9} />,
-      textClassName: "text-slate-400",
+      textClassName: 'text-slate-400',
     };
   };
 
   const formatStatusDate = (value?: unknown) => {
-    const statusDateText = String(value ?? "").trim();
-    if (isNullOrUndefinedOrBlank(statusDateText)) return "";
+    const statusDateText = String(value ?? '').trim();
+    if (isNullOrUndefinedOrBlank(statusDateText)) return '';
 
     const statusDate = dayjs(statusDateText);
     return statusDate.isValid()
-      ? statusDate.format("MM/DD/YYYY h:mm A")
+      ? statusDate.format('MM/DD/YYYY h:mm A')
       : statusDateText;
   };
 
   const isPackageCharge = (value?: unknown) => {
-    const packageValue = String(value ?? "")
+    const packageValue = String(value ?? '')
       .trim()
       .toUpperCase();
 
     return (
-      packageValue === "Y" || packageValue === "TRUE" || packageValue === "1"
+      packageValue === 'Y' || packageValue === 'TRUE' || packageValue === '1'
     );
   };
 
   const handleGetCharges = async () => {
     try {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetChargesByAppointmentIdForResult",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetChargesByAppointmentIdForResult',
         parameters: {
           AppointmentId: AppointmentId,
         },
       });
-      console.log("udp_GetChargesByAppointmentIdForResult", res);
+      console.log('udp_GetChargesByAppointmentIdForResult', res);
       if (res) {
         setCharges(res.parameters.lst);
       }
@@ -159,7 +160,7 @@ const ChargesPerPatient: FC<Props> = ({
 
   const handleSetStatus = async (v: any) => {
     try {
-      const res = await PostData("SaveSetStatus", {
+      const res = await PostData('SaveSetStatus', {
         Id: selectedRow.Id,
         Status: v.Status,
         StatusRemarks: v.StatusRemarks,
@@ -169,8 +170,8 @@ const ChargesPerPatient: FC<Props> = ({
       if (res) {
         if (res.status === 1) {
           notification.success({
-            message: "Successfully Saved!",
-            placement: "topRight",
+            message: 'Successfully Saved!',
+            placement: 'topRight',
             duration: 3,
           });
           handleGetCharges();
@@ -178,7 +179,7 @@ const ChargesPerPatient: FC<Props> = ({
         } else {
           notification.error({
             message: res.message,
-            placement: "topRight",
+            placement: 'topRight',
             duration: 3,
           });
         }
@@ -186,7 +187,7 @@ const ChargesPerPatient: FC<Props> = ({
     } catch (error: any) {
       notification.error({
         message: error.message,
-        placement: "topRight",
+        placement: 'topRight',
         duration: 3,
       });
     }
@@ -211,17 +212,27 @@ const ChargesPerPatient: FC<Props> = ({
           filteredCharges.map((charge: any, index) => {
             const statusDetails = getStatusDetails(charge.Status);
             const statusDate = formatStatusDate(charge.StatusDate);
+            const isActiveCharge =
+              selectedChargeId > 0 && Number(charge.Id) === selectedChargeId;
 
             return (
               <div
                 key={charge.Id ?? `${charge.Description}-${index}`}
-                className={`grid grid-cols-[minmax(0,1.1fr)_minmax(92px,0.9fr)_56px] items-start gap-2 border-t border-slate-100 px-3 py-3 ${
-                  index % 2 === 0 ? "bg-white" : "bg-slate-50"
+                className={`grid grid-cols-[minmax(0,1.1fr)_minmax(92px,0.9fr)_56px] items-start gap-2 border-t px-3 py-3 transition-colors ${
+                  isActiveCharge
+                    ? 'border-sky-200 bg-sky-100/80 shadow-[inset_3px_0_0_#0284c7]'
+                    : `border-slate-100 ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+                      }`
                 }`}
               >
                 <div className="min-w-0">
-                  <div className="truncate text-[11px] font-bold uppercase text-sky-800">
-                    {charge.Description || "-"}
+                  <div
+                    className={`truncate text-[11px] font-bold uppercase ${
+                      isActiveCharge ? 'text-sky-950' : 'text-sky-800'
+                    }`}
+                  >
+                    {charge.Description || '-'}
                   </div>
                   {charge.PackageName && (
                     <div className="mt-1 truncate text-[10px] font-semibold uppercase text-slate-500">
@@ -280,7 +291,7 @@ const ChargesPerPatient: FC<Props> = ({
             rules={[
               {
                 required: true,
-                message: "Status is required!",
+                message: 'Status is required!',
               },
             ]}
           >
@@ -304,10 +315,10 @@ const ChargesPerPatient: FC<Props> = ({
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (
-                    getFieldValue("Status") === "DEFERRED" &&
+                    getFieldValue('Status') === 'DEFERRED' &&
                     isNullOrUndefinedOrBlank(value)
                   ) {
-                    return Promise.reject("Remarks is required!");
+                    return Promise.reject('Remarks is required!');
                   }
                   return Promise.resolve();
                 },

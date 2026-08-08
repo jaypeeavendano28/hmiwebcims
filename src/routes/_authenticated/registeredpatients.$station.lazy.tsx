@@ -700,6 +700,7 @@ const RegisteredPatients = () => {
         DepartmentId={
           data.DepartmentId ?? (isAllAuthorizedDepartments ? 0 : undefined)
         }
+        DepartmentName={data.DepartmentName}
         // DateFrom={
         //   form.getFieldValue('DateFrom')
         //     ? dayjs(form.getFieldValue('DateFrom')[0]).format('YYYYMMDD')

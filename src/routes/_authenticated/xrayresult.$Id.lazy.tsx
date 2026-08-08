@@ -569,6 +569,7 @@ const XrayResult = () => {
                       handleNewResult={handleNewResult}
                       Key={Key}
                       Counter={['XRAY']}
+                      activeChargeId={chargeId}
                     />
                   ),
                 },

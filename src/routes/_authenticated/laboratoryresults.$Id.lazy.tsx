@@ -1199,6 +1199,7 @@ const LaboratoryResults = () => {
                       Counter={['LAB']}
                       handleNewResult={handleNewResult}
                       Key={key}
+                      activeChargeId={chargeId}
                     />
                   ),
                 },

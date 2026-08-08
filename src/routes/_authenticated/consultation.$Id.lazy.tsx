@@ -390,6 +390,7 @@ const ConsultationResult = () => {
                       handleNewResult={handleSelectCharge}
                       Key={reloadKey}
                       Counter={consultationCounters}
+                      activeChargeId={chargeId}
                     />
                   ),
                 },

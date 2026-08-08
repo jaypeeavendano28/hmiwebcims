@@ -790,7 +790,7 @@ const Cashier = () => {
                   <Select.Option value="P">Pharmacy</Select.Option>
                 </Select>
               </Form.Item>
-              <Form.Item name="Date" label="Date" className="!mb-3">
+              <Form.Item name="Date" label="Charge Date" className="!mb-3">
                 <DatePicker format="MM/DD/YYYY" className="w-full" />
               </Form.Item>
             </Form>
@@ -905,7 +905,7 @@ const Cashier = () => {
                   </Form.Item>
 
                   <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
-                    <Form.Item name="Date" label="Date" className="!mb-3">
+                    <Form.Item name="Date" label="Charge Date" className="!mb-3">
                       <DatePicker
                         format="MM/DD/YYYY"
                         className="w-full"
