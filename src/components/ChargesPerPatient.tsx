@@ -20,13 +20,33 @@ type Props = {
   Key?: string;
   Counter?: string[];
   activeChargeId?: number | string;
+  onActiveChargeChange?: (data?: any) => void;
 };
+
+export const isResultBlockedStatus = (status?: unknown) =>
+  ['DEFERRED', 'CANCELLED'].includes(
+    String(status ?? '')
+      .trim()
+      .toUpperCase(),
+  );
+
+export const getResultBlockedMessage = (charge?: any) => {
+  const status = String(charge?.Status ?? charge?.ChargeStatus ?? '')
+    .trim()
+    .toUpperCase();
+
+  return status
+    ? `${status} procedure cannot have a result.`
+    : 'This procedure cannot have a result.';
+};
+
 const ChargesPerPatient: FC<Props> = ({
   AppointmentId,
   handleNewResult,
   Key,
   Counter,
   activeChargeId,
+  onActiveChargeChange,
 }) => {
   const [selectedRow, setSelectedRow] = useState<any | undefined>({});
   const [form] = Form.useForm();
@@ -64,6 +84,14 @@ const ChargesPerPatient: FC<Props> = ({
         label: 'Deferred',
         icon: <BsCircleFill className="text-rose-500" size={9} />,
         textClassName: 'text-rose-600',
+      };
+    }
+
+    if (normalizedStatus === 'CANCELLED') {
+      return {
+        label: 'Cancelled',
+        icon: <BsCircleFill className="text-red-600" size={9} />,
+        textClassName: 'text-red-700',
       };
     }
 
@@ -111,6 +139,8 @@ const ChargesPerPatient: FC<Props> = ({
     }
   };
   const actionBodyTemplate = (data: any) => {
+    const resultBlocked = isResultBlockedStatus(data.Status);
+
     //  store.setItemDetails(data);
     return (
       <Space size={2} className="justify-end">
@@ -140,14 +170,22 @@ const ChargesPerPatient: FC<Props> = ({
           handleNewResult &&
           !isPackageCharge(data.IsPackage) && (
             <>
-              <Tooltip title="Result">
+              <Tooltip
+                title={
+                  resultBlocked
+                    ? getResultBlockedMessage(data)
+                    : 'Result'
+                }
+              >
                 <Button
                   type="link"
                   className="!h-6 !w-6 !p-0 !text-slate-600 hover:!text-blue-600"
                   icon={<BiNotepad size={16} />}
+                  disabled={resultBlocked}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
+                    if (resultBlocked) return;
                     handleNewResult(data);
                   }}
                 />
@@ -195,6 +233,21 @@ const ChargesPerPatient: FC<Props> = ({
   useEffect(() => {
     handleGetCharges();
   }, [AppointmentId, Key]);
+
+  useEffect(() => {
+    if (!onActiveChargeChange) return;
+
+    const activeId = Number(activeChargeId ?? 0);
+    if (!Number.isFinite(activeId) || activeId <= 0) {
+      onActiveChargeChange(undefined);
+      return;
+    }
+
+    onActiveChargeChange(
+      charges.find((charge: any) => Number(charge.Id) === activeId),
+    );
+  }, [activeChargeId, charges, onActiveChargeChange]);
+
   return (
     <div>
       <div className="overflow-hidden rounded border border-slate-200 bg-white text-xs shadow-sm">
@@ -305,17 +358,24 @@ const ChargesPerPatient: FC<Props> = ({
               <Select.Option key="DEFERRED" value="DEFERRED">
                 DEFERRED
               </Select.Option>
+              <Select.Option key="CANCELLED" value="CANCELLED">
+                CANCELLED
+              </Select.Option>
             </Select>
           </Form.Item>
           <Form.Item
             name="StatusRemarks"
             label="Remarks"
-            normalize={(v) => v.toUpperCase()}
+            normalize={(value) =>
+              typeof value === 'string' ? value.toUpperCase() : value
+            }
             rules={[
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (
-                    getFieldValue('Status') === 'DEFERRED' &&
+                    ['DEFERRED', 'CANCELLED'].includes(
+                      getFieldValue('Status'),
+                    ) &&
                     isNullOrUndefinedOrBlank(value)
                   ) {
                     return Promise.reject('Remarks is required!');

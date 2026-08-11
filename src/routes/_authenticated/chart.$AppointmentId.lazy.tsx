@@ -20,6 +20,7 @@ import axios from 'axios';
 import SearchICD from '../../components/SearchICD';
 import { BiArrowBack } from 'react-icons/bi';
 import { MdOutlinePrint, MdSave, MdSearch } from 'react-icons/md';
+import PatientInfoHeader from '../../components/PatientInfoHeader';
 
 export const Route = createLazyFileRoute(
   '/_authenticated/chart/$AppointmentId',
@@ -310,50 +311,23 @@ const Chart = () => {
           </div>
         </header>
 
-        <section className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-          <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-sm md:grid-cols-3 xl:grid-cols-6">
-            <div className="col-span-2 min-w-0 md:col-span-1 xl:col-span-2">
-              <p className="text-xs font-semibold uppercase text-slate-500">
-                Patient
-              </p>
-              <p className="truncate font-semibold text-slate-900">
-                {patient?.Name || '-'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">
-                Member No.
-              </p>
-              <p className="font-medium text-slate-800">
-                {patient?.MemberNo || '-'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">
-                Age / Sex
-              </p>
-              <p className="font-medium text-slate-800">
-                {patientAge || '-'} / {patient?.Sex || '-'}
-              </p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase text-slate-500">
-                Company
-              </p>
-              <p className="truncate font-medium text-slate-800" title={company}>
-                {company}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">
-                Appointment Date
-              </p>
-              <p className="font-medium text-slate-800">
-                {patient?.DateStr || patient?.DateOnly || '-'}
-              </p>
-            </div>
-          </div>
-        </section>
+        <PatientInfoHeader
+          appointmentId={AppointmentId}
+          patientId={patient?.fk_PatientInformation_Id}
+          name={patient?.Name}
+          age={patientAge}
+          sex={patient?.Sex}
+          appointmentNo={patient?.AppointmentNo || AppointmentId}
+          className="bg-slate-50 px-4 py-3"
+          fields={[
+            { label: 'Member No.', value: patient?.MemberNo },
+            { label: 'Company', value: company },
+            {
+              label: 'Appointment Date',
+              value: patient?.DateStr || patient?.DateOnly,
+            },
+          ]}
+        />
 
         <main className="space-y-5 p-4">
           <section>

@@ -13,6 +13,7 @@ import {
   TMer,
   TMerOtherTests,
   TMerOthers,
+  TSettings,
 } from '../../types';
 import {
   AutoComplete,
@@ -47,10 +48,165 @@ const devApi = import.meta.env.VITE_DEV_API;
 const apiUrl = isDev ? devApi : prodApi;
 const onlineResultType = 'MER';
 const onlineResultDescription = 'Medical Evaluation Report';
+const fecalysisClassificationRemark =
+  'Classification may change once fecalysis is facilitated if still required by company.';
 const otherMedicalHistory: TMerOthers[] = [
   { Id: 1, Description: 'Smoker' },
-  { Id: 2, Description: 'Alcohol beverage drinker' },
-  { Id: 3, Description: 'Covid-19 Vaccinated' },
+  { Id: 2, Description: 'Non-Smoker' },
+  { Id: 3, Description: 'Alcohol beverage drinker' },
+  { Id: 4, Description: 'Non-Alcoholic beverage drinker' },
+  { Id: 5, Description: 'Occasional alcoholic beverage drinker' },
+  { Id: 6, Description: 'Covid-19 Vaccinated' },
+];
+const reactiveOtherTests: {
+  checkName: keyof TMerOtherTests;
+  valueName: keyof TMerOtherTests;
+  label: string;
+}[] = [
+  { checkName: 'StoolCs', valueName: 'StoolCsValue', label: 'Stool c/s' },
+  { checkName: 'AntiHbs', valueName: 'AntiHbsValue', label: 'ANTI - HBS' },
+  { checkName: 'HbSag', valueName: 'HbSagValue', label: 'HBsAg' },
+  { checkName: 'HepaAIgG', valueName: 'HepaAIgGValue', label: 'Hepa A - IgG' },
+  { checkName: 'HepaAIgM', valueName: 'HepaAIgMValue', label: 'Hepa A - IgM' },
+  { checkName: 'Rpr', valueName: 'RprValue', label: 'RPR' },
+  {
+    checkName: 'AntiHav',
+    valueName: 'AntiHavValue',
+    label: 'Anti - HAV - IgG',
+  },
+  {
+    checkName: 'AntiHavIgM',
+    valueName: 'AntiHavIgMValue',
+    label: 'Anti - HAV - IgM',
+  },
+];
+const normalOtherTests: {
+  checkName: keyof TMerOtherTests;
+  resultName: keyof TMerOtherTests;
+  unitName: keyof TMerOtherTests;
+  label: string;
+  unit: string;
+}[] = [
+  {
+    checkName: 'Glucose',
+    resultName: 'GlucoseValue',
+    unitName: 'GlucoseValue2',
+    label: 'Glucose',
+    unit: 'mmol/l',
+  },
+  {
+    checkName: 'Urea',
+    resultName: 'UreaValue',
+    unitName: 'UreaValue2',
+    label: 'Urea',
+    unit: 'mmol/l',
+  },
+  {
+    checkName: 'Creatinine',
+    resultName: 'CreatinineValue',
+    unitName: 'CreatinineValue2',
+    label: 'Creatinine',
+    unit: 'umol/l',
+  },
+  {
+    checkName: 'UricAcid',
+    resultName: 'UricAcidValue',
+    unitName: 'UricAcidValue2',
+    label: 'Uric Acid',
+    unit: 'umol/l',
+  },
+  {
+    checkName: 'Cholesterol',
+    resultName: 'CholesterolValue',
+    unitName: 'CholesterolValue2',
+    label: 'Cholesterol',
+    unit: 'mmol/l',
+  },
+  {
+    checkName: 'Triglycerides',
+    resultName: 'TriglyceridesValue',
+    unitName: 'TriglyceridesValue2',
+    label: 'Triglycerides',
+    unit: 'mmol/l',
+  },
+  {
+    checkName: 'Hdl',
+    resultName: 'HdlValue',
+    unitName: 'HdlValue2',
+    label: 'HDL',
+    unit: 'mmol/l',
+  },
+  {
+    checkName: 'Ldl',
+    resultName: 'LdlValue',
+    unitName: 'LdlValue2',
+    label: 'LDL',
+    unit: 'mmol/l',
+  },
+  {
+    checkName: 'Sgpt',
+    resultName: 'SgptValue',
+    unitName: 'SgptValue2',
+    label: 'SGPT',
+    unit: 'U/L',
+  },
+  {
+    checkName: 'Sgot',
+    resultName: 'SgotValue',
+    unitName: 'SgotValue2',
+    label: 'SGOT',
+    unit: 'U/L',
+  },
+  {
+    checkName: 'Globulin',
+    resultName: 'GlobulinValue',
+    unitName: 'GlobulinValue2',
+    label: 'Globulin',
+    unit: 'g/l',
+  },
+  {
+    checkName: 'HbA1c',
+    resultName: 'HbA1cValue',
+    unitName: 'HbA1cValue2',
+    label: 'HbA1c',
+    unit: '%',
+  },
+  {
+    checkName: 'Tsh',
+    resultName: 'TshValue',
+    unitName: 'TshValue2',
+    label: 'TSH',
+    unit: 'uIU/ml',
+  },
+  {
+    checkName: 'Ft3',
+    resultName: 'Ft3Value',
+    unitName: 'Ft3Value2',
+    label: 'FT3',
+    unit: 'pmol/L',
+  },
+  {
+    checkName: 'Ft4',
+    resultName: 'Ft4Value',
+    unitName: 'Ft4Value2',
+    label: 'FT4',
+    unit: 'pmol/L',
+  },
+
+  {
+    checkName: 'Potassium',
+    resultName: 'PotassiumValue',
+    unitName: 'PotassiumValue2',
+    label: 'Potassium',
+    unit: 'mmol/L',
+  },
+  {
+    checkName: 'Sodium',
+    resultName: 'SodiumValue',
+    unitName: 'SodiumValue2',
+    label: 'Sodium',
+    unit: 'mmol/L',
+  },
 ];
 const encodeReportLineBreaks = (value?: string) =>
   value?.replace(/\r?\n/g, '\\n');
@@ -101,7 +257,33 @@ const Mer = () => {
   const { AppointmentId } = Route.useParams();
   const [form] = useForm();
   const merNo = Form.useWatch('MerNo', form);
+  const evaluationRemarks = Form.useWatch('Remarks', form);
   const merResultId = getPositiveNumber(AppointmentId);
+
+  const handleFecalysisClassificationRemarkChange = (checked: boolean) => {
+    const currentRemarks = String(form.getFieldValue('Remarks') ?? '').trim();
+
+    if (checked) {
+      if (!currentRemarks.includes(fecalysisClassificationRemark)) {
+        form.setFieldValue(
+          'Remarks',
+          [currentRemarks, fecalysisClassificationRemark]
+            .filter(Boolean)
+            .join('\n'),
+        );
+      }
+      return;
+    }
+
+    form.setFieldValue(
+      'Remarks',
+      currentRemarks
+        .replace(fecalysisClassificationRemark, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim(),
+    );
+  };
 
   const refreshOnlineResultStatus = async () => {
     if (merResultId <= 0) {
@@ -123,6 +305,40 @@ const Mer = () => {
       const res = await PostData('GetRecords', {
         sp: 'udp_GetOccupation',
         parameters: {},
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const city = useQuery({
+    queryKey: ['city'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: {
+          Code: 'CITY',
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const barangay = useQuery({
+    queryKey: ['barangay'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetSettings',
+        parameters: {
+          Code: 'BARANGAY',
+        },
       });
       if (res) {
         return res.parameters.lst;
@@ -166,7 +382,9 @@ const Mer = () => {
         Age: x.AgeYears,
         ContactNos: x.ContactNos,
         AppointmentId: AppointmentId,
-        Address: x.Address,
+        Street: x.Street,
+        City: x.City,
+        Barangay: x.Barangay,
         Sex: x.Sex,
         NatureOfExamination: x.AppointmentTypeDesc,
         Occupation: x.Occupation,
@@ -272,9 +490,12 @@ const Mer = () => {
           ClassC2: x.ClassC2,
           ClassD: x.ClassD,
           ClassO: x.ClassO,
-          Remarks: x.Remarks,
+          Remarks: decodeReportLineBreaks(x.Remarks),
           EvaluatedBy: x.EvaluatedBy,
           Occupation: x.Occupation,
+          Street: x.Street,
+          City: x.City,
+          Barangay: x.Barangay,
           ClassALabel: x.ClassALabel,
           ClassBLabel: x.ClassBLabel,
           ClassCLabel: x.ClassCLabel,
@@ -292,26 +513,41 @@ const Mer = () => {
       } else {
         form.setFieldsValue({
           MerDate: dayjs(),
-          EentStatus: 'NORMAL',
-          ChestStatus: 'NORMAL',
-          HeartStatus: 'NORMAL',
-          AbdomenStatus: 'NORMAL',
-          ExtremitiesStatus: 'NORMAL',
-          OthersStatus: 'NORMAL',
+          EentStatus: 'Normal',
+          ChestStatus: 'Normal',
+          HeartStatus: 'Normal',
+          AbdomenStatus: 'Normal',
+          ExtremitiesStatus: 'Normal',
+          OthersStatus: 'Normal',
         });
-        if (form.getFieldValue('Sex') === 'M') {
-          form.setFieldsValue({
-            VaLeft: '20/20',
-            VaRight: '20/20',
-          });
-        } else {
-          form.setFieldsValue({
-            VaLeft: '20/20',
-            VaRight: '20/20',
-          });
-        }
+        // if (form.getFieldValue('Sex') === 'M') {
+        //   form.setFieldsValue({
+        //     VaLeft: '20/20',
+        //     VaRight: '20/20',
+        //   });
+        // } else {
+        //   form.setFieldsValue({
+        //     VaLeft: '20/20',
+        //     VaRight: '20/20',
+        //   });
+        // }
         setIsOnlineResultShown(false);
       }
+    }
+  };
+
+  const setProcedureDateFromDoneStatus = (
+    chargeStatus: TCharges | undefined,
+    fieldName: string,
+  ) => {
+    const isDone =
+      String(chargeStatus?.Status ?? '')
+        .trim()
+        .toUpperCase() === 'DONE';
+    const statusDate = dayjs(chargeStatus?.StatusDate);
+
+    if (isDone && statusDate.isValid()) {
+      form.setFieldValue(fieldName, statusDate);
     }
   };
 
@@ -324,7 +560,9 @@ const Mer = () => {
           AppointmentId: AppointmentId,
         },
       });
-      setChestXrayStatus(res.parameters.lst[0]);
+      const chestXray = res.parameters.lst[0];
+      setChestXrayStatus(chestXray);
+      setProcedureDateFromDoneStatus(chestXray, 'ChestXrayDate');
       if (
         res &&
         res.parameters.lst.length > 0 &&
@@ -340,7 +578,6 @@ const Mer = () => {
         if (studyno) {
           form.setFieldsValue({
             ChestXrayStudyNo: studyno.parameters.lst[0].StudyNo,
-            ChestXrayDate: dayjs(studyno.parameters.lst[0].StatusDate),
           });
         }
       }
@@ -352,7 +589,9 @@ const Mer = () => {
         },
       });
       if (res) {
-        setUrinalysisStatus(res.parameters.lst[0]);
+        const urinalysis = res.parameters.lst[0];
+        setUrinalysisStatus(urinalysis);
+        setProcedureDateFromDoneStatus(urinalysis, 'UrinalysisDate');
       }
 
       res = await PostData('GetRecords', {
@@ -363,7 +602,9 @@ const Mer = () => {
         },
       });
       if (res) {
-        setCbcStatus(res.parameters.lst[0]);
+        const cbc = res.parameters.lst[0];
+        setCbcStatus(cbc);
+        setProcedureDateFromDoneStatus(cbc, 'CbcDate');
       }
       res = await PostData('GetRecords', {
         sp: 'udp_GetMerProcedureStatus',
@@ -373,7 +614,9 @@ const Mer = () => {
         },
       });
       if (res) {
-        setFecalysisStatus(res.parameters.lst[0]);
+        const fecalysis = res.parameters.lst[0];
+        setFecalysisStatus(fecalysis);
+        setProcedureDateFromDoneStatus(fecalysis, 'FecalysisDate');
       }
       res = await PostData('GetRecords', {
         sp: 'udp_GetMerProcedureStatus',
@@ -383,7 +626,9 @@ const Mer = () => {
         },
       });
       if (res) {
-        setDrugTestStatus(res.parameters.lst[0]);
+        const drugTest = res.parameters.lst[0];
+        setDrugTestStatus(drugTest);
+        setProcedureDateFromDoneStatus(drugTest, 'DrugTestDate');
       }
       res = await PostData('GetRecords', {
         sp: 'udp_GetMerProcedureStatus',
@@ -393,7 +638,9 @@ const Mer = () => {
         },
       });
       if (res) {
-        setTreadmillStatus(res.parameters.lst[0]);
+        const treadmill = res.parameters.lst[0];
+        setTreadmillStatus(treadmill);
+        setProcedureDateFromDoneStatus(treadmill, 'TreadmillDate');
       }
       res = await PostData('GetRecords', {
         sp: 'udp_GetMerProcedureStatus',
@@ -403,7 +650,9 @@ const Mer = () => {
         },
       });
       if (res) {
-        setEcgStatus(res.parameters.lst[0]);
+        const ecg = res.parameters.lst[0];
+        setEcgStatus(ecg);
+        setProcedureDateFromDoneStatus(ecg, 'EcgDate');
       }
 
       res = await PostData('GetRecords', {
@@ -414,7 +663,9 @@ const Mer = () => {
         },
       });
       if (res) {
-        setEchoStatus(res.parameters.lst[0]);
+        const echo = res.parameters.lst[0];
+        setEchoStatus(echo);
+        setProcedureDateFromDoneStatus(echo, 'EchoDate');
       }
       res = await PostData('GetRecords', {
         sp: 'udp_GetMerProcedureUltrasoundStatus',
@@ -423,7 +674,9 @@ const Mer = () => {
         },
       });
       if (res) {
-        setultrasoundStatus(res.parameters.lst[0]);
+        const ultrasound = res.parameters.lst[0];
+        setultrasoundStatus(ultrasound);
+        setProcedureDateFromDoneStatus(ultrasound, 'UltrasoundDate');
       }
     } catch (error: any) {
       notification.error({
@@ -660,6 +913,7 @@ const Mer = () => {
         EchoResult: encodeReportLineBreaks(v.EchoResult),
         UltrasoundResult: encodeReportLineBreaks(v.UltrasoundResult),
         OthersRemarks: encodeReportLineBreaks(v.OthersRemarks),
+        Remarks: encodeReportLineBreaks(v.Remarks),
         Type: 'R',
       };
 
@@ -928,6 +1182,50 @@ const Mer = () => {
     handleGetAppointmentDetails();
     handleGetProcedureStatus();
   }, []);
+
+  const evaluatedBy = Form.useWatch('EvaluatedBy', form);
+
+  const renderReactiveOtherTest = (
+    test: (typeof reactiveOtherTests)[number],
+  ) => (
+    <div
+      key={String(test.checkName)}
+      className="min-h-[76px] rounded border border-slate-200 bg-white px-3 py-2"
+    >
+      <Form.Item name={test.checkName} valuePropName="checked" noStyle>
+        <Checkbox className="font-medium">{test.label}</Checkbox>
+      </Form.Item>
+      <Form.Item name={test.valueName} noStyle>
+        <Radio.Group className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <Radio value="Reactive">Reactive</Radio>
+          <Radio value="Non Reactive">Non Reactive</Radio>
+        </Radio.Group>
+      </Form.Item>
+    </div>
+  );
+
+  const renderNormalOtherTest = (test: (typeof normalOtherTests)[number]) => (
+    <div
+      key={String(test.checkName)}
+      className="min-h-[84px] rounded border border-slate-200 bg-white px-3 py-2"
+    >
+      <Form.Item name={test.checkName} valuePropName="checked" noStyle>
+        <Checkbox className="font-medium">{test.label}</Checkbox>
+      </Form.Item>
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_112px] items-center gap-2">
+        <Form.Item name={test.resultName} noStyle>
+          <Radio.Group className="flex flex-wrap gap-x-2 gap-y-1 text-xs">
+            <Radio value="Normal">Normal</Radio>
+            <Radio value="Not Normal">Not Normal</Radio>
+          </Radio.Group>
+        </Form.Item>
+        <Form.Item name={test.unitName} initialValue={test.unit} noStyle>
+          <Input size="small" />
+        </Form.Item>
+      </div>
+    </div>
+  );
+
   return (
     <div className="cardBackGround">
       <Divider>MEDICAL EVALUATION REPORT</Divider>
@@ -998,15 +1296,69 @@ const Mer = () => {
             </AutoComplete>
           </Form.Item>
           <Form.Item name="ContactNos" label="Contact Nos.">
-            <Input readOnly />
+            <Input />
           </Form.Item>
         </div>
         <div className="grid lg:grid-cols-5 gap-4">
           <Form.Item name="Sex" label="Sex">
-            <Input readOnly />
+            <Select allowClear>
+              <Select.Option value="Male">Male</Select.Option>
+              <Select.Option value="Female">Female</Select.Option>
+            </Select>
           </Form.Item>
-          <Form.Item name="Address" label="Address" className="col-span-6">
-            <Input readOnly />
+          <Form.Item
+            name="Street"
+            label="Street"
+            className="col-span-2"
+            normalize={(v) => (v ? String(v).toUpperCase() : v)}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="City"
+            label="City/Municipality"
+            normalize={(v) => (v ? String(v).toUpperCase() : v)}
+          >
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+            >
+              {city.data &&
+                city.data!.map((v: TSettings) => (
+                  <AutoComplete.Option
+                    key={v.Id}
+                    value={v.Value}
+                    title={v.Value}
+                  >
+                    {v.Value}
+                  </AutoComplete.Option>
+                ))}
+            </AutoComplete>
+          </Form.Item>
+          <Form.Item name="Barangay" label="Barangay">
+            <AutoComplete
+              filterOption={(inputValue, option) =>
+                option!
+                  .value!.toString()
+                  .toUpperCase()
+                  .indexOf(inputValue.toUpperCase()) !== -1
+              }
+            >
+              {barangay.data &&
+                barangay.data!.map((v: TSettings) => (
+                  <AutoComplete.Option
+                    key={v.Id}
+                    value={v.Value}
+                    title={v.Value}
+                  >
+                    {v.Value}
+                  </AutoComplete.Option>
+                ))}
+            </AutoComplete>
           </Form.Item>
         </div>
         <div className="font-bold text-xl text-center mb-2">
@@ -1734,10 +2086,21 @@ const Mer = () => {
           </Form.Item>
         </div>
 
-        <div>
-          <Form.Item name="Remarks" label="Remarks">
-            <Input />
+        <div className="py-5">
+          <Form.Item className="!mb-1" name="Remarks" label="Remarks">
+            <Input.TextArea autoSize={{ minRows: 2, maxRows: 5 }} />
           </Form.Item>
+          <Checkbox
+            className="mb-4 font-bold"
+            checked={String(evaluationRemarks ?? '').includes(
+              fecalysisClassificationRemark,
+            )}
+            onChange={(e) =>
+              handleFecalysisClassificationRemarkChange(e.target.checked)
+            }
+          >
+            {fecalysisClassificationRemark}
+          </Checkbox>
         </div>
         <div className="grid grid-cols-6 gap-2">
           <Form.Item name="Appointment" label="Appointment">
@@ -1763,11 +2126,11 @@ const Mer = () => {
           <Form.Item
             label="Evaluated By"
             name="EvaluatedBy"
-            rules={[
-              {
-                required: true,
-              },
-            ]}
+            // rules={[
+            //   {
+            //     required: true,
+            //   },
+            // ]}
           >
             <Select
               style={{ width: '100%' }}
@@ -1819,7 +2182,10 @@ const Mer = () => {
                 type="primary"
                 onClick={handlePrint}
                 loading={isSubmitting}
-                disabled={isNullOrUndefinedOrBlank(merNo)}
+                disabled={
+                  isNullOrUndefinedOrBlank(merNo) ||
+                  isNullOrUndefinedOrBlank(evaluatedBy)
+                }
               >
                 Print
               </Button>
@@ -1929,492 +2295,26 @@ const Mer = () => {
           onChange={handleChangeOtherResult}
         >
           <Divider>Other Tests</Divider>
-          <div className="grid lg:grid-cols-6 gap-4">
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="StoolCs"
-                // label="Stool c/s"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Stool c/s</Checkbox>
-              </Form.Item>
-              <Form.Item name="StoolCsValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Reactive">Reactive</Radio>
-                  <Radio value="Non Reactive">Non Reactive</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="HbSag"
-                // label="HbSag"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>HbSag</Checkbox>
-              </Form.Item>
-              <Form.Item name="HbSagValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Reactive">Reactive</Radio>
-                  <Radio value="Non Reactive">Non Reactive</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="HepaAIgM"
-                // label="Hepa A-IgM"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Hepa A-IgM</Checkbox>
-              </Form.Item>
-              <Form.Item name="HepaAIgMValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Reactive">Reactive</Radio>
-                  <Radio value="Non Reactive">Non Reactive</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="AntiHav"
-                // label="Anti-HAV-A-IgG"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Anti-HAV-A-IgG</Checkbox>
-              </Form.Item>
-              <Form.Item name="AntiHavValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Reactive">Reactive</Radio>
-                  <Radio value="Non Reactive">Non Reactive</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="AntiHbs"
-                // label="Anti-Hbs"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Anti-Hbs</Checkbox>
-              </Form.Item>
-              <Form.Item name="AntiHbsValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Reactive">Reactive</Radio>
-                  <Radio value="Non Reactive">Non Reactive</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="HepaAIgG"
-                // label="Hepa A-IgG"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Hepa A-IgG</Checkbox>
-              </Form.Item>
-              <Form.Item name="HepaAIgGValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Reactive">Reactive</Radio>
-                  <Radio value="Non Reactive">Non Reactive</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-          </div>
-          <div className="grid lg:grid-cols-6 gap-4 mt-4">
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Rpr" label="RPR" valuePropName="checked" noStyle>
-                <Checkbox>RPR</Checkbox>
-              </Form.Item>
-              <Form.Item name="RprValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Reactive">Reactive</Radio>
-                  <Radio value="Non Reactive">Non Reactive</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="AntiHavIgM"
-                label="RPR"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Anti-Hav-IgM</Checkbox>
-              </Form.Item>
-              <Form.Item name="AntiHavIgMValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Reactive">Reactive</Radio>
-                  <Radio value="Non Reactive">Non Reactive</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="Glucose"
-                label="RPR"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Glucose</Checkbox>
-              </Form.Item>
-              <Form.Item name="GlucoseValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="GlucoseValue2"
-                label="Value"
-                initialValue={'mmol/l'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="Creatinine"
-                label="Creatinine"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Creatinine</Checkbox>
-              </Form.Item>
-              <Form.Item name="CreatinineValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="CreatinineValue2"
-                label="Value"
-                initialValue={'umol/l'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="Urea"
-                label="Creatinine"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Urea</Checkbox>
-              </Form.Item>
-              <Form.Item name="UreaValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="UreaValue2"
-                label="Value"
-                initialValue={'mmol/l'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="UricAcid"
-                label="Creatinine"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Uric Acid</Checkbox>
-              </Form.Item>
-              <Form.Item name="UricAcidValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="UricAcidValue2"
-                label="Value"
-                initialValue={'umol/l'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-          </div>
+          <div className="space-y-4">
+            <section>
+              {/* <div className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Serology / Immunology
+              </div> */}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {reactiveOtherTests.map(renderReactiveOtherTest)}
+              </div>
+            </section>
 
-          <div className="grid lg:grid-cols-6 gap-4 mt-4">
-            <div className="flex flex-col cardBackGround">
-              <Form.Item
-                name="Cholesterol"
-                label="Cholesterolinine"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Cholesterol</Checkbox>
-              </Form.Item>
-              <Form.Item name="CholesterolValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                noStyle
-                name="CholesterolValue2"
-                label="Value"
-                initialValue={'mmol/l'}
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Hdl" valuePropName="checked" noStyle>
-                <Checkbox>Hdl</Checkbox>
-              </Form.Item>
-              <Form.Item name="HdlValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="HdlValue2"
-                label="Value"
-                initialValue={'mmol/l'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Sgpt" valuePropName="checked" noStyle>
-                <Checkbox>SGPT</Checkbox>
-              </Form.Item>
-              <Form.Item name="SgptValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="SgptValue2"
-                label="Value"
-                initialValue={'U/L'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Globulin" valuePropName="checked" noStyle>
-                <Checkbox>Globulin</Checkbox>
-              </Form.Item>
-              <Form.Item name="GlobulinValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="GlobulinValue2"
-                label="Value"
-                initialValue={'g/l'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Tsh" valuePropName="checked" noStyle>
-                <Checkbox>TSH</Checkbox>
-              </Form.Item>
-              <Form.Item name="TshValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="TshValue2"
-                label="Value"
-                initialValue={'uIU/ml'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Ft4" valuePropName="checked" noStyle>
-                <Checkbox>FT4</Checkbox>
-              </Form.Item>
-              <Form.Item name="Ft4Value" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="Ft4Value2"
-                label="Value"
-                initialValue={'pmol/L'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-          </div>
-          <div className="grid lg:grid-cols-6 gap-4 mt-4">
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Sodium" valuePropName="checked" noStyle>
-                <Checkbox>Sodium</Checkbox>
-              </Form.Item>
-              <Form.Item name="SodiumValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="SodiumValue2"
-                label="Value"
-                initialValue={'mmol/L'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Triglycerides" valuePropName="checked" noStyle>
-                <Checkbox>Triglycerides</Checkbox>
-              </Form.Item>
-              <Form.Item name="TriglyceridesValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="TriglyceridesValue2"
-                label="Value"
-                initialValue={'mmol/l'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Ldl" valuePropName="checked" noStyle>
-                <Checkbox>LDL</Checkbox>
-              </Form.Item>
-              <Form.Item name="LdlValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="LdlValue2"
-                label="Value"
-                initialValue={'mmol/l'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Sgot" valuePropName="checked" noStyle>
-                <Checkbox>SGOT</Checkbox>
-              </Form.Item>
-              <Form.Item name="SgotValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="SgotValue2"
-                label="Value"
-                initialValue={'U/L'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="HbA1c" valuePropName="checked" noStyle>
-                <Checkbox>HBA1C</Checkbox>
-              </Form.Item>
-              <Form.Item name="HbA1cValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="HbA1cValue2"
-                label="Value"
-                initialValue={'%'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Ft3" valuePropName="checked" noStyle>
-                <Checkbox>FT3</Checkbox>
-              </Form.Item>
-              <Form.Item name="Ft3Value" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="Ft3Value2"
-                label="Value"
-                initialValue={'pmol/L'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-          </div>
-          <div className="grid lg:grid-cols-6 gap-4 mt-4">
-            <div className="flex flex-col cardBackGround">
-              <Form.Item name="Potassium" valuePropName="checked" noStyle>
-                <Checkbox>POTASSIUM</Checkbox>
-              </Form.Item>
-              <Form.Item name="PotassiumValue" noStyle>
-                <Radio.Group>
-                  <Radio value="Normal">Normal</Radio>
-                  <Radio value="Not Normal">Not Normal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="PotassiumValue2"
-                label="Value"
-                initialValue={'pmol/L'}
-                noStyle
-              >
-                <Input />
-              </Form.Item>
-            </div>
-            <Form.Item
-              name="OtherResult"
-              label="Other Result"
-              className="col-span-3"
-            >
+            <section>
+              {/* <div className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Chemistry / Other Tests
+              </div> */}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {normalOtherTests.map(renderNormalOtherTest)}
+              </div>
+            </section>
+
+            <Form.Item name="OtherResult" label="Other Result">
               <Input.TextArea rows={4} />
             </Form.Item>
           </div>

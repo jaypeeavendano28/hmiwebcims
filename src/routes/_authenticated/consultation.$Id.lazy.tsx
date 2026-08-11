@@ -18,13 +18,18 @@ import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
 import { BiArrowBack } from 'react-icons/bi';
 import { MdOutlinePrint, MdSave, MdSearch } from 'react-icons/md';
-import ChargesPerPatient from '../../components/ChargesPerPatient';
+import ChargesPerPatient, {
+  getResultBlockedMessage,
+  isResultBlockedStatus,
+} from '../../components/ChargesPerPatient';
+import AddReqPhysician from '../../components/add-req-physician';
 import ExistingConsultationResults from '../../components/ExistingConsultationResults';
 import SearchICD from '../../components/SearchICD';
 import { PostData } from '../../helpers';
 import useAppStore from '../../store';
 import { TAppointments, TChart, TDoctors, TICd10 } from '../../types';
 import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
+import PatientInfoHeader from '../../components/PatientInfoHeader';
 
 export const Route = createLazyFileRoute('/_authenticated/consultation/$Id')({
   component: () => <ConsultationResult />,
@@ -44,7 +49,6 @@ const consultationCounters = [
   'CONOPTHA',
   'CONORTHO',
   'CONPEDIA',
-  'CONREHAB',
   'CONSUR',
   'CONPULMPO',
   'CONSULTATION',
@@ -65,10 +69,13 @@ const ConsultationResult = () => {
   const [resultId, setResultId] = useState(0);
   const [chargeId, setChargeId] = useState(0);
   const [chargeDescription, setChargeDescription] = useState('');
+  const [activeCharge, setActiveCharge] = useState<any>();
   const [selected, setSelected] = useState<TChart>();
   const [reloadKey, setReloadKey] = useState(Math.random().toString());
   const [isSaving, setIsSaving] = useState(false);
   const [isPrintingChart, setIsPrintingChart] = useState(false);
+  const isResultSubmitBlocked = isResultBlockedStatus(activeCharge?.Status);
+  const resultSubmitBlockedMessage = getResultBlockedMessage(activeCharge);
 
   const appointmentDetails = useQuery<TAppointments>({
     queryKey: ['consultation-appointment-details', appointmentId],
@@ -165,6 +172,8 @@ const ConsultationResult = () => {
   };
 
   const handleSelectCharge = async (charge: any) => {
+    setActiveCharge(charge);
+
     const existingResultId = Number(charge?.ResultId ?? 0);
 
     if (existingResultId > 0) {
@@ -180,6 +189,15 @@ const ConsultationResult = () => {
       notification.warning({
         message: 'Select a consultation procedure first.',
         placement: 'topRight',
+      });
+      return;
+    }
+
+    if (isResultSubmitBlocked) {
+      notification.warning({
+        message: resultSubmitBlockedMessage,
+        placement: 'topRight',
+        duration: 3,
       });
       return;
     }
@@ -326,34 +344,15 @@ const ConsultationResult = () => {
 
   return (
     <div className="cardBackGround min-h-full">
-      <section className="grid grid-cols-2 gap-x-5 gap-y-3 text-sm md:grid-cols-3 xl:grid-cols-6">
-        <div className="col-span-2 min-w-0 md:col-span-1 xl:col-span-2">
-          <p className="text-slate-500">Name</p>
-          <p className="truncate font-semibold text-slate-900">
-            {patient?.Name || '-'}
-          </p>
-        </div>
-        <div>
-          <p className="text-slate-500">Age</p>
-          <p className="font-semibold text-slate-900">{patientAge || '-'}</p>
-        </div>
-        <div>
-          <p className="text-slate-500">Sex</p>
-          <p className="font-semibold text-slate-900">{patient?.Sex || '-'}</p>
-        </div>
-        <div>
-          <p className="text-slate-500">Appointment No.</p>
-          <p className="font-semibold text-slate-900">
-            {patient?.AppointmentNo || Id}
-          </p>
-        </div>
-        <div className="min-w-0">
-          <p className="text-slate-500">Company</p>
-          <p className="truncate font-semibold text-slate-900" title={company}>
-            {company}
-          </p>
-        </div>
-      </section>
+      <PatientInfoHeader
+        appointmentId={appointmentId}
+        patientId={patient?.fk_PatientInformation_Id}
+        name={patient?.Name}
+        age={patientAge}
+        sex={patient?.Sex}
+        appointmentNo={patient?.AppointmentNo || Id}
+        fields={[{ label: 'Company', value: company }]}
+      />
 
       <Divider className="print:hidden">
         Consultation Result
@@ -391,6 +390,7 @@ const ConsultationResult = () => {
                       Key={reloadKey}
                       Counter={consultationCounters}
                       activeChargeId={chargeId}
+                      onActiveChargeChange={setActiveCharge}
                     />
                   ),
                 },
@@ -471,18 +471,21 @@ const ConsultationResult = () => {
                         options={doctorOptions}
                       />
                     </Form.Item>
-                    <Form.Item
-                      name="RequestingPhysician"
-                      label="Requesting Physician"
-                      className="!mb-0"
-                    >
-                      <Select
-                        showSearch
-                        allowClear
-                        optionFilterProp="label"
-                        options={doctorOptions}
-                      />
-                    </Form.Item>
+                    <div className="flex items-end gap-x-1">
+                      <Form.Item
+                        name="RequestingPhysician"
+                        label="Requesting Physician"
+                        className="!mb-0 flex-grow"
+                      >
+                        <Select
+                          showSearch
+                          allowClear
+                          optionFilterProp="label"
+                          options={doctorOptions}
+                        />
+                      </Form.Item>
+                      <AddReqPhysician />
+                    </div>
                     <Form.Item
                       name="Started"
                       label="Started"
@@ -616,6 +619,7 @@ const ConsultationResult = () => {
                     htmlType="submit"
                     icon={<MdSave />}
                     loading={isSaving}
+                    disabled={isResultSubmitBlocked}
                   >
                     Save Result
                   </Button>

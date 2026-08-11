@@ -57,7 +57,7 @@ type ProcedureStatusFormValues = {
   StatusRemarks?: string;
 };
 
-const procedureStatusOptions = ['DONE', 'TO FOLLOW', 'DEFERRED'];
+const procedureStatusOptions = ['DONE', 'TO FOLLOW', 'DEFERRED', 'CANCELLED'];
 const consultationCounterCodes = [
   'CONCARDIO',
   'CONDERMA',
@@ -68,31 +68,41 @@ const consultationCounterCodes = [
   'CONOPTHA',
   'CONORTHO',
   'CONPEDIA',
-  'CONREHAB',
   'CONSUR',
   'CONPULMPO',
   'CONSULTATION',
   'PHYS',
 ];
+const rehabilitationCounterCodes = ['REHAB'];
 const resultCounterCodes = [
   'LAB',
   'XRAY',
   'ULT',
   'CARDIO',
+  ...rehabilitationCounterCodes,
   ...consultationCounterCodes,
 ];
 const isConsultationCounter = (counterCode?: string) =>
   consultationCounterCodes.includes(String(counterCode ?? '').trim());
+const isRehabilitationCounter = (counterCode?: string) =>
+  rehabilitationCounterCodes.includes(String(counterCode ?? '').trim());
 const isConsultationDepartment = (departmentName?: string) =>
   String(departmentName ?? '')
     .trim()
     .toUpperCase()
     .includes('CONSULTATION');
+const isRehabilitationDepartment = (departmentName?: string) =>
+  String(departmentName ?? '')
+    .trim()
+    .toUpperCase()
+    .includes('REHAB');
 const allQueueDetailsOption = 0;
 const normalizeStatusText = (value: unknown) =>
   String(value ?? '')
     .trim()
     .toUpperCase();
+
+const resultBlockedStatuses = new Set(['DEFERRED', 'CANCELLED']);
 
 const isDeferredQueueOrProcedure = (patient: any) =>
   normalizeStatusText(patient.Status) === 'E' ||
@@ -100,8 +110,35 @@ const isDeferredQueueOrProcedure = (patient: any) =>
   normalizeStatusText(patient.StatusDescription) === 'DEFERRED' ||
   normalizeStatusText(patient.ChargeStatus) === 'DEFERRED';
 
+const isResultBlockedProcedure = (patient: any) =>
+  resultBlockedStatuses.has(normalizeStatusText(patient.ChargeStatus));
+
 const getVisibleQueueDetails = (details: TQueueDetail[]) =>
   details.filter((detail) => !isDeferredQueueOrProcedure(detail));
+
+const canOpenResultFromQueue = (
+  data: any,
+  counterCode?: string,
+  departmentName?: string,
+) => {
+  if (!data || isResultBlockedProcedure(data)) {
+    return false;
+  }
+
+  const effectiveCounterCode = String(
+    data.CounterCode ?? data.QCounter ?? counterCode ?? '',
+  ).trim();
+
+  return (
+    resultCounterCodes.includes(effectiveCounterCode) ||
+    isConsultationCounter(effectiveCounterCode) ||
+    isRehabilitationCounter(effectiveCounterCode) ||
+    isConsultationDepartment(departmentName) ||
+    isConsultationDepartment(data.DepartmentName) ||
+    isRehabilitationDepartment(departmentName) ||
+    isRehabilitationDepartment(data.DepartmentName)
+  );
+};
 
 const PatientsPerCounter: FC<Props> = ({
   CounterCode,
@@ -220,9 +257,7 @@ const PatientsPerCounter: FC<Props> = ({
           Number(patient.ItemId ?? patient.fk_Items_Id) === selectedItemId,
       )
     : rawListOfPatients;
-  const listOfPatients = itemFilteredPatients.filter(
-    (patient: any) => !isDeferredQueueOrProcedure(patient),
-  );
+  const listOfPatients = itemFilteredPatients;
 
   const refreshPatientQueries = async () => {
     await Promise.all([
@@ -319,7 +354,10 @@ const PatientsPerCounter: FC<Props> = ({
     }
   };
 
-  const handleCall = async (data: any) => {
+  const handleCall = async (
+    data: any,
+    options: { openResultAfterAccept?: boolean } = {},
+  ) => {
     setIsSubmitting(true);
 
     try {
@@ -390,10 +428,12 @@ const PatientsPerCounter: FC<Props> = ({
         } else if (data.Status === 'A') {
           setSelectedRecord(activeRecord);
           setShowModal(false);
-          if (activeRecord.AllProcedures) {
-            openProcedureSelectionWorkspace(activeRecord);
-          } else {
-            openProcedureWorkspace(activeRecord);
+          if (options.openResultAfterAccept) {
+            if (activeRecord.AllProcedures) {
+              openProcedureSelectionWorkspace(activeRecord);
+            } else {
+              openProcedureWorkspace(activeRecord);
+            }
           }
         }
         await refreshPatientQueries();
@@ -582,8 +622,29 @@ const PatientsPerCounter: FC<Props> = ({
     });
   };
 
+  const handleRehabilitationResult = (data: any) => {
+    openResultLocation({
+      to: '/patientexamrecord/$Id',
+      params: {
+        Id: data.fk_Appointments_Id.toString(),
+      },
+      search: {
+        chargeId: Number(data.ChargeId ?? 0),
+      },
+    });
+  };
+
   const openProcedureWorkspace = (data: any) => {
     const counterCode = data.CounterCode ?? CounterCode;
+    if (
+      isRehabilitationCounter(counterCode) ||
+      isRehabilitationDepartment(DepartmentName) ||
+      isRehabilitationDepartment(data.DepartmentName)
+    ) {
+      handleRehabilitationResult(data);
+      return;
+    }
+
     if (
       isConsultationCounter(counterCode) ||
       isConsultationDepartment(DepartmentName) ||
@@ -617,6 +678,20 @@ const PatientsPerCounter: FC<Props> = ({
     }
 
     const counterCode = data.CounterCode ?? CounterCode;
+    if (
+      isRehabilitationCounter(counterCode) ||
+      isRehabilitationDepartment(DepartmentName) ||
+      isRehabilitationDepartment(data.DepartmentName)
+    ) {
+      openResultLocation({
+        to: '/patientexamrecord/$Id',
+        params: {
+          Id: appointmentId,
+        },
+      });
+      return;
+    }
+
     if (
       isConsultationCounter(counterCode) ||
       isConsultationDepartment(DepartmentName) ||
@@ -724,8 +799,24 @@ const PatientsPerCounter: FC<Props> = ({
       isConsultationCounter(rowCounterCode) ||
       isConsultationDepartment(DepartmentName) ||
       isConsultationDepartment((data as any).DepartmentName);
+    const isRehabilitationResult =
+      isRehabilitationCounter(rowCounterCode) ||
+      isRehabilitationDepartment(DepartmentName) ||
+      isRehabilitationDepartment((data as any).DepartmentName);
     const hasResultWorkspace =
-      resultCounterCodes.includes(rowCounterCode ?? '') || isConsultationResult;
+      resultCounterCodes.includes(rowCounterCode ?? '') ||
+      isConsultationResult ||
+      isRehabilitationResult;
+    const resultBlocked = isResultBlockedProcedure(data);
+    const resultTooltip = resultBlocked
+      ? `${data.ChargeStatus} procedure cannot have a result.`
+      : 'Result';
+    const resultButton = <Button type="primary" icon={<BiNotepad />} />;
+    const disabledResultButton = (
+      <Tooltip title={resultTooltip}>
+        <Button type="primary" icon={<BiNotepad />} disabled />
+      </Tooltip>
+    );
 
     return (
       <Space>
@@ -757,7 +848,7 @@ const PatientsPerCounter: FC<Props> = ({
           </Tooltip>
         )}
         {!hasResultWorkspace && canSetProcedureStatus(data) && (
-          <Tooltip title="Set Status">
+          <Tooltip title="Set or cancel status">
             <Button
               type="primary"
               icon={<BiEdit />}
@@ -766,9 +857,12 @@ const PatientsPerCounter: FC<Props> = ({
             />
           </Tooltip>
         )}
-        {rowCounterCode === 'LAB' && effectiveIsDone && (
+        {rowCounterCode === 'LAB' && effectiveIsDone && resultBlocked && (
+          disabledResultButton
+        )}
+        {rowCounterCode === 'LAB' && effectiveIsDone && !resultBlocked && (
           <>
-            <Tooltip title="Result">
+            <Tooltip title={resultTooltip}>
               <Link
                 to="/laboratoryresults/$Id"
                 params={{
@@ -779,14 +873,17 @@ const PatientsPerCounter: FC<Props> = ({
                   chargeId: Number(data.ChargeId ?? 0),
                 }}
               >
-                <Button type="primary" icon={<BiNotepad />} />
+                {resultButton}
               </Link>
             </Tooltip>
           </>
         )}
-        {rowCounterCode === 'XRAY' && effectiveIsDone && (
+        {rowCounterCode === 'XRAY' && effectiveIsDone && resultBlocked && (
+          disabledResultButton
+        )}
+        {rowCounterCode === 'XRAY' && effectiveIsDone && !resultBlocked && (
           <>
-            <Tooltip title="Result">
+            <Tooltip title={resultTooltip}>
               <Link
                 to="/xrayresult/$Id"
                 params={{
@@ -796,15 +893,18 @@ const PatientsPerCounter: FC<Props> = ({
                   chargeId: Number(data.ChargeId ?? 0),
                 }}
               >
-                <Button type="primary" icon={<BiNotepad />} />
+                {resultButton}
               </Link>
             </Tooltip>
           </>
         )}
 
-        {rowCounterCode === 'ULT' && effectiveIsDone && (
+        {rowCounterCode === 'ULT' && effectiveIsDone && resultBlocked && (
+          disabledResultButton
+        )}
+        {rowCounterCode === 'ULT' && effectiveIsDone && !resultBlocked && (
           <>
-            <Tooltip title="Result">
+            <Tooltip title={resultTooltip}>
               <Link
                 to="/ultrasound/$Id"
                 params={{
@@ -814,14 +914,17 @@ const PatientsPerCounter: FC<Props> = ({
                   chargeId: Number(data.ChargeId ?? 0),
                 }}
               >
-                <Button type="primary" icon={<BiNotepad />} />
+                {resultButton}
               </Link>
             </Tooltip>
           </>
         )}
-        {rowCounterCode === 'CARDIO' && effectiveIsDone && (
+        {rowCounterCode === 'CARDIO' && effectiveIsDone && resultBlocked && (
+          disabledResultButton
+        )}
+        {rowCounterCode === 'CARDIO' && effectiveIsDone && !resultBlocked && (
           <>
-            <Tooltip title="Result">
+            <Tooltip title={resultTooltip}>
               <Link
                 to="/cardiologyresult/$Id"
                 params={{
@@ -833,13 +936,16 @@ const PatientsPerCounter: FC<Props> = ({
                   resultId: Number(data.ResultId ?? 0),
                 }}
               >
-                <Button type="primary" icon={<BiNotepad />} />
+                {resultButton}
               </Link>
             </Tooltip>
           </>
         )}
-        {isConsultationResult && effectiveIsDone && (
-          <Tooltip title="Result">
+        {isConsultationResult && effectiveIsDone && resultBlocked && (
+          disabledResultButton
+        )}
+        {isConsultationResult && effectiveIsDone && !resultBlocked && (
+          <Tooltip title={resultTooltip}>
             <Link
               to="/consultation/$Id"
               params={{
@@ -849,7 +955,25 @@ const PatientsPerCounter: FC<Props> = ({
                 chargeId: Number(data.ChargeId ?? 0),
               }}
             >
-              <Button type="primary" icon={<BiNotepad />} />
+              {resultButton}
+            </Link>
+          </Tooltip>
+        )}
+        {isRehabilitationResult && effectiveIsDone && resultBlocked && (
+          disabledResultButton
+        )}
+        {isRehabilitationResult && effectiveIsDone && !resultBlocked && (
+          <Tooltip title={resultTooltip}>
+            <Link
+              to="/patientexamrecord/$Id"
+              params={{
+                Id: appointmentId,
+              }}
+              search={{
+                chargeId: Number(data.ChargeId ?? 0),
+              }}
+            >
+              {resultButton}
             </Link>
           </Tooltip>
         )}
@@ -906,7 +1030,7 @@ const PatientsPerCounter: FC<Props> = ({
         ? 'success'
         : chargeStatus === 'TO FOLLOW'
           ? 'warning'
-          : chargeStatus === 'DEFERRED'
+          : chargeStatus === 'DEFERRED' || chargeStatus === 'CANCELLED'
             ? 'error'
             : 'default';
 
@@ -1189,7 +1313,9 @@ const PatientsPerCounter: FC<Props> = ({
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (
-                    getFieldValue('Status') === 'DEFERRED' &&
+                    ['DEFERRED', 'CANCELLED'].includes(
+                      getFieldValue('Status'),
+                    ) &&
                     !String(value ?? '').trim()
                   ) {
                     return Promise.reject('Remarks is required!');
@@ -1273,9 +1399,9 @@ const PatientsPerCounter: FC<Props> = ({
       <Modal
         open={showModal}
         destroyOnClose
-        onCancel={() => {
-          setShowModal(false);
-        }}
+        closable={false}
+        maskClosable={false}
+        keyboard={false}
         okText="Accept"
         cancelText="Cancel"
         footer={false}
@@ -1289,7 +1415,7 @@ const PatientsPerCounter: FC<Props> = ({
             type="primary"
             danger
             onClick={() => {
-              handleCall({ ...selectedRecord, Status: 'O' });
+              void handleCall({ ...selectedRecord, Status: 'O' });
               setShowModal(false);
             }}
           >
@@ -1299,7 +1425,7 @@ const PatientsPerCounter: FC<Props> = ({
             type="primary"
             onClick={() => {
               if (Station === '1') {
-                handleCall({ ...selectedRecord, Status: 'A' });
+                void handleCall({ ...selectedRecord, Status: 'A' });
               }
 
               setShowModal(false);
@@ -1307,6 +1433,30 @@ const PatientsPerCounter: FC<Props> = ({
           >
             Accept
           </Button>
+          {canOpenResultFromQueue(
+            selectedRecord,
+            CounterCode,
+            DepartmentName,
+          ) && (
+            <Tooltip title="Accept and open result">
+              <Button
+                type="primary"
+                icon={<BiNotepad />}
+                onClick={() => {
+                  if (Station === '1') {
+                    void handleCall(
+                      { ...selectedRecord, Status: 'A' },
+                      { openResultAfterAccept: true },
+                    );
+                  }
+
+                  setShowModal(false);
+                }}
+              >
+                Accept & Result
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </Modal>
       <Modal

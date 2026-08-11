@@ -22,11 +22,15 @@ import {
 import useAppStore from "../../store";
 import dayjs from "dayjs";
 import axios from "axios";
-import ChargesPerPatient from "../../components/ChargesPerPatient";
+import ChargesPerPatient, {
+  getResultBlockedMessage,
+  isResultBlockedStatus,
+} from "../../components/ChargesPerPatient";
 import FinalizeForm from "../../components/FinalizeForm";
 import { ExistingRadiologyResults } from "../../components/ExistingRadiologyResult";
 import { BiArrowBack } from "react-icons/bi";
 import { getCompletedResultsSearch } from "../../helpers/resultNavigation";
+import PatientInfoHeader from "../../components/PatientInfoHeader";
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + "/api/";
 const devApi = import.meta.env.VITE_DEV_API + "/api/";
@@ -69,6 +73,7 @@ const UltrasoundResult = () => {
   const [allowSave, setAllowSave] = useState(false);
   const [chargeDescription, setChargeDescription] = useState("");
   const [chargeId, setChargeId] = useState(0);
+  const [activeCharge, setActiveCharge] = useState<any>();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOnlineResultShown, setIsOnlineResultShown] = useState(false);
   const [Radiologist, setRadiologist] = useState([]);
@@ -88,6 +93,8 @@ const UltrasoundResult = () => {
   const [appointmentDetails, setAppointmentDetails] = useState<
     TAppointments | undefined
   >();
+  const isResultSubmitBlocked = isResultBlockedStatus(activeCharge?.Status);
+  const resultSubmitBlockedMessage = getResultBlockedMessage(activeCharge);
 
   const refreshOnlineResultStatus = async (nextResultId = ResultId) => {
     const id = Number(nextResultId ?? 0);
@@ -117,6 +124,15 @@ const UltrasoundResult = () => {
     }
   };
   const handleSubmitForm = async (values: any) => {
+    if (isResultSubmitBlocked) {
+      notification.warning({
+        message: resultSubmitBlockedMessage,
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
     try {
       setIsProcessing(true);
       const valuesToSave = {
@@ -286,6 +302,7 @@ const UltrasoundResult = () => {
     });
   };
   const handleNewResult = async (v: any) => {
+    setActiveCharge(v);
     if (isNullOrUndefinedOrBlank(v.ResultId)) {
       setAllowSave(true);
       setChargeId(v.Id);
@@ -486,23 +503,22 @@ const UltrasoundResult = () => {
   }, [Id, requestedChargeId]);
   return (
     <div className="cardBackGround">
-      <div className="grid lg:grid-cols-3">
-        <div>
-          <p>Name</p>
-          <p className="font-bold">{appointmentDetails?.Name}</p>
-        </div>
-        <div>
-          <p>Age</p>
-          <p className="font-bold">
-            {appointmentDetails?.AgeYears}Y{appointmentDetails?.AgeMonths}M
-            {appointmentDetails?.AgeDays}D
-          </p>
-        </div>
-        <div>
-          <p>Sex</p>
-          <p className="font-bold">{appointmentDetails?.Sex}</p>
-        </div>
-      </div>
+      <PatientInfoHeader
+        appointmentId={appointmentDetails?.Id}
+        patientId={appointmentDetails?.fk_PatientInformation_Id}
+        name={appointmentDetails?.Name}
+        age={[
+          appointmentDetails?.AgeYears ? `${appointmentDetails.AgeYears}Y` : "",
+          appointmentDetails?.AgeMonths
+            ? `${appointmentDetails.AgeMonths}M`
+            : "",
+          appointmentDetails?.AgeDays ? `${appointmentDetails.AgeDays}D` : "",
+        ]
+          .filter(Boolean)
+          .join("")}
+        sex={appointmentDetails?.Sex}
+        appointmentNo={appointmentDetails?.AppointmentNo}
+      />
       <Divider>Ultrasound Result</Divider>
       <div className="grid lg:grid-cols-12 gap-4">
         <div className="col-span-3">
@@ -534,6 +550,7 @@ const UltrasoundResult = () => {
                       Key={Key}
                       Counter={["ULT"]}
                       activeChargeId={chargeId}
+                      onActiveChargeChange={setActiveCharge}
                     />
                   ),
                 },
@@ -765,7 +782,12 @@ const UltrasoundResult = () => {
                     htmlType="submit"
                     // disabled={IsSaving || ReportStatus === "F"}
 
-                    disabled={!allowSave || isFinalized || isOnlineResultShown}
+                    disabled={
+                      !allowSave ||
+                      isFinalized ||
+                      isOnlineResultShown ||
+                      isResultSubmitBlocked
+                    }
                     loading={isProcessing || IsSaving}
                   >
                     Submit

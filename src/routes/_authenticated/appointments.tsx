@@ -26,7 +26,7 @@ import { SlBookOpen } from 'react-icons/sl';
 import { BiNote, BiTrash } from 'react-icons/bi';
 import { GiMedicines } from 'react-icons/gi';
 import RequestForMedicines from '../../components/RequestForMedicines';
-import { FaFileMedical, FaFileWaveform } from 'react-icons/fa6';
+import { FaFileWaveform } from 'react-icons/fa6';
 import Cookies from 'js-cookie';
 import { TbCurrencyPeso } from 'react-icons/tb';
 import ResultStatus from '../../components/ResultStatus';
@@ -203,6 +203,11 @@ const Appointments = () => {
     setShowRequest(true);
   };
   const actionBodyTemplate = (data: TAppointments) => {
+    const canDelete = data.CanDelete !== false;
+    const deleteTooltip = canDelete
+      ? 'Delete Appointment'
+      : data.DeleteBlockReason || 'Appointment already has movement.';
+
     return (
       <Space>
         <Tooltip title="Open">
@@ -226,7 +231,7 @@ const Appointments = () => {
             <BiNote size={24} />
           </Link>
         </Tooltip>
-        <Tooltip title="Patient Examination Record">
+        {/* <Tooltip title="Patient Examination Record">
           <Link
             to="/patientexamrecord/$Id"
             params={{
@@ -235,7 +240,7 @@ const Appointments = () => {
           >
             <FaFileMedical size={24} />
           </Link>
-        </Tooltip>
+        </Tooltip> */}
         {/* <Tooltip title="Consultation Results">
           <Link
             to="/consultation/$Id"
@@ -284,14 +289,15 @@ const Appointments = () => {
             <TbCurrencyPeso size={24} />
           </Link>
         </Tooltip>
-        <Tooltip title="Delete Appointment">
+        <Tooltip title={deleteTooltip}>
           <Popconfirm
             title="Delete Appointment?"
             cancelText="No"
             okText="Yes"
             onConfirm={() => handleDelete(data)}
+            disabled={!canDelete}
           >
-            <Button danger type="primary" icon={<BiTrash />} />
+            <Button danger type="primary" icon={<BiTrash />} disabled={!canDelete} />
           </Popconfirm>
         </Tooltip>
       </Space>

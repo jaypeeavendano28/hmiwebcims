@@ -4,6 +4,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Popconfirm,
   notification,
   Radio,
@@ -35,6 +36,7 @@ type LaboratoryTemplateSection = {
 type LaboratoryProcedureItem = {
   Id: number;
   Description: string;
+  IsPackage?: string;
 };
 
 const LaboratoryTemplateDetails = () => {
@@ -44,6 +46,7 @@ const LaboratoryTemplateDetails = () => {
   const [rowId, setRowId] = useState<number>(0);
   const [form] = useForm();
   const [sectionForm] = useForm();
+  const [procedureForm] = useForm();
   const [tests, setTests] = useState<any[]>([]);
   const [details, setDetails] = useState<any[]>([]);
   const [sections, setSections] = useState<LaboratoryTemplateSection[]>([]);
@@ -52,6 +55,8 @@ const LaboratoryTemplateDetails = () => {
   >([]);
   const [sectionRowId, setSectionRowId] = useState(0);
   const [isSavingSection, setIsSavingSection] = useState(false);
+  const [procedureDetail, setProcedureDetail] = useState<any>();
+  const [isSavingProcedureMap, setIsSavingProcedureMap] = useState(false);
 
   const handleSaveTest = async (values: any) => {
     if (
@@ -218,6 +223,58 @@ const LaboratoryTemplateDetails = () => {
       .map((itemId) => Number(itemId.trim()))
       .filter((itemId) => itemId > 0);
 
+  const getProcedureItemLabel = (item: LaboratoryProcedureItem) =>
+    `${item.Description}${
+      String(item.IsPackage ?? "").toUpperCase() === "Y" ? " (Package)" : ""
+    }`;
+
+  const handleOpenProcedureMap = (detail: any) => {
+    setProcedureDetail(detail);
+    procedureForm.setFieldsValue({
+      ItemIds: parseItemIds(detail.ProcedureItemIds),
+    });
+  };
+
+  const handleCloseProcedureMap = () => {
+    setProcedureDetail(undefined);
+    procedureForm.resetFields();
+  };
+
+  const handleSaveProcedureMap = async (values: any) => {
+    if (!procedureDetail?.Id) {
+      return;
+    }
+
+    try {
+      setIsSavingProcedureMap(true);
+      const res = await PostData("SaveLaboratoryTemplateDetailProcedures", {
+        fk_LaboratoryResultTemplateDetails_Id: procedureDetail.Id,
+        fk_LaboratoryResultTemplates_Id: Number(Id),
+        ItemIds: values.ItemIds ?? [],
+      });
+
+      if (res?.status !== 1) {
+        notification.error({
+          message:
+            res?.message ?? "Unable to save the exam/procedure setup.",
+          placement: "topRight",
+          duration: 3,
+        });
+        return;
+      }
+
+      notification.success({
+        message: "Exam/procedure setup successfully saved!",
+        placement: "topRight",
+        duration: 3,
+      });
+      handleCloseProcedureMap();
+      await handleGetLaboratoryTemplateDetails();
+    } finally {
+      setIsSavingProcedureMap(false);
+    }
+  };
+
   const resetSectionForm = () => {
     sectionForm.resetFields();
     setSectionRowId(0);
@@ -227,7 +284,6 @@ const LaboratoryTemplateDetails = () => {
     setSectionRowId(section.Id);
     sectionForm.setFieldsValue({
       Description: section.Description,
-      ItemIds: parseItemIds(section.ItemIds),
     });
   };
 
@@ -332,6 +388,19 @@ const LaboratoryTemplateDetails = () => {
       </>
     );
   };
+
+  const procedureBodyTemplate = (data: any) => (
+    <Space size={6} className="max-w-lg">
+      <span className="line-clamp-2 text-xs text-slate-700">
+        {data.Procedures || "All Procedures"}
+      </span>
+      <Tooltip title="Set exam/procedure">
+        <Button size="small" onClick={() => handleOpenProcedureMap(data)}>
+          Setup
+        </Button>
+      </Tooltip>
+    </Space>
+  );
   useEffect(() => {
     handleInitialized();
     handleGetLaboratoryTemplateDetails();
@@ -350,7 +419,8 @@ const LaboratoryTemplateDetails = () => {
         <div className="mb-2">
           <p className="m-0 font-semibold text-slate-800">Procedure Sections</p>
           <p className="m-0 text-xs text-slate-500">
-            Map charge items to the part of this template they should display.
+            Optional grouping labels for template rows. Use the Exam/Procedure
+            setup on each test/analyte row to control visibility.
           </p>
         </div>
         <Form
@@ -367,29 +437,6 @@ const LaboratoryTemplateDetails = () => {
               ]}
             >
               <Input maxLength={150} />
-            </Form.Item>
-            <Form.Item
-              className="md:col-span-2"
-              name="ItemIds"
-              label="Exam/Procedure"
-              rules={[
-                {
-                  required: true,
-                  message: "Please select at least one procedure.",
-                },
-              ]}
-            >
-              <Select
-                mode="multiple"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                maxTagCount="responsive"
-                options={procedureItems.map((item) => ({
-                  value: item.Id,
-                  label: item.Description,
-                }))}
-              />
             </Form.Item>
           </div>
           <Space>
@@ -414,7 +461,6 @@ const LaboratoryTemplateDetails = () => {
                 style={{ width: "6rem" }}
               />
               <Column field="Description" header="Description" />
-              <Column field="Procedures" header="Exam/Procedure" />
             </DataTable>
           </div>
         )}
@@ -450,11 +496,11 @@ const LaboratoryTemplateDetails = () => {
           </Form.Item>
           <Form.Item
             name="fk_LaboratoryResultTemplateSections_Id"
-            label="Procedure Section"
+            label="Group/Section"
           >
             <Select
               options={[
-                { value: 0, label: "All Procedures" },
+                { value: 0, label: "No group" },
                 ...sections.map((section) => ({
                   value: section.Id,
                   label: section.Description,
@@ -583,7 +629,12 @@ const LaboratoryTemplateDetails = () => {
             body={(data) => actionBodyTemplate(data)}
           ></Column>
           <Column field="Test" header="Test"></Column>
-          <Column field="SectionDescription" header="Procedure Section"></Column>
+          <Column
+            field="Procedures"
+            header="Exam/Procedure"
+            body={procedureBodyTemplate}
+          ></Column>
+          <Column field="SectionDescription" header="Group/Section"></Column>
           <Column field="IsHeader" header="Is Header?"></Column>
           <Column field="IsBold" header="Is Bold?"></Column>
           <Column field="IsUnderlined" header="Is Underlined?"></Column>
@@ -591,6 +642,49 @@ const LaboratoryTemplateDetails = () => {
           <Column field="Sequence" header="Sequence"></Column>
         </DataTable>
       </div>
+      <Modal
+        title={`Exam/Procedure Setup${
+          procedureDetail?.Test ? ` - ${procedureDetail.Test}` : ""
+        }`}
+        open={Boolean(procedureDetail)}
+        onCancel={handleCloseProcedureMap}
+        footer={null}
+        destroyOnClose
+      >
+        <Form
+          form={procedureForm}
+          layout="vertical"
+          onFinish={handleSaveProcedureMap}
+        >
+          <Form.Item
+            name="ItemIds"
+            label="Show this analyte/detail for"
+            extra="Leave blank to show this row for all exam/procedures."
+          >
+            <Select
+              mode="multiple"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              maxTagCount="responsive"
+              options={procedureItems.map((item) => ({
+                value: item.Id,
+                label: getProcedureItemLabel(item),
+              }))}
+            />
+          </Form.Item>
+          <Space>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isSavingProcedureMap}
+            >
+              Save
+            </Button>
+            <Button onClick={handleCloseProcedureMap}>Cancel</Button>
+          </Space>
+        </Form>
+      </Modal>
     </div>
   );
 };

@@ -1,19 +1,33 @@
-import { useState, useEffect } from "react";
-import { Button, Space, Modal, Form, Input, Tooltip, notification, Select, Popconfirm } from "antd";
-import { BiEdit, BiTrash } from "react-icons/bi";
-import { ExclamationCircleOutlined } from "@ant-design/icons";
-import { DataTable } from "primereact/datatable";
-import { FilterMatchMode } from "primereact/api";
+import { useState, useEffect } from 'react';
+import {
+  Button,
+  Space,
+  Modal,
+  Form,
+  Input,
+  Tooltip,
+  notification,
+  Select,
+  Popconfirm,
+} from 'antd';
+import { BiEdit, BiTrash } from 'react-icons/bi';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { DataTable } from 'primereact/datatable';
+import { FilterMatchMode } from 'primereact/api';
 const { confirm } = Modal;
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import useAppStore from "../../store";
-import { PostData } from "../../helpers";
-import { Column } from "primereact/column";
-import Loading from "../../components/loading";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { TChagesPerLabTemplate, TLaboratoryResultTemplates, TLabTypes } from "../../types";
-import { AxiosError } from "axios";
-import dayjs from "dayjs";
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import useAppStore from '../../store';
+import { PostData } from '../../helpers';
+import { Column } from 'primereact/column';
+import Loading from '../../components/loading';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  TChagesPerLabTemplate,
+  TLaboratoryResultTemplates,
+  TLabTypes,
+} from '../../types';
+import { AxiosError } from 'axios';
+import dayjs from 'dayjs';
 export const formItemLayout = {
   labelCol: {
     xs: { span: 24 },
@@ -24,7 +38,7 @@ export const formItemLayout = {
     sm: { span: 18 },
   },
 };
-export const Route = createFileRoute("/_authenticated/laboratorytemplates")({
+export const Route = createFileRoute('/_authenticated/laboratorytemplates')({
   component: () => <LaboratoryTemplates />,
 });
 
@@ -38,7 +52,9 @@ const LaboratoryTemplates = () => {
   const [form] = Form.useForm();
   const [form2] = Form.useForm();
   const [Id, setId] = useState(0);
-  const [selectedData, setSelectedData] = useState<TLaboratoryResultTemplates | undefined>();
+  const [selectedData, setSelectedData] = useState<
+    TLaboratoryResultTemplates | undefined
+  >();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [filters] = useState({
@@ -47,38 +63,36 @@ const LaboratoryTemplates = () => {
     ReportName: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
 
-   const labCharges = useQuery({
-     queryKey: ["labCharges"],
-     queryFn: async () => {
-       const res = await PostData("GetRecords", {
-         sp: "udp_GetLabTypes",
-         parameters: {},
-       });
-       if (res) {
-         
-         return res.parameters.lst;
-       }
-     },
-     refetchOnWindowFocus: false,
-     staleTime: 0,
-   });
-   const labTypesPerTemplate = useQuery({
-     queryKey: ["labTypesPerTemplate",selectedData],
-     queryFn: async () => {
-       const res = await PostData("GetRecords", {
-         sp: "udp_GetLabTypePerLabTemplate",
-         parameters: {
-          Id: selectedData?.Id??0
-         },
-       });
-       if (res) {
-         return res.parameters.lst;
-       }
-     },
-     refetchOnWindowFocus: false,
-     staleTime: 0,
-   });
-   
+  const labCharges = useQuery({
+    queryKey: ['labCharges'],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetLabTypes',
+        parameters: {},
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+  const labTypesPerTemplate = useQuery({
+    queryKey: ['labTypesPerTemplate', selectedData],
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetLabTypePerLabTemplate',
+        parameters: {
+          Id: selectedData?.Id ?? 0,
+        },
+      });
+      if (res) {
+        return res.parameters.lst;
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
 
   const handleNew = async () => {
     setId(0);
@@ -96,16 +110,16 @@ const LaboratoryTemplates = () => {
   };
   const handleDelete = async (rec: any) => {
     confirm({
-      title: "Do you want to delete this template?",
-      okText: "Yes",
-      cancelText: "No",
+      title: 'Do you want to delete this template?',
+      okText: 'Yes',
+      cancelText: 'No',
       icon: <ExclamationCircleOutlined />,
 
       onOk() {
         handleConfirmDelete(rec);
       },
       onCancel() {
-        console.log("Cancel");
+        console.log('Cancel');
       },
     });
   };
@@ -117,12 +131,12 @@ const LaboratoryTemplates = () => {
       Deleted: true,
     };
 
-    const res = await PostData("SaveLaboratoryTemplate", valuesToSave);
+    const res = await PostData('SaveLaboratoryTemplate', valuesToSave);
     if (res) {
       if (res.status === 1) {
         notification.success({
-          message: "Successfully saved!",
-          placement: "topRight",
+          message: 'Successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
         setShowModal(false);
@@ -130,7 +144,7 @@ const LaboratoryTemplates = () => {
       } else {
         notification.error({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -142,7 +156,7 @@ const LaboratoryTemplates = () => {
     //   state: { details: rec },
     // });
     router.navigate({
-      to: "/laboratorytemplatedetails/$Id",
+      to: '/laboratorytemplatedetails/$Id',
       params: {
         Id: rec.Id,
       },
@@ -156,15 +170,16 @@ const LaboratoryTemplates = () => {
       Id: Id,
       username: store.username,
       BranchCode: store.branchCode,
+      Deleted: false,
     };
 
-    const res = await PostData("SaveLaboratoryTemplate", valuesToSave);
+    const res = await PostData('SaveLaboratoryTemplate', valuesToSave);
     if (res) {
       setIsSubmitting(false);
       if (res.status === 1) {
         notification.success({
-          message: "Successfully saved!",
-          placement: "topRight",
+          message: 'Successfully saved!',
+          placement: 'topRight',
           duration: 3,
         });
         setShowModal(false);
@@ -172,7 +187,7 @@ const LaboratoryTemplates = () => {
       } else {
         notification.success({
           message: res.message,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
@@ -181,8 +196,8 @@ const LaboratoryTemplates = () => {
   const handleInitialize = async () => {
     setIsLoading(true);
 
-    const res = await PostData("GetRecords", {
-      sp: "udp_GetLaboratoryResultTemplates",
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetLaboratoryResultTemplates',
       parameters: {
         BranchCode: store.branchCode,
       },
@@ -193,13 +208,13 @@ const LaboratoryTemplates = () => {
       setData(res.parameters.lst);
     }
   };
-const handleLabCharges = (data:any)=>{
-  form2.resetFields();
+  const handleLabCharges = (data: any) => {
+    form2.resetFields();
 
-  setSelectedData(data);
-  setShowLabChargesModal(true);
-  // q.invalidateQueries({ queryKey: ["labTypesPerTemplate"] });
-}
+    setSelectedData(data);
+    setShowLabChargesModal(true);
+    // q.invalidateQueries({ queryKey: ["labTypesPerTemplate"] });
+  };
   const actionBodyTemplate = (data: any) => {
     return (
       <Space>
@@ -234,86 +249,91 @@ const handleLabCharges = (data:any)=>{
       </Space>
     );
   };
-   const actionBodyTemplate2 = (data: any) => {
-     return (
-       <Space>
-         <Tooltip title="Delete">
-           <Popconfirm title="Are you sure to delete this record?" onConfirm={() => handleDelete2(data)} okText="Yes" cancelText="No">
-             <BiTrash
-               size={16}
-               className="cursor-pointer  text-red-500 hover:text-red-800"
-          
-             />
-           </Popconfirm>
-         </Tooltip>
-       </Space>
-     );
-   };
-   const handleDelete2 = async (data: any) => {
-      try {
-        setIsSubmitting(true);
+  const actionBodyTemplate2 = (data: any) => {
+    return (
+      <Space>
+        <Tooltip title="Delete">
+          <Popconfirm
+            title="Are you sure to delete this record?"
+            onConfirm={() => handleDelete2(data)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <BiTrash
+              size={16}
+              className="cursor-pointer  text-red-500 hover:text-red-800"
+            />
+          </Popconfirm>
+        </Tooltip>
+      </Space>
+    );
+  };
+  const handleDelete2 = async (data: any) => {
+    try {
+      setIsSubmitting(true);
 
-        const res = await PostData("DeleteChargesPerLabTemplate", {
-          Id: data.Id,
-        });
-        if (res) {
-          setIsSubmitting(false);
-          if (res.status === 1) {
-            notification.success({
-              message: "Successfully deleted!",
-              placement: "topRight",
-              duration: 3,
-            });
-            q.invalidateQueries({
-              queryKey: ["labTypesPerTemplate"],
-            });
-          
-          }
-        }
-      } catch (error: AxiosError | any) {
+      const res = await PostData('DeleteChargesPerLabTemplate', {
+        Id: data.Id,
+      });
+      if (res) {
         setIsSubmitting(false);
-        if (error.status === 400) {
-          notification.error({
-            message: error.response.data,
-            placement: "topRight",
+        if (res.status === 1) {
+          notification.success({
+            message: 'Successfully deleted!',
+            placement: 'topRight',
             duration: 3,
+          });
+          q.invalidateQueries({
+            queryKey: ['labTypesPerTemplate'],
           });
         }
       }
-   }
-  const handleSubmitChargePerLabTemplate = async (values: TChagesPerLabTemplate) => {
-    try {
-        setIsSubmitting(true);
-
-        const res = await PostData("SaveChargesPerLabTemplate", {...values, 
-          fk_LaboratoryResultTemplates_Id:selectedData?.Id} );
-        if (res) {
-         
-          setIsSubmitting(false);
-          if (res.status === 1) {
-            notification.success({
-              message: "Successfully saved!",
-              placement: "topRight",
-              duration: 3,
-            });
-            q.invalidateQueries({ queryKey: ["labTypesPerTemplate",selectedData] });
-            form2.resetFields();
-          
-         
-          } 
-        }
-    } catch (error:AxiosError | any ) {
+    } catch (error: AxiosError | any) {
       setIsSubmitting(false);
-      if (error.status===400){
+      if (error.status === 400) {
         notification.error({
           message: error.response.data,
-          placement: "topRight",
+          placement: 'topRight',
           duration: 3,
         });
       }
     }
-  
-  }
+  };
+  const handleSubmitChargePerLabTemplate = async (
+    values: TChagesPerLabTemplate,
+  ) => {
+    try {
+      setIsSubmitting(true);
+
+      const res = await PostData('SaveChargesPerLabTemplate', {
+        ...values,
+        fk_LaboratoryResultTemplates_Id: selectedData?.Id,
+      });
+      if (res) {
+        setIsSubmitting(false);
+        if (res.status === 1) {
+          notification.success({
+            message: 'Successfully saved!',
+            placement: 'topRight',
+            duration: 3,
+          });
+          q.invalidateQueries({
+            queryKey: ['labTypesPerTemplate', selectedData],
+          });
+          form2.resetFields();
+        }
+      }
+    } catch (error: AxiosError | any) {
+      setIsSubmitting(false);
+      if (error.status === 400) {
+        notification.error({
+          message: error.response.data,
+          placement: 'topRight',
+          duration: 3,
+        });
+      }
+    }
+  };
   useEffect(() => {
     handleInitialize();
   }, []);
@@ -333,7 +353,7 @@ const handleLabCharges = (data:any)=>{
           <div className="mt-2">
             <DataTable
               value={data}
-              tableStyle={{ minWidth: "50rem" }}
+              tableStyle={{ minWidth: '50rem' }}
               filters={filters}
               filterDisplay="row"
             >
@@ -377,13 +397,13 @@ const handleLabCharges = (data:any)=>{
             rules={[
               {
                 required: true,
-                message: "Examination Name is required!",
+                message: 'Examination Name is required!',
               },
               { max: 100 },
             ]}
             normalize={(v) => v.toUpperCase()}
           >
-            <Input style={{ width: "100%" }} />
+            <Input style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
@@ -392,12 +412,12 @@ const handleLabCharges = (data:any)=>{
             rules={[
               {
                 required: true,
-                message: "Report Display is required!",
+                message: 'Report Display is required!',
               },
               { max: 100 },
             ]}
           >
-            <Input style={{ width: "100%" }} />
+            <Input style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
@@ -406,12 +426,12 @@ const handleLabCharges = (data:any)=>{
             rules={[
               {
                 required: true,
-                message: "Report name is required!",
+                message: 'Report name is required!',
               },
               { max: 100 },
             ]}
           >
-            <Input style={{ width: "100%" }} />
+            <Input style={{ width: '100%' }} />
           </Form.Item>
 
           <div className="flex justify-end">
@@ -461,7 +481,6 @@ const handleLabCharges = (data:any)=>{
         </Form>
         <DataTable
           value={labTypesPerTemplate.data}
-      
           filters={filters}
           filterDisplay="row"
         >
@@ -470,16 +489,14 @@ const handleLabCharges = (data:any)=>{
             header="Action"
             body={(data) => actionBodyTemplate2(data)}
           ></Column>
-          <Column field="LabType" header="Laboratory Type" ></Column>
-          <Column field="AddedBy" header="Added By" ></Column>
-          <Column field="DateAdded" header="Date Added"
-            body={(data: any) =>
-                          dayjs(data.Date).format("MM/DD/YYYY")
-                        }
-          
+          <Column field="LabType" header="Laboratory Type"></Column>
+          <Column field="AddedBy" header="Added By"></Column>
+          <Column
+            field="DateAdded"
+            header="Date Added"
+            body={(data: any) => dayjs(data.Date).format('MM/DD/YYYY')}
           ></Column>
         </DataTable>
-      
       </Modal>
     </div>
   );

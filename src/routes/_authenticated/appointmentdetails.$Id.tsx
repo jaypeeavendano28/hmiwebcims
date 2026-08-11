@@ -1142,10 +1142,61 @@ export const AppointmentDetails = ({
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   };
+  const isCancelledCharge = (data: TCharges) =>
+    String(data.Status ?? '')
+      .trim()
+      .toUpperCase() === 'CANCELLED';
+
+  const hasChargeStatus = (data?: TCharges) => {
+    const charge = data as
+      | (TCharges & { ChargeStatus?: string; DateCompleted?: string })
+      | undefined;
+
+    return (
+      String(charge?.Status ?? '').trim() !== '' ||
+      String(charge?.ChargeStatus ?? '').trim() !== '' ||
+      String(charge?.StatusDate ?? '').trim() !== '' ||
+      String(charge?.DateCompleted ?? '').trim() !== ''
+    );
+  };
+
+  const isPackageCharge = (data?: TCharges) =>
+    String(data?.IsPackage ?? '')
+      .trim()
+      .toUpperCase() === 'Y';
+
+  const getChargeItemId = (data?: TCharges) =>
+    Number((data as (TCharges & { ItemId?: number }) | undefined)?.fk_Items_Id ??
+      (data as (TCharges & { ItemId?: number }) | undefined)?.ItemId ??
+      0);
+
+  const packageHasChildChargeStatus = (data: TCharges) => {
+    const packageItemId = getChargeItemId(data);
+    const packageChargeId = Number(data.Id ?? 0);
+
+    if (!isPackageCharge(data) || packageItemId <= 0) {
+      return false;
+    }
+
+    return Boolean(
+      charges?.some(
+        (charge) =>
+          Number(charge.Id ?? 0) !== packageChargeId &&
+          [packageItemId, packageChargeId].includes(
+            Number(charge.PackageId ?? 0),
+          ) &&
+          hasChargeStatus(charge),
+      ),
+    );
+  };
+
   const actionBodyTemplate = (data: TCharges) => {
+    const canModifyCharge = data.Editable || isCancelledCharge(data);
+    const isPackageDeleteDisabled = packageHasChildChargeStatus(data);
+
     return (
       <Space size={4}>
-        {data.Editable && (
+        {canModifyCharge && (
           <Tooltip title="Edit">
             <FaRegEdit
               onClick={(event) => {
@@ -1159,7 +1210,7 @@ export const AppointmentDetails = ({
             />
           </Tooltip>
         )}
-        {data.Editable && (
+        {canModifyCharge && !isPackageDeleteDisabled && (
           <Tooltip title="Delete">
             <Popconfirm
               title="Delete this record?"
@@ -1190,6 +1241,13 @@ export const AppointmentDetails = ({
                 className="cursor-pointer"
               />
             </Popconfirm>
+          </Tooltip>
+        )}
+        {canModifyCharge && isPackageDeleteDisabled && (
+          <Tooltip title="Package cannot be deleted because one or more package items already have a status.">
+            <span className="inline-flex cursor-not-allowed text-slate-300">
+              <MdOutlineDelete size="20" />
+            </span>
           </Tooltip>
         )}
 
@@ -1238,6 +1296,16 @@ export const AppointmentDetails = ({
     );
   };
   const handleDelete = async (data: TCharges) => {
+    if (packageHasChildChargeStatus(data)) {
+      notification.warning({
+        message:
+          'Package cannot be deleted because one or more package items already have a status.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
     const charge = normalizeChargeItemId(data);
     const isPackage = charge.IsPackage ? charge.IsPackage : 'N';
     const res = await PostData(

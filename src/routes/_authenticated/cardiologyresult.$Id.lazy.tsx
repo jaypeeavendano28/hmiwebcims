@@ -26,12 +26,16 @@ import type {
   TAppointments,
   TDoctors,
 } from '../../types';
-import ChargesPerPatient from '../../components/ChargesPerPatient';
+import ChargesPerPatient, {
+  getResultBlockedMessage,
+  isResultBlockedStatus,
+} from '../../components/ChargesPerPatient';
 import { ExistingCadioResults } from '../../components/ExistingCardioResult';
 import FinalizeForm from '../../components/FinalizeForm';
 import { BiArrowBack } from 'react-icons/bi';
 import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
 import AddReqPhysician from '../../components/add-req-physician';
+import PatientInfoHeader from '../../components/PatientInfoHeader';
 
 export const Route = createLazyFileRoute(
   '/_authenticated/cardiologyresult/$Id',
@@ -507,7 +511,8 @@ const ExamDetailsFields = ({
         className="mb-1 block text-sm font-semibold text-slate-700"
         htmlFor="requesting-physician"
       >
-        Requesting Physician <span className="text-red-600">*</span>
+        {/* Requesting Physician <span className="text-red-600">*</span> */}
+        Requesting Physician
       </label>
       <div className="flex">
         <Select
@@ -909,6 +914,7 @@ const CardiologyResult = () => {
     Number.isFinite(searchChargeId) && searchChargeId > 0 ? searchChargeId : 0,
   );
   const [chargeDescription, setChargeDescription] = useState('');
+  const [activeCharge, setActiveCharge] = useState<any>();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingVitalSigns, setIsSavingVitalSigns] = useState(false);
@@ -1153,6 +1159,8 @@ const CardiologyResult = () => {
   ]
     .filter(Boolean)
     .join(' ');
+  const isResultSubmitBlocked = isResultBlockedStatus(activeCharge?.Status);
+  const resultSubmitBlockedMessage = getResultBlockedMessage(activeCharge);
 
   const getNumberOrUndefined = (value: unknown) => {
     const numericValue = Number(value);
@@ -1249,6 +1257,15 @@ const CardiologyResult = () => {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (isResultSubmitBlocked) {
+      notification.warning({
+        message: resultSubmitBlockedMessage,
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
     if (!exam || (chargeId === 0 && resultId === 0)) {
       notification.info({
         message: 'Please click the charges result first.',
@@ -1267,14 +1284,14 @@ const CardiologyResult = () => {
       return;
     }
 
-    if (getPositiveNumber(requestingPhysician) === 0) {
-      notification.error({
-        message: 'Requesting physician is required.',
-        placement: 'topRight',
-        duration: 3,
-      });
-      return;
-    }
+    // if (getPositiveNumber(requestingPhysician) === 0) {
+    //   notification.error({
+    //     message: 'Requesting physician is required.',
+    //     placement: 'topRight',
+    //     duration: 3,
+    //   });
+    //   return;
+    // }
 
     if (getPositiveNumber(cardiologist) === 0) {
       notification.error({
@@ -1716,6 +1733,8 @@ const CardiologyResult = () => {
   };
 
   const handleNewResult = (data: any) => {
+    setActiveCharge(data);
+
     const selectedExam = getExamByItemId(data.fk_Items_Id ?? data.ItemId);
     const appointmentId = getPositiveNumber(data.fk_Appointments_Id);
     const selectedChargeId = getPositiveNumber(data.Id);
@@ -1956,32 +1975,14 @@ const CardiologyResult = () => {
         </Space>
       </div> */}
 
-      <div className="border-b border-slate-200 pb-3">
-        <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
-          <div>
-            <p className="text-slate-500">Name</p>
-            <p className="font-semibold text-slate-900">
-              {appointmentDetails.data?.Name}
-            </p>
-          </div>
-          <div>
-            <p className="text-slate-500">Age</p>
-            <p className="font-semibold text-slate-900">{age}</p>
-          </div>
-          <div>
-            <p className="text-slate-500">Sex</p>
-            <p className="font-semibold text-slate-900">
-              {appointmentDetails.data?.Sex}
-            </p>
-          </div>
-          <div>
-            <p className="text-slate-500">Appointment No.</p>
-            <p className="font-semibold text-slate-900">
-              {appointmentDetails.data?.AppointmentNo}
-            </p>
-          </div>
-        </div>
-      </div>
+      <PatientInfoHeader
+        appointmentId={appointmentDetails.data?.Id}
+        patientId={appointmentDetails.data?.fk_PatientInformation_Id}
+        name={appointmentDetails.data?.Name}
+        age={age}
+        sex={appointmentDetails.data?.Sex}
+        appointmentNo={appointmentDetails.data?.AppointmentNo}
+      />
 
       <div className="my-3 print:hidden">
         <div className="mb-2 flex items-center gap-3">
@@ -2134,6 +2135,7 @@ const CardiologyResult = () => {
                       Key={chargesKey}
                       Counter={['CARDIO']}
                       activeChargeId={chargeId}
+                      onActiveChargeChange={setActiveCharge}
                     />
                   ),
                 },
@@ -2230,7 +2232,8 @@ const CardiologyResult = () => {
                       isFinalized ||
                       isOnlineResultShown ||
                       isFinalizing ||
-                      isDeleting
+                      isDeleting ||
+                      isResultSubmitBlocked
                     }
                   >
                     Submit

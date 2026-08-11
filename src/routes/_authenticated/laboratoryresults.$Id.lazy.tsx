@@ -32,13 +32,17 @@ import { round } from 'lodash';
 import LabResult from '../../components/LabResult';
 import dayjs from 'dayjs';
 import axios from 'axios';
-import ChargesPerPatient from '../../components/ChargesPerPatient';
+import ChargesPerPatient, {
+  getResultBlockedMessage,
+  isResultBlockedStatus,
+} from '../../components/ChargesPerPatient';
 import ExistingLabResults from '../../components/ExistingLabResults';
 import FinalizeForm from '../../components/FinalizeForm';
 import { BiArrowBack } from 'react-icons/bi';
 import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
 import { useQuery } from '@tanstack/react-query';
 import AddReqPhysician from '../../components/add-req-physician';
+import PatientInfoHeader from '../../components/PatientInfoHeader';
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + '/api/';
 const devApi = import.meta.env.VITE_DEV_API + '/api/';
@@ -163,10 +167,13 @@ const LaboratoryResults = () => {
   const [chargeId, setChargeId] = useState(
     getPositiveNumber(requestedChargeId),
   );
+  const [activeCharge, setActiveCharge] = useState<any>();
   const [chargeDescription, setChargeDescription] = useState('');
   const age = appointmentDetails
     ? `${appointmentDetails.AgeYears}Y${appointmentDetails.AgeMonths}M${appointmentDetails.AgeDays}D`
     : '';
+  const isResultSubmitBlocked = isResultBlockedStatus(activeCharge?.Status);
+  const resultSubmitBlockedMessage = getResultBlockedMessage(activeCharge);
 
   const getRowAnalyteId = (row: any) =>
     getPositiveNumber(row?.TestId ?? row?.fk_Analytes_Id ?? row?.AnalyteId);
@@ -542,6 +549,15 @@ const LaboratoryResults = () => {
     setRowsCol1(data);
   };
   const handleSubmitForm = async (values: any) => {
+    if (isResultSubmitBlocked) {
+      notification.warning({
+        message: resultSubmitBlockedMessage,
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
     console.log(rowsCol1);
     try {
       const valuesToSave = {
@@ -1004,6 +1020,7 @@ const LaboratoryResults = () => {
 
     setSelectedTemplateId(nextTemplateId > 0 ? nextTemplateId : undefined);
     setChargeId(selectedChargeId);
+    setActiveCharge(data);
     setChargeDescription(nextChargeDescription);
     setResultId(existingResultId);
     if (existingResultId > 0) {
@@ -1136,30 +1153,14 @@ const LaboratoryResults = () => {
   ]);
   return (
     <div className="cardBackGround">
-      <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
-        <div>
-          <p className="text-slate-500">Name</p>
-          <p className="font-semibold text-slate-900">
-            {appointmentDetails?.Name}
-          </p>
-        </div>
-        <div>
-          <p className="text-slate-500">Age</p>
-          <p className="font-semibold text-slate-900">{age}</p>
-        </div>
-        <div>
-          <p className="text-slate-500">Sex</p>
-          <p className="font-semibold text-slate-900">
-            {appointmentDetails?.Sex}
-          </p>
-        </div>
-        <div>
-          <p className="text-slate-500">Appointment No.</p>
-          <p className="font-semibold text-slate-900">
-            {appointmentDetails?.AppointmentNo}
-          </p>
-        </div>
-      </div>
+      <PatientInfoHeader
+        appointmentId={appointmentDetails?.Id}
+        patientId={appointmentDetails?.fk_PatientInformation_Id}
+        name={appointmentDetails?.Name}
+        age={age}
+        sex={appointmentDetails?.Sex}
+        appointmentNo={appointmentDetails?.AppointmentNo}
+      />
 
       <Divider className="print:hidden">
         Laboratory Department Result
@@ -1200,6 +1201,7 @@ const LaboratoryResults = () => {
                       handleNewResult={handleNewResult}
                       Key={key}
                       activeChargeId={chargeId}
+                      onActiveChargeChange={setActiveCharge}
                     />
                   ),
                 },
@@ -1483,7 +1485,8 @@ const LaboratoryResults = () => {
                         disabled={
                           rowsCol1.length <= 0 ||
                           isFinalized ||
-                          isOnlineResultShown
+                          isOnlineResultShown ||
+                          isResultSubmitBlocked
                         }
                         loading={isProcessing || IsSaving}
                       >

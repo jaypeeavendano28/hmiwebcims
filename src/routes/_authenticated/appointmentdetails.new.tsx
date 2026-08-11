@@ -170,19 +170,6 @@ function NewAppointment() {
     }
   };
 
-  const openExistingAppointment = () => {
-    if (!lastAppointment?.Id) return;
-
-    sessionStorage.setItem("Id", lastAppointment.Id.toString());
-    setConfirmationModal(false);
-    router.navigate({
-      to: "/appointmentdetails/$Id",
-      params: {
-        Id: lastAppointment.Id.toString(),
-      },
-    });
-  };
-
   const clearPatient = () => {
     setSearchQuery("");
     setSearchOpen(false);
@@ -471,39 +458,26 @@ function NewAppointment() {
         }}
         width={700}
         centered
-        footer={
-          isLastAppointmentToday
-            ? [
-                <Button
-                  key="open"
-                  type="primary"
-                  disabled={!lastAppointment?.Id}
-                  onClick={openExistingAppointment}
-                >
-                  Open Existing Appointment
-                </Button>,
-              ]
-            : [
-                <Button
-                  key="new"
-                  onClick={() => {
-                    if (pendingPatient) {
-                      usePatientForNewAppointment(pendingPatient);
-                    }
-                  }}
-                >
-                  Create New Appointment
-                </Button>,
-                <Button
-                  key="continue"
-                  type="primary"
-                  disabled={!canContinuePreviousAppointment}
-                  onClick={continuePreviousAppointment}
-                >
-                  Continue Previous Appointment
-                </Button>,
-              ]
-        }
+        footer={[
+          <Button
+            key="new"
+            onClick={() => {
+              if (pendingPatient) {
+                usePatientForNewAppointment(pendingPatient);
+              }
+            }}
+          >
+            Create New Appointment
+          </Button>,
+          <Button
+            key="continue"
+            type="primary"
+            disabled={!canContinuePreviousAppointment}
+            onClick={continuePreviousAppointment}
+          >
+            Continue Previous Appointment
+          </Button>,
+        ]}
       >
         {lastAppointment && (
           <div className="mb-3 rounded-md border bg-gray-50 p-3">
@@ -521,8 +495,8 @@ function NewAppointment() {
 
         {isLastAppointmentToday ? (
           <p className="mb-0">
-            Appointment already exists for today. Open the existing appointment
-            to continue.
+            This patient already has an appointment today. You can still create
+            a new appointment if the appointment type is different.
           </p>
         ) : followUpExam.length > 0 ? (
           <>

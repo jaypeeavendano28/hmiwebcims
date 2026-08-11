@@ -299,6 +299,9 @@ export type TAppointments = {
   MemberNo?: string;
   ContactNos?: string;
   DateOfBirthStr?: string;
+  Street?: string;
+  City?: string;
+  Barangay?: string;
   Address?: string;
   CurrentQStatus?: string;
   CounterCode?: string;
@@ -306,6 +309,8 @@ export type TAppointments = {
   Sex?: string;
   WithMer?: string;
   Status?: string;
+  CanDelete?: boolean;
+  DeleteBlockReason?: string;
   ElapseTime?: number;
   Diagnosis?: string;
   DiscountType?: string;
@@ -497,6 +502,7 @@ export type TCharges = {
   PhicAmount?: number;
   Editable?: boolean;
   IsPackage?: string;
+  PackageId?: number;
   HasActiveQueue?: boolean;
 };
 
@@ -684,6 +690,9 @@ export type TMer = {
   UpdatedBy?: string;
   DateUpdated?: string;
   Occupation?: string;
+  Street?: string;
+  City?: string;
+  Barangay?: string;
   ClassALabel?: string;
   ClassBLabel?: string;
   ClassCLabel?: string;
@@ -1509,6 +1518,7 @@ export type TMedicalExamSeaBased = {
 export type TPatientExaminationRecord = {
   Id: number;
   fk_Appointments_Id?: number;
+  fk_Charges_Id?: number;
   fk_Branches_Code?: string;
   Therapist?: string;
   Msu?: string;
@@ -1524,6 +1534,7 @@ export type TPatientExaminationRecord = {
   UpdatedDate?: string;
   DeletedDate?: string;
   DeletedBy?: string;
+  ChargeDescription?: string;
 };
 
 export type TSavePurchaseOrder = {

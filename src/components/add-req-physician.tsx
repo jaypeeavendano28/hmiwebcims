@@ -41,6 +41,12 @@ export default function AddReqPhysician() {
       q.invalidateQueries({
         queryKey: ['requesting-physicians'],
       });
+      q.invalidateQueries({
+        queryKey: ['consultation-specialists'],
+      });
+      q.invalidateQueries({
+        queryKey: ['doctors'],
+      });
     } catch (error: AxiosError | any) {
       notification.error({
         message: error.response?.data,
