@@ -855,6 +855,9 @@ export type TLaboratoryResultMain = {
   fk_tblChargesMain_ChargeId?: number;
   LabNo?: string;
   DateCollected?: Date;
+  ChargeDateReceived?: Date;
+  ChargeDateCollected?: Date;
+  ChargeRemarks?: string;
 };
 
 export type TLaboratoryResultDetails = {

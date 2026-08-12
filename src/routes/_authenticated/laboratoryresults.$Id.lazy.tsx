@@ -333,6 +333,7 @@ const LaboratoryResults = () => {
       sp: 'udp_GetLabResultMain',
       parameters: {
         Id: resultId,
+        ChargeId: selectedChargeId || chargeId || requestedChargeId || null,
       },
     });
     const x: TLaboratoryResultMain | undefined =
@@ -353,17 +354,19 @@ const LaboratoryResults = () => {
     setChargeId(activeChargeId);
     form.setFieldsValue({
       ReportDate: dayjs(x.ReportDate),
-      DateReceived: dayjs(x.DateReceived),
-      DateCollected: isNullOrUndefinedOrBlank(x.DateCollected)
+      DateReceived: dayjs(x.ChargeDateReceived ?? x.DateReceived),
+      DateCollected: isNullOrUndefinedOrBlank(
+        x.ChargeDateCollected ?? x.DateCollected,
+      )
         ? undefined
-        : dayjs(x.DateCollected),
+        : dayjs(x.ChargeDateCollected ?? x.DateCollected),
       Pathologist: x.Pathologist,
       Medtech: x.Medtech,
       Qa: x.Qa,
       ResultNo: x.ResultNo,
       RequestingPhysician: x.RequestingPhysician,
       Specimen: x.Specimen,
-      Remarks: x.Remarks,
+      Remarks: x.ChargeRemarks ?? x.Remarks,
       LabNo: x.LabNo,
       FinalizedBy: x.FinalizedBy,
       DateFinalized: x.DateFinalized,
@@ -464,7 +467,12 @@ const LaboratoryResults = () => {
     form.resetFields();
     form.setFieldsValue({
       ReportDate: dayjs(),
-      DateReceived: dayjs(),
+      DateReceived: sharedHeader?.DateReceived
+        ? dayjs(sharedHeader.DateReceived)
+        : dayjs(),
+      DateCollected: sharedHeader?.DateCollected
+        ? dayjs(sharedHeader.DateCollected)
+        : dayjs(),
       TemplateId: nextTemplateId,
       LabNo: sharedHeader?.LabNo || undefined,
       RequestingPhysician:
@@ -565,7 +573,8 @@ const LaboratoryResults = () => {
           ...values,
           BranchCode: store.branchCode,
           ReportDate: dayjs(new Date()).format('YYYY-MM-DD'),
-          DateReceived: dayjs(values.DateReceived).format('YYYY-MM-DD'),
+          DateReceived: dayjs(values.DateReceived).format(),
+          DateCollected: dayjs(values.DateCollected).format(),
           fk_tblPatientInformation_PatientId:
             appointmentDetails?.fk_PatientInformation_Id,
           Id: ResultId,
@@ -799,7 +808,13 @@ const LaboratoryResults = () => {
     }
   };
   const fetchResultPdf = async () => {
-    const url = apiUrl + 'labresult/' + ResultId + '/clinicalchem.rdl/N';
+    const selectedChargeId = chargeId || getPositiveNumber(requestedChargeId);
+    const url =
+      apiUrl +
+      'labresult/' +
+      ResultId +
+      '/clinicalchem.rdl/N' +
+      (selectedChargeId > 0 ? `?ChargeId=${selectedChargeId}` : '');
     axios.defaults.headers.common['Authorization'] =
       'Bearer ' + store.tokenIdWebCims;
 

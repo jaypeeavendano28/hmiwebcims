@@ -517,7 +517,16 @@ const PatientsPerCounter: FC<Props> = ({
       key: 'A',
       label: 'Attending',
       onClick: () => {
-        void handleCall({ ...selectedRecord, Status: 'A' });
+        void handleCall(
+          { ...selectedRecord, Status: 'A' },
+          {
+            openResultAfterAccept: canOpenResultFromQueue(
+              selectedRecord,
+              CounterCode,
+              DepartmentName,
+            ),
+          },
+        );
       },
     },
     {
