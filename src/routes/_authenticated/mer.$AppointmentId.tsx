@@ -551,6 +551,21 @@ const Mer = () => {
     }
   };
 
+  const formatProcedureDoneDate = (chargeStatus?: TCharges) => {
+    const isDone =
+      String(chargeStatus?.Status ?? '')
+        .trim()
+        .toUpperCase() === 'DONE';
+
+    if (!isDone) {
+      return '';
+    }
+
+    const date = dayjs(chargeStatus?.StatusDate);
+
+    return date.isValid() ? date.format('MM/DD/YYYY') : '';
+  };
+
   const handleGetProcedureStatus = async () => {
     try {
       ///chest xray
@@ -1648,8 +1663,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{chestXrayStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(chestXrayStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>
@@ -1689,8 +1706,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{urinalysisStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(urinalysisStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>
@@ -1725,8 +1744,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{ecgStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(ecgStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>
@@ -1758,8 +1779,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{cbcStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(cbcStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>
@@ -1793,8 +1816,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{fecalysisStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(fecalysisStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>
@@ -1826,8 +1851,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{drugTestStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(drugTestStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>
@@ -1861,8 +1888,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{treadmillStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(treadmillStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>
@@ -1894,8 +1923,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{echoStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(echoStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>
@@ -1929,8 +1960,10 @@ const Mer = () => {
               </div>
               <div className="grid grid-cols-2">
                 <div>
-                  <p>Date Set</p>
-                  <p className="font-bold">{ultrasoundStatus?.StatusDate}</p>
+                  <p>Date Done</p>
+                  <p className="font-bold">
+                    {formatProcedureDoneDate(ultrasoundStatus)}
+                  </p>
                 </div>
                 <div>
                   <p>Remarks</p>

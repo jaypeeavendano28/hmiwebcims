@@ -43,6 +43,7 @@ import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
 import { useQuery } from '@tanstack/react-query';
 import AddReqPhysician from '../../components/add-req-physician';
 import PatientInfoHeader from '../../components/PatientInfoHeader';
+import UploadDocumentButton from '../../components/UploadDocumentButton';
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + '/api/';
 const devApi = import.meta.env.VITE_DEV_API + '/api/';
@@ -107,12 +108,30 @@ const getLaboratoryDetailKey = (row: any) => {
   return `layout:${test}:${sequence}`;
 };
 
-const filterLaboratoryDetails = (details: any[], allowedDetails: any[]) => {
-  const allowedKeys = new Set(allowedDetails.map(getLaboratoryDetailKey));
-
-  return details.filter((detail) =>
-    allowedKeys.has(getLaboratoryDetailKey(detail)),
+const mergeLaboratoryDetailsWithTemplate = (
+  templateDetails: any[],
+  savedDetails: any[],
+) => {
+  const savedByKey = new Map(
+    savedDetails.map((detail) => [getLaboratoryDetailKey(detail), detail]),
   );
+
+  return templateDetails.map((templateDetail) => {
+    const savedDetail = savedByKey.get(getLaboratoryDetailKey(templateDetail));
+
+    if (!savedDetail) {
+      return templateDetail;
+    }
+
+    return {
+      ...templateDetail,
+      ResultSi: savedDetail.ResultSi,
+      ResultConventional: savedDetail.ResultConventional,
+      Flag: savedDetail.Flag,
+      ShowInPrintOut: savedDetail.ShowInPrintOut,
+      Interpretation: savedDetail.Interpretation,
+    };
+  });
 };
 
 const LaboratoryResults = () => {
@@ -387,14 +406,15 @@ const LaboratoryResults = () => {
       },
     });
 
-    let details = resultDetails?.parameters?.lst ?? [];
+    const savedDetails = resultDetails?.parameters?.lst ?? [];
+    let details = savedDetails;
 
     if (templateId > 0 && activeChargeId > 0) {
       const allowedDetails = await getLaboratoryTemplateDetails(
         templateId,
         activeChargeId,
       );
-      details = filterLaboratoryDetails(details, allowedDetails);
+      details = mergeLaboratoryDetailsWithTemplate(allowedDetails, details);
     }
 
     setRowsCol1(attachAnalyteSuffixes(details));
@@ -516,8 +536,19 @@ const LaboratoryResults = () => {
   };
   const getResultConventionalValue = (value: unknown) =>
     isNullOrUndefinedOrBlank(value) ? value : String(value);
+  const isHeaderLaboratoryDetail = (detail: any) =>
+    detail?.IsHeader === true ||
+    String(detail?.IsHeader ?? '')
+      .trim()
+      .toUpperCase() === 'Y';
+  const getShowInPrintOutValue = (detail: any) =>
+    isHeaderLaboratoryDetail(detail)
+      ? isNullOrUndefinedOrBlank(detail?.ShowInPrintOut)
+        ? true
+        : Boolean(detail?.ShowInPrintOut)
+      : !isNullOrUndefinedOrBlank(detail?.ResultSi);
 
-  const handleSaveResult = async (x: any) => {
+  const handleSaveResult = async (x: any, submitAfterSave = false) => {
     const data: any = [...rowsCol1];
     const index = data.findIndex((obj: any) => obj.Id === x.Id);
     if (index < 0) {
@@ -552,9 +583,18 @@ const LaboratoryResults = () => {
       }
     }
     data[index].ResultSi = x.ResultSi;
-    data[index].ShowInPrintOut = x.ShowInPrintOut;
+    data[index].ShowInPrintOut = getShowInPrintOutValue({
+      ...data[index],
+      ShowInPrintOut: x.ShowInPrintOut,
+    });
 
     setRowsCol1(data);
+
+    if (submitAfterSave) {
+      setTimeout(() => {
+        form.submit();
+      }, 0);
+    }
   };
   const handleSubmitForm = async (values: any) => {
     if (isResultSubmitBlocked) {
@@ -568,6 +608,25 @@ const LaboratoryResults = () => {
 
     console.log(rowsCol1);
     try {
+      let detailsToSave = rowsCol1;
+
+      if (ResultId > 0 && selectedTemplateId && chargeId) {
+        const resultDetails = await PostData('GetRecords', {
+          sp: 'udp_GetLabResultDetails',
+          parameters: {
+            Id: ResultId,
+          },
+        });
+        const savedDetails = resultDetails?.parameters?.lst ?? [];
+        const currentDetailKeys = new Set(rowsCol1.map(getLaboratoryDetailKey));
+        const otherProcedureDetails = savedDetails.filter(
+          (detail: any) =>
+            !currentDetailKeys.has(getLaboratoryDetailKey(detail)),
+        );
+
+        detailsToSave = [...rowsCol1, ...otherProcedureDetails];
+      }
+
       const valuesToSave = {
         Main: {
           ...values,
@@ -585,8 +644,9 @@ const LaboratoryResults = () => {
           ResultNo: ResultNo,
           AdmissionId: appointmentDetails?.Id,
         },
-        Details: rowsCol1.map((detail: any) => ({
+        Details: detailsToSave.map((detail: any) => ({
           ...detail,
+          ShowInPrintOut: getShowInPrintOutValue(detail),
           ResultConventional: getResultConventionalValue(
             detail.ResultConventional,
           ),
@@ -1187,21 +1247,28 @@ const LaboratoryResults = () => {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <aside className="min-w-0 lg:col-span-3">
           <div className="lg:sticky lg:top-2">
-            <Button
-              className="mb-2"
-              icon={<BiArrowBack />}
-              onClick={() =>
-                router.navigate({
-                  to: '/registeredpatients/$station',
-                  params: {
-                    station: '1',
-                  },
-                  search: getCompletedResultsSearch(),
-                })
-              }
-            >
-              Back to list
-            </Button>
+            <Space wrap>
+              <Button
+                className="mb-2"
+                icon={<BiArrowBack />}
+                onClick={() =>
+                  router.navigate({
+                    to: '/registeredpatients/$station',
+                    params: {
+                      station: '1',
+                    },
+                    search: getCompletedResultsSearch(),
+                  })
+                }
+              >
+                Back to list
+              </Button>
+              <UploadDocumentButton
+                patientId={appointmentDetails?.fk_PatientInformation_Id}
+                appointmentId={appointmentDetails?.Id}
+                departmentId={onlineResultDepartmentId}
+              />
+            </Space>
             <Divider>Charges</Divider>
             <Tabs
               defaultActiveKey="1"
@@ -1272,7 +1339,9 @@ const LaboratoryResults = () => {
                     <>
                       <LabResult
                         data={v}
-                        handleSaveResult={(x: any) => handleSaveResult(x)}
+                        handleSaveResult={(x: any, submitAfterSave?: boolean) =>
+                          handleSaveResult(x, submitAfterSave)
+                        }
                         key={v.Id}
                         ResultId={ResultId}
                       />

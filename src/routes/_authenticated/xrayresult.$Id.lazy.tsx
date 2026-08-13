@@ -33,6 +33,7 @@ import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
 import { useQuery } from '@tanstack/react-query';
 import AddReqPhysician from '../../components/add-req-physician';
 import PatientInfoHeader from '../../components/PatientInfoHeader';
+import UploadDocumentButton from '../../components/UploadDocumentButton';
 const isDev = import.meta.env.DEV;
 const prodApi = import.meta.env.VITE_PROD_API + '/api/';
 const devApi = import.meta.env.VITE_DEV_API + '/api/';
@@ -558,19 +559,26 @@ const XrayResult = () => {
       <div className="grid lg:grid-cols-12 gap-4">
         <div className="col-span-3">
           <div className="mt-2">
-            <Button
-              className="mb-2"
-              icon={<BiArrowBack />}
-              onClick={() =>
-                router.navigate({
-                  to: '/registeredpatients/$station',
-                  params: { station: '1' },
-                  search: getCompletedResultsSearch(),
-                })
-              }
-            >
-              Back
-            </Button>
+            <Space wrap>
+              <Button
+                className="mb-2"
+                icon={<BiArrowBack />}
+                onClick={() =>
+                  router.navigate({
+                    to: '/registeredpatients/$station',
+                    params: { station: '1' },
+                    search: getCompletedResultsSearch(),
+                  })
+                }
+              >
+                Back
+              </Button>
+              <UploadDocumentButton
+                patientId={appointmentDetails?.fk_PatientInformation_Id}
+                appointmentId={appointmentDetails?.Id}
+                departmentId={onlineResultDepartmentId}
+              />
+            </Space>
             <Divider>Charges</Divider>
 
             <Tabs

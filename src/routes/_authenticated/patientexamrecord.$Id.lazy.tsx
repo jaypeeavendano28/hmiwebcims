@@ -8,6 +8,7 @@ import {
   Form,
   Input,
   Select,
+  Space,
   Tabs,
   Tag,
   TimePicker,
@@ -35,6 +36,7 @@ import {
   TPatientExaminationRecord,
 } from '../../types';
 import PatientInfoHeader from '../../components/PatientInfoHeader';
+import UploadDocumentButton from '../../components/UploadDocumentButton';
 
 export const Route = createLazyFileRoute(
   '/_authenticated/patientexamrecord/$Id',
@@ -463,19 +465,26 @@ const PatientExaminationRecord = () => {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
             <aside className="min-w-0 lg:col-span-3">
               <div className="lg:sticky lg:top-2">
-                <Button
-                  className="mb-2"
-                  icon={<BiArrowBack />}
-                  onClick={() =>
-                    router.navigate({
-                      to: '/registeredpatients/$station',
-                      params: { station: '1' },
-                      search: getCompletedResultsSearch(),
-                    })
-                  }
-                >
-                  Back
-                </Button>
+                <Space wrap>
+                  <Button
+                    className="mb-2"
+                    icon={<BiArrowBack />}
+                    onClick={() =>
+                      router.navigate({
+                        to: '/registeredpatients/$station',
+                        params: { station: '1' },
+                        search: getCompletedResultsSearch(),
+                      })
+                    }
+                  >
+                    Back
+                  </Button>
+                  <UploadDocumentButton
+                    patientId={patient.fk_PatientInformation_Id}
+                    appointmentId={appointmentId}
+                    departmentId={activeCharge?.fk_Departments_Id}
+                  />
+                </Space>
                 <Divider>Charges</Divider>
                 <Tabs
                   defaultActiveKey="charges"

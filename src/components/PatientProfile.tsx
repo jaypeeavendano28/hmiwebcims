@@ -285,7 +285,7 @@ const PatientProfile: FC<Props> = ({
           City: x.City,
           Barangay: x.Barangay,
           DateOfBirth: dayjs(x.DateOfBirth),
-          Sex: x.Sex ? (sexLabels[x.Sex] ?? x.Sex) : x.Sex,
+          Sex: x.Sex ? sexLabels[x.Sex] ?? x.Sex : x.Sex,
           MemberNo: x.MemberNo,
           ContactNos: x.ContactNos,
           Occupation: x.Occupation,
@@ -293,7 +293,7 @@ const PatientProfile: FC<Props> = ({
           PlaceOfBirth: x.PlaceOfBirth,
           Nationality: x.Nationality,
           CivilStatus: x.CivilStatus
-            ? (civilStatusLabels[x.CivilStatus] ?? x.CivilStatus)
+            ? civilStatusLabels[x.CivilStatus] ?? x.CivilStatus
             : x.CivilStatus,
           Religion: x.Religion,
           PassportNo: x.PassportNo,
@@ -745,6 +745,12 @@ const PatientProfile: FC<Props> = ({
               name="CivilStatus"
               label="Civil Status"
               className="col-span-3"
+              rules={[
+                {
+                  required: true,
+                  message: 'Civil Status is required!',
+                },
+              ]}
             >
               <Select
                 style={{ width: '100%' }}
@@ -758,11 +764,7 @@ const PatientProfile: FC<Props> = ({
                   ).includes(input.toLocaleLowerCase())
                 }
               >
-                <Select.Option
-                  key="Divorced"
-                  value="Divorced"
-                  title="Divorced"
-                >
+                <Select.Option key="Divorced" value="Divorced" title="Divorced">
                   Divorced
                 </Select.Option>
                 <Select.Option
@@ -841,7 +843,7 @@ const PatientProfile: FC<Props> = ({
                     >
                       {v.Value}
                     </AutoComplete.Option>
-                ))}
+                  ))}
               </AutoComplete>
             </Form.Item>
             <Form.Item

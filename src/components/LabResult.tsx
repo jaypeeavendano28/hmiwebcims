@@ -4,7 +4,7 @@ import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
 
 type Props = {
   data: any;
-  handleSaveResult: (v: any) => void;
+  handleSaveResult: (v: any, submitAfterSave?: boolean) => void;
   ResultId: number;
 };
 
@@ -49,11 +49,18 @@ const stripResultSuffix = (value: any, suffix: any) => {
   return resultText;
 };
 
+const isHeaderRow = (value: any) =>
+  value === true ||
+  String(value ?? "")
+    .trim()
+    .toUpperCase() === "Y";
+
 const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
   const [ShowInPrintOut, setShowInPrintOut] = useState(false);
   const suffix = isNullOrUndefinedOrBlank(data.Suffix)
     ? undefined
     : data.Suffix;
+  const isHeader = isHeaderRow(data.IsHeader);
   const [result, setResult] = useState(stripResultSuffix(data.ResultSi, suffix));
   const [possibleValues, setPossibleValues] = useState<any[]>([]);
 
@@ -123,26 +130,23 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (submitAfterSave = false) => {
     const cleanResult = stripResultSuffix(result, suffix);
     const matchedPossibleValue = getFirstMatchingPossibleValue(cleanResult);
     const resultToSave = stripResultSuffix(
       matchedPossibleValue ?? cleanResult,
       suffix
     );
-    let showInPrintOut: boolean = ShowInPrintOut;
-    if (!isNullOrUndefinedOrBlank(resultToSave)) {
-      showInPrintOut = true;
-    } else {
-      showInPrintOut = false;
-    }
+    const showInPrintOut = isHeader
+      ? ShowInPrintOut
+      : !isNullOrUndefinedOrBlank(resultToSave);
     setShowInPrintOut(showInPrintOut);
     setResult(resultToSave);
     handleSaveResult({
       ...data,
       ResultSi: resultToSave,
       ShowInPrintOut: showInPrintOut,
-    });
+    }, submitAfterSave);
 
     if (!matchedPossibleValue) {
       await addPossibleValueIfMissing(resultToSave);
@@ -173,7 +177,11 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
     handleGetPossibleValues();
     setResult(stripResultSuffix(data.ResultSi, suffix));
 
-    if (ResultId > 0) {
+    if (!isHeader) {
+      setShowInPrintOut(!isNullOrUndefinedOrBlank(data.ResultSi));
+    } else if (isNullOrUndefinedOrBlank(data.ShowInPrintOut)) {
+      setShowInPrintOut(true);
+    } else if (ResultId > 0) {
       if (!isNullOrUndefinedOrBlank(data.ResultSi)) {
         setShowInPrintOut(true);
       } else {
@@ -211,16 +219,24 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
             onChange={(v) => {
               setResult(v);
             }}
-            onBlur={handleSave}
+            onBlur={() => handleSave()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleSave(true);
+              }
+            }}
             disabled={data.IsWithResult === "N"}
           >
             <Input suffix={suffix} disabled={data.IsWithResult === "N"} />
           </AutoComplete>
-          <div className="ml-2">
-            <Tooltip title="Show In Print Out">
-              <Checkbox checked={ShowInPrintOut} onChange={handleChange} />
-            </Tooltip>
-          </div>
+          {isHeader && (
+            <div className="ml-2">
+              <Tooltip title="Show In Print Out">
+                <Checkbox checked={ShowInPrintOut} onChange={handleChange} />
+              </Tooltip>
+            </div>
+          )}
 
           {/* <Input
             onChange={(v) => {

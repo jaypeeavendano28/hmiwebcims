@@ -776,23 +776,46 @@ const PatientsPerCounter: FC<Props> = ({
 
     return `${minutes} min ${seconds.toString().padStart(2, '0')} sec`;
   };
-  const handleUploadDocument = async (data: any) => {
-    try {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetPatientInformationByAppointmentId',
-        parameters: {
-          AppointmentId: data.fk_Appointments_Id,
-        },
-      });
 
-      if (res) {
-        router.navigate({
-          to: '/uploaddocuments/$Id',
-          params: {
-            Id: res.parameters.lst[0].Id,
+  const handleUploadDocument = async (data: TAppointments) => {
+    const appointmentId = Number((data as any).fk_Appointments_Id ?? 0);
+    let patientId = Number(data.fk_PatientInformation_Id ?? 0);
+
+    if (appointmentId <= 0) {
+      notification.error({
+        message: 'Unable to identify appointment for document upload.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    try {
+      if (patientId <= 0) {
+        const res = await PostData('GetRecords', {
+          sp: 'udp_GetPatientInformationByAppointmentId',
+          parameters: {
+            AppointmentId: appointmentId,
           },
         });
+
+        patientId = Number(res?.parameters?.lst?.[0]?.Id ?? 0);
       }
+
+      if (patientId <= 0) {
+        throw new Error('Unable to identify patient for document upload.');
+      }
+
+      router.navigate({
+        to: '/uploaddocuments/$Id',
+        params: {
+          Id: String(patientId),
+        },
+        search: {
+          appointmentId,
+          departmentId: DepartmentId,
+        },
+      });
     } catch (error: any) {
       notification.error({
         message: error.message,
@@ -801,6 +824,7 @@ const PatientsPerCounter: FC<Props> = ({
       });
     }
   };
+
   const actionBodyTemplate = (data: TAppointments) => {
     const rowCounterCode = data.CounterCode ?? CounterCode;
     const appointmentId = String((data as any).fk_Appointments_Id ?? '');
@@ -866,9 +890,10 @@ const PatientsPerCounter: FC<Props> = ({
             />
           </Tooltip>
         )}
-        {rowCounterCode === 'LAB' && effectiveIsDone && resultBlocked && (
-          disabledResultButton
-        )}
+        {rowCounterCode === 'LAB' &&
+          effectiveIsDone &&
+          resultBlocked &&
+          disabledResultButton}
         {rowCounterCode === 'LAB' && effectiveIsDone && !resultBlocked && (
           <>
             <Tooltip title={resultTooltip}>
@@ -887,9 +912,10 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {rowCounterCode === 'XRAY' && effectiveIsDone && resultBlocked && (
-          disabledResultButton
-        )}
+        {rowCounterCode === 'XRAY' &&
+          effectiveIsDone &&
+          resultBlocked &&
+          disabledResultButton}
         {rowCounterCode === 'XRAY' && effectiveIsDone && !resultBlocked && (
           <>
             <Tooltip title={resultTooltip}>
@@ -908,9 +934,10 @@ const PatientsPerCounter: FC<Props> = ({
           </>
         )}
 
-        {rowCounterCode === 'ULT' && effectiveIsDone && resultBlocked && (
-          disabledResultButton
-        )}
+        {rowCounterCode === 'ULT' &&
+          effectiveIsDone &&
+          resultBlocked &&
+          disabledResultButton}
         {rowCounterCode === 'ULT' && effectiveIsDone && !resultBlocked && (
           <>
             <Tooltip title={resultTooltip}>
@@ -928,9 +955,10 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {rowCounterCode === 'CARDIO' && effectiveIsDone && resultBlocked && (
-          disabledResultButton
-        )}
+        {rowCounterCode === 'CARDIO' &&
+          effectiveIsDone &&
+          resultBlocked &&
+          disabledResultButton}
         {rowCounterCode === 'CARDIO' && effectiveIsDone && !resultBlocked && (
           <>
             <Tooltip title={resultTooltip}>
@@ -950,9 +978,10 @@ const PatientsPerCounter: FC<Props> = ({
             </Tooltip>
           </>
         )}
-        {isConsultationResult && effectiveIsDone && resultBlocked && (
-          disabledResultButton
-        )}
+        {isConsultationResult &&
+          effectiveIsDone &&
+          resultBlocked &&
+          disabledResultButton}
         {isConsultationResult && effectiveIsDone && !resultBlocked && (
           <Tooltip title={resultTooltip}>
             <Link
@@ -968,9 +997,10 @@ const PatientsPerCounter: FC<Props> = ({
             </Link>
           </Tooltip>
         )}
-        {isRehabilitationResult && effectiveIsDone && resultBlocked && (
-          disabledResultButton
-        )}
+        {isRehabilitationResult &&
+          effectiveIsDone &&
+          resultBlocked &&
+          disabledResultButton}
         {isRehabilitationResult && effectiveIsDone && !resultBlocked && (
           <Tooltip title={resultTooltip}>
             <Link

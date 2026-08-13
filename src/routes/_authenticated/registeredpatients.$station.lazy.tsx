@@ -1,5 +1,5 @@
-import { createLazyFileRoute, useRouter } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createLazyFileRoute, useRouter } from '@tanstack/react-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   DatePicker,
@@ -13,27 +13,27 @@ import {
   Select,
   Switch,
   Tooltip,
-} from "antd";
-import { FileExcelOutlined } from "@ant-design/icons";
-import { PostData, isNullOrUndefinedOrBlank } from "../../helpers";
-import useAppStore from "../../store";
-import { useEffect, useState } from "react";
-import dayjs from "dayjs";
-import type { Dayjs } from "dayjs";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import Loading from "../../components/loading";
-import PatientsPerCounter from "../../components/PatientsPerCounter";
-import type { TDoctors } from "../../types";
-import * as XLSX from "xlsx-js-style";
-import { saveAs } from "file-saver";
+} from 'antd';
+import { FileExcelOutlined } from '@ant-design/icons';
+import { PostData, isNullOrUndefinedOrBlank } from '../../helpers';
+import useAppStore from '../../store';
+import { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import Loading from '../../components/loading';
+import PatientsPerCounter from '../../components/PatientsPerCounter';
+import type { TDoctors } from '../../types';
+import * as XLSX from 'xlsx-js-style';
+import { saveAs } from 'file-saver';
 export const Route = createLazyFileRoute(
-  "/_authenticated/registeredpatients/$station",
+  '/_authenticated/registeredpatients/$station',
 )({
   component: () => <RegisteredPatients />,
 });
 
-type DateRangePreset = "today" | "1-week" | "2-weeks" | "1-month" | "3-months";
+type DateRangePreset = 'today' | '1-week' | '2-weeks' | '1-month' | '3-months';
 type DateRangeValue = [Dayjs, Dayjs];
 type FormDateRangeValue =
   | [Dayjs | null | undefined, Dayjs | null | undefined]
@@ -49,15 +49,17 @@ type QueueSearch = {
   PatientName?: string;
   MemberNo?: string;
   DepartmentId?: number | string;
-  QueueStatus?: "done" | "not-done";
+  QueueStatus?: 'done' | 'not-done';
 };
 
 type QueueFilterFormValues = {
   DateRange?: FormDateRangeValue;
   SearchText?: string;
   DepartmentId?: number;
-  QueueStatus: "done" | "not-done";
+  QueueStatus: 'done' | 'not-done';
 };
+
+type ExpandedRowsState = Record<string, boolean>;
 
 type DepartmentItemFilterProps = {
   DepartmentId?: number;
@@ -71,11 +73,11 @@ type DepartmentProcedureItem = {
 };
 
 type ProfessionalFeeDepartmentType =
-  | "LABORATORY"
-  | "CARDIOLOGY"
-  | "ULTRASOUND"
-  | "XRAY"
-  | "OTHER";
+  | 'LABORATORY'
+  | 'CARDIOLOGY'
+  | 'ULTRASOUND'
+  | 'XRAY'
+  | 'OTHER';
 
 type ProfessionalFeeFormValues = {
   ProcedureId?: number;
@@ -113,18 +115,18 @@ type ProfessionalFeeDepartment = {
   ProcedureId?: number;
 };
 
-const DEFAULT_DATE_RANGE: DateRangePreset = "today";
-const DATE_QUERY_FORMAT = "YYYYMMDD";
-const DATE_DISPLAY_FORMAT = "MM/DD/YYYY";
+const DEFAULT_DATE_RANGE: DateRangePreset = 'today';
+const DATE_QUERY_FORMAT = 'YYYYMMDD';
+const DATE_DISPLAY_FORMAT = 'MM/DD/YYYY';
 const PF_TAX_RATE = 0.1;
-const SELECT_ALL_PROCEDURES_VALUE = "__ALL_PROCEDURES__";
+const SELECT_ALL_PROCEDURES_VALUE = '__ALL_PROCEDURES__';
 
 const dateRangeOptions: { value: DateRangePreset; label: string }[] = [
-  { value: "today", label: "Today" },
-  { value: "1-week", label: "Last 1 Week" },
-  { value: "2-weeks", label: "Last 2 Weeks" },
-  { value: "1-month", label: "Last 1 Month" },
-  { value: "3-months", label: "Last 3 Months" },
+  { value: 'today', label: 'Today' },
+  { value: '1-week', label: 'Last 1 Week' },
+  { value: '2-weeks', label: 'Last 2 Weeks' },
+  { value: '1-month', label: 'Last 1 Month' },
+  { value: '3-months', label: 'Last 3 Months' },
 ];
 
 const isDateRangePreset = (value: unknown): value is DateRangePreset =>
@@ -136,15 +138,15 @@ const getDateRange = (
   const today = dayjs();
 
   switch (preset) {
-    case "1-week":
-      return [today.subtract(1, "week"), today];
-    case "2-weeks":
-      return [today.subtract(2, "week"), today];
-    case "1-month":
-      return [today.subtract(1, "month"), today];
-    case "3-months":
-      return [today.subtract(3, "month"), today];
-    case "today":
+    case '1-week':
+      return [today.subtract(1, 'week'), today];
+    case '2-weeks':
+      return [today.subtract(2, 'week'), today];
+    case '1-month':
+      return [today.subtract(1, 'month'), today];
+    case '3-months':
+      return [today.subtract(3, 'month'), today];
+    case 'today':
     default:
       return [today, today];
   }
@@ -209,43 +211,43 @@ const formatDateRange = (value: FormDateRangeValue) => {
 };
 
 const sanitizeExcelFileName = (value: string) =>
-  value.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
+  value
+    .replace(/[\\/:*?"<>|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 
 const getProfessionalFeeDepartmentType = (
   departmentName?: string,
 ): ProfessionalFeeDepartmentType => {
-  const normalizedName = departmentName?.toUpperCase() ?? "";
+  const normalizedName = departmentName?.toUpperCase() ?? '';
 
-  if (normalizedName.includes("LAB")) {
-    return "LABORATORY";
+  if (normalizedName.includes('LAB')) {
+    return 'LABORATORY';
   }
 
-  if (normalizedName.includes("CARDIO")) {
-    return "CARDIOLOGY";
+  if (normalizedName.includes('CARDIO')) {
+    return 'CARDIOLOGY';
   }
 
-  if (
-    normalizedName.includes("ULTRASOUND") ||
-    normalizedName.includes("UTZ")
-  ) {
-    return "ULTRASOUND";
+  if (normalizedName.includes('ULTRASOUND') || normalizedName.includes('UTZ')) {
+    return 'ULTRASOUND';
   }
 
   if (
-    normalizedName.includes("XRAY") ||
-    normalizedName.includes("X-RAY") ||
-    normalizedName.includes("RADIO")
+    normalizedName.includes('XRAY') ||
+    normalizedName.includes('X-RAY') ||
+    normalizedName.includes('RADIO')
   ) {
-    return "XRAY";
+    return 'XRAY';
   }
 
-  return "OTHER";
+  return 'OTHER';
 };
 
 const canGenerateProfessionalFee = (departmentName?: string) =>
-  getProfessionalFeeDepartmentType(departmentName) !== "OTHER";
+  getProfessionalFeeDepartmentType(departmentName) !== 'OTHER';
 
 const exportProfessionalFeeStatement = (
   rows: ProfessionalFeeStatementRow[],
@@ -255,9 +257,9 @@ const exportProfessionalFeeStatement = (
   departmentType: ProfessionalFeeDepartmentType,
 ) => {
   const procedureText =
-    procedureName || rows[0]?.ProcedureName || "EXAM/PROCEDURE";
-  const branchName = rows[0]?.BranchName || rows[0]?.BranchCode || "";
-  const monthText = values.Month.format("MMMM YYYY").toUpperCase();
+    procedureName || rows[0]?.ProcedureName || 'EXAM/PROCEDURE';
+  const branchName = rows[0]?.BranchName || rows[0]?.BranchCode || '';
+  const monthText = values.Month.format('MMMM YYYY').toUpperCase();
   const pfRows = rows.map((row) => ({
     ...row,
     HmiCarePrice:
@@ -274,90 +276,90 @@ const exportProfessionalFeeStatement = (
   const tableStartRow = 6;
   const totalStartRow = tableStartRow + pfRows.length + 2;
   const checkedByStartRow = totalStartRow + 5;
-  const useTaxSummary = departmentType !== "LABORATORY";
+  const useTaxSummary = departmentType !== 'LABORATORY';
   const sheetRows = [
     [],
-    ["PROCEDURE :", procedureText, "", "", "MEMBER & NON-MEMBER / HMICARE"],
-    ["SPECIALIST :", readerName],
-    ["DATE :", monthText],
-    ["", branchName ? `HMICARE - ${branchName}` : "HMICARE"],
+    ['PROCEDURE :', procedureText, '', '', 'MEMBER & NON-MEMBER / HMICARE'],
+    ['SPECIALIST :', readerName],
+    ['DATE :', monthText],
+    ['', branchName ? `HMICARE - ${branchName}` : 'HMICARE'],
     [],
     [
-      "MEM. #",
-      "PATIENT NAME",
-      "DIAGNOSIS",
-      "DATE DONE",
-      "EXAMINATION",
-      "PP",
-      "O.R #",
-      "PF",
+      'MEM. #',
+      'PATIENT NAME',
+      'DIAGNOSIS',
+      'DATE DONE',
+      'EXAMINATION',
+      'PP',
+      'O.R #',
+      'PF',
     ],
     ...pfRows.map((row) => [
-      row.MemberNo ?? "",
-      row.PatientName ?? "",
-      row.Diagnosis ?? "",
-      row.DateDone ? dayjs(row.DateDone).format("MM/DD/YYYY") : "",
-      row.ProcedureName ?? "",
-      row.HmiCarePrice ?? "",
-      row.OrNo ?? "",
+      row.MemberNo ?? '',
+      row.PatientName ?? '',
+      row.Diagnosis ?? '',
+      row.DateDone ? dayjs(row.DateDone).format('MM/DD/YYYY') : '',
+      row.ProcedureName ?? '',
+      row.HmiCarePrice ?? '',
+      row.OrNo ?? '',
       row.PfAmount,
     ]),
     [],
     useTaxSummary
-      ? ["", "", "", "", "", "", "TOTAL GROSS", totalGross]
-      : ["", "", "", "", "", "", "TOTAL AMT.", totalGross],
-    useTaxSummary ? ["", "", "", "", "", "", "LESS 10%", lessTax] : [],
-    useTaxSummary ? ["", "", "", "", "", "", "TOTAL NET", totalNet] : [],
+      ? ['', '', '', '', '', '', 'TOTAL GROSS', totalGross]
+      : ['', '', '', '', '', '', 'TOTAL AMT.', totalGross],
+    useTaxSummary ? ['', '', '', '', '', '', 'LESS 10%', lessTax] : [],
+    useTaxSummary ? ['', '', '', '', '', '', 'TOTAL NET', totalNet] : [],
     [],
     [],
-    ["Checked By:"],
+    ['Checked By:'],
     [],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(sheetRows);
   const border = {
-    top: { style: "thin", color: { rgb: "000000" } },
-    bottom: { style: "thin", color: { rgb: "000000" } },
-    left: { style: "thin", color: { rgb: "000000" } },
-    right: { style: "thin", color: { rgb: "000000" } },
+    top: { style: 'thin', color: { rgb: '000000' } },
+    bottom: { style: 'thin', color: { rgb: '000000' } },
+    left: { style: 'thin', color: { rgb: '000000' } },
+    right: { style: 'thin', color: { rgb: '000000' } },
   };
   const headerStyle = {
     font: { bold: true },
-    alignment: { horizontal: "center", vertical: "center" },
+    alignment: { horizontal: 'center', vertical: 'center' },
     border,
   };
   const tableCellStyle = {
-    alignment: { vertical: "center", wrapText: true },
+    alignment: { vertical: 'center', wrapText: true },
     border,
   };
   const centerTableCellStyle = {
     ...tableCellStyle,
-    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
   };
   const currencyCellStyle = {
     ...tableCellStyle,
-    alignment: { horizontal: "right", vertical: "center" },
-    numFmt: "#,##0.00",
+    alignment: { horizontal: 'right', vertical: 'center' },
+    numFmt: '#,##0.00',
   };
   const metadataLabelStyle = {
     font: { bold: true },
-    alignment: { horizontal: "left" },
+    alignment: { horizontal: 'left' },
   };
   const metadataValueStyle = {
     font: { bold: true },
-    alignment: { horizontal: "left" },
+    alignment: { horizontal: 'left' },
   };
   const totalLabelStyle = {
     font: { bold: true },
-    alignment: { horizontal: "right" },
+    alignment: { horizontal: 'right' },
   };
   const totalValueStyle = {
     font: { bold: true },
-    alignment: { horizontal: "right" },
-    numFmt: "#,##0.00",
+    alignment: { horizontal: 'right' },
+    numFmt: '#,##0.00',
   };
 
-  ws["!cols"] = [
+  ws['!cols'] = [
     { wch: 16 },
     { wch: 38 },
     { wch: 42 },
@@ -367,7 +369,7 @@ const exportProfessionalFeeStatement = (
     { wch: 14 },
     { wch: 12 },
   ];
-  ws["!merges"] = [{ s: { r: 1, c: 4 }, e: { r: 1, c: 7 } }];
+  ws['!merges'] = [{ s: { r: 1, c: 4 }, e: { r: 1, c: 7 } }];
 
   [1, 2, 3].forEach((rowIndex) => {
     const labelCell = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
@@ -389,7 +391,7 @@ const exportProfessionalFeeStatement = (
   if (ws[memberLabelCell]) {
     ws[memberLabelCell].s = {
       font: { bold: true },
-      alignment: { horizontal: "center" },
+      alignment: { horizontal: 'center' },
     };
   }
 
@@ -406,7 +408,10 @@ const exportProfessionalFeeStatement = (
   pfRows.forEach((_, rowOffset) => {
     const rowIndex = tableStartRow + rowOffset + 1;
     for (let columnIndex = 0; columnIndex <= 7; columnIndex++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex });
+      const cellAddress = XLSX.utils.encode_cell({
+        r: rowIndex,
+        c: columnIndex,
+      });
       if (!ws[cellAddress]) {
         continue;
       }
@@ -443,8 +448,8 @@ const exportProfessionalFeeStatement = (
     ws[finalTotalCell].s = {
       ...totalValueStyle,
       border: {
-        top: { style: "double", color: { rgb: "000000" } },
-        bottom: { style: "double", color: { rgb: "000000" } },
+        top: { style: 'double', color: { rgb: '000000' } },
+        bottom: { style: 'double', color: { rgb: '000000' } },
       },
     };
   }
@@ -458,18 +463,18 @@ const exportProfessionalFeeStatement = (
   }
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "PF Statement");
+  XLSX.utils.book_append_sheet(wb, ws, 'PF Statement');
   const buffer = XLSX.write(wb, {
-    bookType: "xlsx",
-    type: "array",
+    bookType: 'xlsx',
+    type: 'array',
   });
   const fileName = sanitizeExcelFileName(
-    `PF_${procedureText}_${readerName}_${values.Month.format("YYYYMM")}`,
+    `PF_${procedureText}_${readerName}_${values.Month.format('YYYYMM')}`,
   );
 
   saveAs(
-    new Blob([buffer], { type: "application/octet-stream" }),
-    `${fileName || "Professional_Fee_Statement"}.xlsx`,
+    new Blob([buffer], { type: 'application/octet-stream' }),
+    `${fileName || 'Professional_Fee_Statement'}.xlsx`,
   );
 };
 
@@ -479,10 +484,10 @@ const DepartmentItemFilter = ({
   onChange,
 }: DepartmentItemFilterProps) => {
   const procedureItems = useQuery<DepartmentProcedureItem[]>({
-    queryKey: ["departmentProcedureItems", DepartmentId],
+    queryKey: ['departmentProcedureItems', DepartmentId],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetProcedureItemsByDepartment",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetProcedureItemsByDepartment',
         parameters: {
           DepartmentId,
         },
@@ -517,7 +522,9 @@ const RegisteredPatients = () => {
   // const [IsSubmitting, setIsSubmitting] = useState(false);
 
   const [station] = Route.useParams().station;
-  const [expandedRows, setExpandedRows] = useState(null);
+  const [expandedRows, setExpandedRows] = useState<ExpandedRowsState | null>(
+    null,
+  );
   const [departmentItemFilters, setDepartmentItemFilters] = useState<
     Record<string, number | undefined>
   >({});
@@ -529,15 +536,15 @@ const RegisteredPatients = () => {
   const store = useAppStore();
   const router = useRouter();
   const search = Route.useSearch() as QueueSearch;
-  const IsMobile = search.IsMobile === true || search.IsMobile === "true";
+  const IsMobile = search.IsMobile === true || search.IsMobile === 'true';
   const SearchText = (
     search.SearchText ??
     search.PatientName ??
     search.MemberNo ??
-    ""
+    ''
   ).trim();
   const Name = SearchText;
-  const MemberNo = "";
+  const MemberNo = '';
   const parsedDepartmentId = Number(search.DepartmentId);
   const DepartmentId =
     Number.isFinite(parsedDepartmentId) && parsedDepartmentId > 0
@@ -547,31 +554,43 @@ const RegisteredPatients = () => {
   const hasSearchTerm = !isNullOrUndefinedOrBlank(SearchText);
   const selectedDateRange = getDateRangeFromSearch(search);
   const DateFrom = hasSearchTerm
-    ? ""
+    ? ''
     : selectedDateRange[0].format(DATE_QUERY_FORMAT);
   const DateTo = hasSearchTerm
-    ? ""
+    ? ''
     : selectedDateRange[1].format(DATE_QUERY_FORMAT);
-  const isDone = IsMobile || search.QueueStatus === "done";
+  const isDone = IsMobile || search.QueueStatus === 'done';
 
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (search.QueueStatus === 'not-done') {
+      store.setLastQListQuery({
+        dateFrom: DateFrom,
+        dateTo: DateTo,
+        searchText: SearchText,
+        departmentId: DepartmentId,
+        expandedRowKeys: store.lastQListQuery.expandedRowKeys,
+      });
+    }
+  }, [DateFrom, DateTo, SearchText, DepartmentId, search.QueueStatus]);
+
   const [form] = Form.useForm();
   const [pfForm] = Form.useForm<ProfessionalFeeFormValues>();
-  const searchTextFilter = Form.useWatch("SearchText", form);
+  const searchTextFilter = Form.useWatch('SearchText', form);
   const hasPatientFilter = !isNullOrUndefinedOrBlank(searchTextFilter);
   const pfDepartmentType = getProfessionalFeeDepartmentType(
     pfDepartment?.DepartmentName,
   );
-  const isLaboratoryProfessionalFee = pfDepartmentType === "LABORATORY";
-  const isXrayProfessionalFee = pfDepartmentType === "XRAY";
-  const isUltrasoundProfessionalFee = pfDepartmentType === "ULTRASOUND";
+  const isLaboratoryProfessionalFee = pfDepartmentType === 'LABORATORY';
+  const isXrayProfessionalFee = pfDepartmentType === 'XRAY';
+  const isUltrasoundProfessionalFee = pfDepartmentType === 'ULTRASOUND';
 
   const departments = useQuery({
-    queryKey: ["queueDepartments", store.userId],
+    queryKey: ['queueDepartments', store.userId],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetAccessibleDepartments",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetAccessibleDepartments',
         parameters: {
           UserId: store.userId,
         },
@@ -579,13 +598,13 @@ const RegisteredPatients = () => {
       return res?.parameters.lst ?? [];
     },
     refetchOnWindowFocus: false,
-    enabled: station === "1",
+    enabled: station === '1',
   });
   const doctors = useQuery<TDoctors[]>({
-    queryKey: ["professionalFeeDoctors", store.branchCode],
+    queryKey: ['professionalFeeDoctors', store.branchCode],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetDoctors",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetDoctors',
         parameters: {},
       });
 
@@ -596,14 +615,14 @@ const RegisteredPatients = () => {
   });
   const professionalFeeProcedures = useQuery<DepartmentProcedureItem[]>({
     queryKey: [
-      "professionalFeeProcedures",
+      'professionalFeeProcedures',
       store.branchCode,
       pfDepartmentType,
       pfDepartment?.DepartmentId,
     ],
     queryFn: async () => {
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetProfessionalFeeProcedures",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetProfessionalFeeProcedures',
         parameters: {
           BranchCode: store.branchCode,
           DepartmentType: pfDepartmentType,
@@ -620,7 +639,7 @@ const RegisteredPatients = () => {
       !isLaboratoryProfessionalFee,
   });
   const professionalFeeReaders = (doctors.data ?? []).filter((doctor) =>
-    pfDepartmentType === "LABORATORY" ? doctor.Pathologist : true,
+    pfDepartmentType === 'LABORATORY' ? doctor.Pathologist : true,
   );
   const accessibleDepartments = departments.data ?? [];
   const hasSelectedDepartmentAccess =
@@ -640,7 +659,7 @@ const RegisteredPatients = () => {
 
   const patientPerCounter = useQuery({
     queryKey: [
-      "patientPerCounter",
+      'patientPerCounter',
       store.branchCode,
       station,
       DateFrom,
@@ -655,11 +674,11 @@ const RegisteredPatients = () => {
     queryFn: async () => {
       const request = IsMobile
         ? {
-            sp: "udp_GetMobileDepartments",
+            sp: 'udp_GetMobileDepartments',
             parameters: {
               BranchCode: store.branchCode,
-              DateFrom: DateFrom ?? "",
-              DateTo: DateTo ?? "",
+              DateFrom: DateFrom ?? '',
+              DateTo: DateTo ?? '',
               UserId: store.userId,
               Name,
               MemberNo,
@@ -668,12 +687,12 @@ const RegisteredPatients = () => {
           }
         : {
             sp: isDone
-              ? "udp_GetQueueDepartments"
-              : "udp_GetQueueCountersByDepartment",
+              ? 'udp_GetQueueDepartments'
+              : 'udp_GetQueueCountersByDepartment',
             parameters: {
               BranchCode: store.branchCode,
-              DateFrom: DateFrom ?? "",
-              DateTo: DateTo ?? "",
+              DateFrom: DateFrom ?? '',
+              DateTo: DateTo ?? '',
               Station: station,
               UserId: store.userId,
               isDone,
@@ -683,7 +702,7 @@ const RegisteredPatients = () => {
               DepartmentId: DepartmentId ?? 0,
             },
           };
-      const res = await PostData("GetRecords", request);
+      const res = await PostData('GetRecords', request);
       if (res) {
         return res.parameters.lst;
       }
@@ -711,8 +730,8 @@ const RegisteredPatients = () => {
         //     ? dayjs(form.getFieldValue('DateTo')[1]).format('YYYYMMDD')
         //     : ''
         // }
-        DateFrom={DateFrom ?? ""}
-        DateTo={DateTo ?? ""}
+        DateFrom={DateFrom ?? ''}
+        DateTo={DateTo ?? ''}
         Station={station}
         isDone={isDone}
         Name={Name}
@@ -720,7 +739,9 @@ const RegisteredPatients = () => {
         IsMobile={IsMobile}
         Compact={compact}
         ItemId={
-          data.DepartmentId ? departmentItemFilters[data.DepartmentId] : undefined
+          data.DepartmentId
+            ? departmentItemFilters[data.DepartmentId]
+            : undefined
         }
       />
     );
@@ -733,7 +754,7 @@ const RegisteredPatients = () => {
 
     setExpandedRows(null);
     void router.navigate({
-      to: ".",
+      to: '.',
       replace: true,
       search: (previous) => ({
         ...previous,
@@ -745,7 +766,7 @@ const RegisteredPatients = () => {
           : values.SearchText,
         PatientName: undefined,
         MemberNo: undefined,
-        DepartmentId: values.DepartmentId ?? "all",
+        DepartmentId: values.DepartmentId ?? 'all',
         QueueStatus: values.QueueStatus,
       }),
     });
@@ -755,11 +776,11 @@ const RegisteredPatients = () => {
     changedValues: Partial<QueueFilterFormValues>,
     values: QueueFilterFormValues,
   ) => {
-    if (Object.prototype.hasOwnProperty.call(changedValues, "SearchText")) {
+    if (Object.prototype.hasOwnProperty.call(changedValues, 'SearchText')) {
       const hasSearchValue = !isNullOrUndefinedOrBlank(values.SearchText);
       const nextDateRange = hasSearchValue ? undefined : getDateRange();
 
-      form.setFieldValue("DateRange", nextDateRange);
+      form.setFieldValue('DateRange', nextDateRange);
       updateFilterSearch({
         ...values,
         DateRange: nextDateRange,
@@ -773,7 +794,7 @@ const RegisteredPatients = () => {
   const handleOpenProfessionalFeeModal = (department: any) => {
     const nextDepartment = {
       DepartmentId: Number(department.DepartmentId),
-      DepartmentName: department.DepartmentName ?? "",
+      DepartmentName: department.DepartmentName ?? '',
       ProcedureId: departmentItemFilters[department.DepartmentId],
     };
     const nextDepartmentType = getProfessionalFeeDepartmentType(
@@ -786,19 +807,19 @@ const RegisteredPatients = () => {
     pfForm.setFieldsValue({
       Month: dayjs(),
       ProcedureId:
-        nextDepartmentType !== "XRAY" &&
-        nextDepartmentType !== "LABORATORY" &&
-        nextDepartmentType !== "ULTRASOUND"
+        nextDepartmentType !== 'XRAY' &&
+        nextDepartmentType !== 'LABORATORY' &&
+        nextDepartmentType !== 'ULTRASOUND'
           ? selectedProcedureId
           : undefined,
       ProcedureIds:
-        (nextDepartmentType === "XRAY" ||
-          nextDepartmentType === "ULTRASOUND") &&
+        (nextDepartmentType === 'XRAY' ||
+          nextDepartmentType === 'ULTRASOUND') &&
         selectedProcedureId
           ? [selectedProcedureId]
           : undefined,
       ReaderId: undefined,
-      PfPercentage: nextDepartmentType === "ULTRASOUND" ? 25 : undefined,
+      PfPercentage: nextDepartmentType === 'ULTRASOUND' ? 25 : undefined,
     });
     setPfModalOpen(true);
   };
@@ -817,8 +838,8 @@ const RegisteredPatients = () => {
         Number.isFinite(pfPercentageValue) && pfPercentageValue >= 0
           ? pfPercentageValue
           : 25;
-      const res = await PostData("GetRecords", {
-        sp: "udp_GetProfessionalFeeStatement",
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetProfessionalFeeStatement',
         parameters: {
           BranchCode: store.branchCode,
           Month: values.Month.month() + 1,
@@ -826,9 +847,9 @@ const RegisteredPatients = () => {
           DepartmentType: departmentType,
           ReaderId: values.ReaderId,
           ItemId: values.ProcedureId ?? 0,
-          ItemIdsCsv: procedureIds.join(","),
+          ItemIdsCsv: procedureIds.join(','),
           DepartmentId: pfDepartment?.DepartmentId ?? 0,
-          ...(departmentType === "ULTRASOUND"
+          ...(departmentType === 'ULTRASOUND'
             ? { PfPercentage: pfPercentage }
             : {}),
         },
@@ -837,32 +858,36 @@ const RegisteredPatients = () => {
 
       if (rows.length === 0) {
         notification.warning({
-          message: "No completed results found for the selected PF filters.",
-          placement: "topRight",
+          message: 'No completed results found for the selected PF filters.',
+          placement: 'topRight',
           duration: 3,
         });
         return;
       }
 
       const procedureName =
-        departmentType === "LABORATORY"
-          ? "HISTOPATH / PAPSMEAR"
-          : departmentType === "ULTRASOUND"
-          ? (professionalFeeProcedures.data ?? [])
-              .filter((procedure) => procedureIds.includes(procedure.Id))
-              .map((procedure) => procedure.Description)
-              .join(", ") || "ULTRASOUND"
-          : departmentType === "XRAY"
+        departmentType === 'LABORATORY'
+          ? 'HISTOPATH / PAPSMEAR'
+          : departmentType === 'ULTRASOUND'
             ? (professionalFeeProcedures.data ?? [])
                 .filter((procedure) => procedureIds.includes(procedure.Id))
                 .map((procedure) => procedure.Description)
-                .join(", ") || "XRAY"
-            : professionalFeeProcedures.data?.find(
-                (procedure) => procedure.Id === values.ProcedureId,
-              )?.Description ?? rows[0]?.ProcedureName ?? "";
+                .join(', ') || 'ULTRASOUND'
+            : departmentType === 'XRAY'
+              ? (professionalFeeProcedures.data ?? [])
+                  .filter((procedure) => procedureIds.includes(procedure.Id))
+                  .map((procedure) => procedure.Description)
+                  .join(', ') || 'XRAY'
+              : professionalFeeProcedures.data?.find(
+                  (procedure) => procedure.Id === values.ProcedureId,
+                )?.Description ??
+                rows[0]?.ProcedureName ??
+                '';
       const readerName =
         professionalFeeReaders.find((reader) => reader.Id === values.ReaderId)
-          ?.Name ?? rows[0]?.ReaderName ?? "";
+          ?.Name ??
+        rows[0]?.ReaderName ??
+        '';
 
       exportProfessionalFeeStatement(
         rows,
@@ -876,8 +901,8 @@ const RegisteredPatients = () => {
     } catch (error) {
       console.error(error);
       notification.error({
-        message: "Unable to generate PF statement.",
-        placement: "topRight",
+        message: 'Unable to generate PF statement.',
+        placement: 'topRight',
         duration: 3,
       });
     } finally {
@@ -893,19 +918,15 @@ const RegisteredPatients = () => {
     );
 
     pfForm.setFieldValue(
-      "ProcedureIds",
+      'ProcedureIds',
       selectedValues.includes(SELECT_ALL_PROCEDURES_VALUE)
         ? allProcedureIds
         : selectedValues.filter(
             (selectedValue): selectedValue is number =>
-              typeof selectedValue === "number",
+              typeof selectedValue === 'number',
           ),
     );
   };
-
-  useEffect(() => {
-    setDepartmentItemFilters({});
-  }, [DateFrom, DateTo, DepartmentId, SearchText, isDone, IsMobile]);
 
   useEffect(() => {
     if (!departments.isSuccess) {
@@ -920,13 +941,13 @@ const RegisteredPatients = () => {
       return;
     }
 
-    form.setFieldValue("DepartmentId", undefined);
+    form.setFieldValue('DepartmentId', undefined);
     void router.navigate({
-      to: ".",
+      to: '.',
       replace: true,
       search: (previous) => ({
         ...previous,
-        DepartmentId: "all",
+        DepartmentId: 'all',
       }),
     });
   }, [
@@ -945,7 +966,7 @@ const RegisteredPatients = () => {
         : getDateRangeFromQueryValues(DateFrom, DateTo),
       SearchText,
       DepartmentId,
-      QueueStatus: isDone ? "done" : "not-done",
+      QueueStatus: isDone ? 'done' : 'not-done',
     });
   }, [
     DateFrom,
@@ -960,11 +981,11 @@ const RegisteredPatients = () => {
   ]);
 
   useEffect(() => {
-    if (station !== "1") {
+    if (station !== '1') {
       void router.navigate({
-        to: "/registeredpatients/$station",
+        to: '/registeredpatients/$station',
         params: {
-          station: "1",
+          station: '1',
         },
         replace: true,
         search: (previous) => previous,
@@ -972,8 +993,54 @@ const RegisteredPatients = () => {
       return;
     }
 
-    queryClient.invalidateQueries({ queryKey: ["patientPerCounter"] });
+    queryClient.invalidateQueries({ queryKey: ['patientPerCounter'] });
   }, [queryClient, router, station]);
+
+  useEffect(() => {
+    if (isDone || !patientPerCounter.isSuccess || expandedRows !== null) {
+      return;
+    }
+
+    const savedExpandedRowKeys = store.lastQListQuery.expandedRowKeys ?? [];
+    if (savedExpandedRowKeys.length === 0) {
+      return;
+    }
+
+    const availableRowKeys = new Set(
+      (patientPerCounter.data ?? [])
+        .map((department: any) => String(department.RowKey ?? ''))
+        .filter(Boolean),
+    );
+    const restoredExpandedRows = savedExpandedRowKeys.reduce<ExpandedRowsState>(
+      (rows, rowKey) => {
+        if (availableRowKeys.has(rowKey)) {
+          rows[rowKey] = true;
+        }
+
+        return rows;
+      },
+      {},
+    );
+
+    if (Object.keys(restoredExpandedRows).length > 0) {
+      setExpandedRows(restoredExpandedRows);
+    }
+  }, [
+    expandedRows,
+    isDone,
+    patientPerCounter.data,
+    patientPerCounter.isSuccess,
+    store.lastQListQuery.expandedRowKeys,
+  ]);
+
+  const handleExpandedRowsChange = (rows: ExpandedRowsState | null) => {
+    setExpandedRows(rows);
+    store.setLastQListQuery({
+      ...store.lastQListQuery,
+      expandedRowKeys: rows ? Object.keys(rows) : [],
+    });
+  };
+
   return (
     <div className="cardBackGround">
       <Divider>Department List</Divider>
@@ -985,7 +1052,7 @@ const RegisteredPatients = () => {
             : getDateRangeFromQueryValues(DateFrom, DateTo),
           SearchText,
           DepartmentId,
-          QueueStatus: isDone ? "done" : "not-done",
+          QueueStatus: isDone ? 'done' : 'not-done',
         }}
         layout="vertical"
         onValuesChange={handleFilterChange}
@@ -993,7 +1060,7 @@ const RegisteredPatients = () => {
         <div className="grid gap-4 md:grid-cols-12">
           <Form.Item
             name="DateRange"
-            label={isDone ? "Appointment Date" : "Date Range"}
+            label={isDone ? 'Appointment Date' : 'Date Range'}
             className="md:col-span-2"
           >
             <DatePicker.RangePicker
@@ -1004,11 +1071,7 @@ const RegisteredPatients = () => {
               presets={dateRangePresets}
             />
           </Form.Item>
-          <Form.Item
-            name="SearchText"
-            label="Search"
-            className="md:col-span-4"
-          >
+          <Form.Item name="SearchText" label="Search" className="md:col-span-4">
             <Input allowClear placeholder="Patient name, member no, company" />
           </Form.Item>
           <Form.Item
@@ -1043,10 +1106,10 @@ const RegisteredPatients = () => {
               checkedChildren="Yes"
               unCheckedChildren="No"
               onChange={(checked) => {
-                const nextQueueStatus = checked ? "done" : "not-done";
-                form.setFieldValue("QueueStatus", nextQueueStatus);
+                const nextQueueStatus = checked ? 'done' : 'not-done';
+                form.setFieldValue('QueueStatus', nextQueueStatus);
                 void router.navigate({
-                  to: ".",
+                  to: '.',
                   replace: true,
                   search: (prev) => ({
                     ...prev,
@@ -1126,12 +1189,14 @@ const RegisteredPatients = () => {
             size="normal"
             rowExpansionTemplate={rowExpansionTemplate}
             expandedRows={expandedRows as any}
-            onRowToggle={(e) => setExpandedRows(e.data as any)}
-            tableStyle={{ fontSize: "12px", fontWeight: "bold" }}
+            onRowToggle={(e) =>
+              handleExpandedRowsChange(e.data as ExpandedRowsState | null)
+            }
+            tableStyle={{ fontSize: '12px', fontWeight: 'bold' }}
           >
             <Column
               expander={(patientPerCounter.data ?? []).length > 0}
-              style={{ width: "5rem" }}
+              style={{ width: '5rem' }}
             />
             <Column field="CounterName" header="Counter Name" filter></Column>
             <Column
@@ -1145,7 +1210,9 @@ const RegisteredPatients = () => {
       <Modal
         open={pfModalOpen}
         title={`Generate Professional Fee${
-          pfDepartment?.DepartmentName ? ` - ${pfDepartment.DepartmentName}` : ""
+          pfDepartment?.DepartmentName
+            ? ` - ${pfDepartment.DepartmentName}`
+            : ''
         }`}
         footer={null}
         width={620}
@@ -1172,7 +1239,7 @@ const RegisteredPatients = () => {
               rules={[
                 {
                   required: true,
-                  message: "Please select specialist reader.",
+                  message: 'Please select specialist reader.',
                 },
               ]}
             >
@@ -1183,7 +1250,7 @@ const RegisteredPatients = () => {
                 optionFilterProp="label"
                 options={professionalFeeReaders.map((doctor) => ({
                   value: doctor.Id,
-                  label: doctor.Name ?? "",
+                  label: doctor.Name ?? '',
                 }))}
               />
             </Form.Item>
@@ -1198,7 +1265,7 @@ const RegisteredPatients = () => {
                         value && value.length > 0
                           ? Promise.resolve()
                           : Promise.reject(
-                              new Error("Please select exam/procedure."),
+                              new Error('Please select exam/procedure.'),
                             ),
                     },
                   ]}
@@ -1214,7 +1281,7 @@ const RegisteredPatients = () => {
                     options={[
                       {
                         value: SELECT_ALL_PROCEDURES_VALUE,
-                        label: "Select all",
+                        label: 'Select all',
                       },
                       ...(professionalFeeProcedures.data ?? []).map(
                         (procedure) => ({
@@ -1232,7 +1299,7 @@ const RegisteredPatients = () => {
                   rules={[
                     {
                       required: true,
-                      message: "Please select exam/procedure.",
+                      message: 'Please select exam/procedure.',
                     },
                   ]}
                 >
@@ -1256,7 +1323,7 @@ const RegisteredPatients = () => {
               rules={[
                 {
                   required: true,
-                  message: "Please select month.",
+                  message: 'Please select month.',
                 },
               ]}
             >
@@ -1273,7 +1340,7 @@ const RegisteredPatients = () => {
                 rules={[
                   {
                     required: true,
-                    message: "Please enter PF percentage.",
+                    message: 'Please enter PF percentage.',
                   },
                 ]}
               >
@@ -1296,11 +1363,7 @@ const RegisteredPatients = () => {
             >
               Cancel
             </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={isGeneratingPf}
-            >
+            <Button type="primary" htmlType="submit" loading={isGeneratingPf}>
               Generate Excel
             </Button>
           </div>

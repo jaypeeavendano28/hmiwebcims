@@ -1,6 +1,8 @@
 import { createLazyFileRoute, useRouter } from '@tanstack/react-router';
 import {
   Button,
+  Divider,
+  Empty,
   Form,
   Input,
   Modal,
@@ -67,9 +69,24 @@ const UploadDocuments = () => {
   >();
   const [form] = Form.useForm();
   const { Id } = Route.useParams();
+  const search = Route.useSearch() as {
+    appointmentId?: string | number;
+    departmentId?: string | number;
+    autoOpen?: boolean | string;
+  };
+  const requestedAppointmentId = Number(search.appointmentId ?? 0);
+  const requestedDepartmentId = Number(search.departmentId ?? 0);
+  const hasRequestedAppointment = requestedAppointmentId > 0;
+  const hasRequestedDepartment = requestedDepartmentId > 0;
+  const useRequestedDepartment = hasRequestedDepartment && !editingPdf;
+  const shouldAutoOpen =
+    search.autoOpen === true || String(search.autoOpen ?? '') === 'true';
   const [patientInfo, setPatientInfo] = useState<
     TPatientInformation | undefined
   >();
+  const requestedDepartment = departments?.find(
+    (department) => Number(department.Id) === requestedDepartmentId,
+  );
 
   const getPdfContent = async (pdfId: number) => {
     const res = await PostData('GetRecords', {
@@ -131,7 +148,17 @@ const UploadDocuments = () => {
         },
       });
       if (res) {
-        setAppointments(res.parameters.lst);
+        const appointmentList = res.parameters.lst as TAppointments[];
+        setAppointments(appointmentList);
+
+        if (hasRequestedAppointment) {
+          setSelectedRow(
+            appointmentList.find(
+              (appointment) =>
+                Number(appointment.Id) === requestedAppointmentId,
+            ),
+          );
+        }
       }
       res = await PostData('GetRecords', {
         sp: 'udp_GetDepartments',
@@ -182,11 +209,20 @@ const UploadDocuments = () => {
 
   const openNewDocument = () => {
     setEditingPdf(undefined);
-    setSelectedRow(undefined);
+    setSelectedRow(
+      hasRequestedAppointment
+        ? appointments?.find(
+            (appointment) => Number(appointment.Id) === requestedAppointmentId,
+          )
+        : undefined,
+    );
     setPdfBase64(undefined);
     setHasReplacementFile(false);
     form.resetFields();
-    form.setFieldsValue({ ShowInCompanyPortal: 'N' });
+    form.setFieldsValue({
+      Department: hasRequestedDepartment ? requestedDepartmentId : undefined,
+      ShowInCompanyPortal: 'N',
+    });
     setShowModal(true);
   };
 
@@ -247,7 +283,9 @@ const UploadDocuments = () => {
         {
           Id: editingPdf?.Id,
           fk_Appointments_Id: selectedRow!.Id,
-          fk_Departments_Id: v.Department,
+          fk_Departments_Id: useRequestedDepartment
+            ? requestedDepartmentId
+            : v.Department,
           Pdf: editingPdf && !hasReplacementFile ? null : pdfBase64,
           ShowInCompanyPortal: v.ShowInCompanyPortal,
           Description: v.Description,
@@ -456,146 +494,186 @@ const UploadDocuments = () => {
     handleGetInitialized();
   }, []);
   useEffect(() => {
+    if (shouldAutoOpen && hasRequestedAppointment && selectedRow && !showModal) {
+      openNewDocument();
+    }
+  }, [hasRequestedAppointment, selectedRow, shouldAutoOpen, showModal]);
+  useEffect(() => {
     if (!isNullOrUndefinedOrBlank(selectedPdf)) {
       handleGetPdfFile();
     }
   }, [selectedPdf]);
+  useEffect(() => {
+    if (showModal && useRequestedDepartment) {
+      form.setFieldValue('Department', requestedDepartmentId);
+    }
+  }, [form, requestedDepartmentId, showModal, useRequestedDepartment]);
   return (
-    <div className="cardBackGround">
-      <div className="grid grid-cols-6 gap-4">
-        <div>
-          <p>Patient No.</p>
-          <p className="font-bold">{patientInfo?.PatientNo}</p>
-        </div>
-        <div className="col-span-2">
-          <p>Patient Name</p>
-          <p className="font-bold">{patientInfo?.Name}</p>
-        </div>
-        <div>
-          <p>Bithdate</p>
-          <p className="font-bold">
-            {dayjs(patientInfo?.DateOfBirth).format('MM/DD/YYYY')}
-          </p>
+    <div className="cardBackGround space-y-4">
+      <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Uploaded Documents
+            </p>
+            <p className="text-xl font-semibold text-slate-900">
+              {patientInfo?.Name ?? 'Patient'}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2 text-sm">
+              <Tag color="blue">Patient No. {patientInfo?.PatientNo}</Tag>
+              <Tag>
+                Birthdate{' '}
+                {patientInfo?.DateOfBirth
+                  ? dayjs(patientInfo.DateOfBirth).format('MM/DD/YYYY')
+                  : '-'}
+              </Tag>
+              {selectedRow && (
+                <Tag color="geekblue">
+                  {selectedRow.DateStr} {selectedRow.AppointmentType}
+                </Tag>
+              )}
+              {hasRequestedDepartment && (
+                <Tag color="cyan">
+                  {requestedDepartment?.Description ??
+                    `Department ${requestedDepartmentId}`}
+                </Tag>
+              )}
+            </div>
+          </div>
+          <Button
+            type="primary"
+            icon={<MdUploadFile />}
+            onClick={openNewDocument}
+          >
+            Upload Document
+          </Button>
         </div>
       </div>
-      <div className="mt-2">
-        <Button
-          type="primary"
-          icon={<MdUploadFile />}
-          onClick={openNewDocument}
-        >
-          Upload Document
-        </Button>
-      </div>
-      <div className="mt-2">
-        <DataTable
-          value={uploadedPdf}
-          // paginator
-          rows={10}
-          rowsPerPageOptions={[10, 25, 50]}
-          emptyMessage="No Records!"
-          stripedRows
-          size="small"
-          filterDisplay="row"
-          selectionMode="single"
-          selection={selectedPdf}
-          onSelectionChange={(e) =>
-            setSelectedPdf(e.value as UploadedPdfRecord)
-          }
-          dataKey="Id"
-        >
-          <Column
-            header="Action"
-            body={(document: UploadedPdfRecord) => (
-              <Space size={4} onClick={(event) => event.stopPropagation()}>
-                <Tooltip title="Update document">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<BiEdit className="text-lg text-emerald-600" />}
-                    onClick={() => void openEditDocument(document)}
-                  />
-                </Tooltip>
-                <Popconfirm
-                  title="Delete this document?"
-                  description="This will also hide it from the portal."
-                  okText="Delete"
-                  cancelText="Cancel"
-                  okButtonProps={{ danger: true }}
-                  onConfirm={() => void handleDeleteDocument(document)}
-                >
-                  <Tooltip title="Delete document">
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <div className="min-w-0 rounded border border-slate-200 bg-white p-3 shadow-sm xl:col-span-7">
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-slate-800">Documents</p>
+              <p className="text-xs text-slate-500">
+                {uploadedPdf.length} file(s)
+              </p>
+            </div>
+          </div>
+          <DataTable
+            value={uploadedPdf}
+            // paginator
+            rows={10}
+            rowsPerPageOptions={[10, 25, 50]}
+            emptyMessage="No Records!"
+            stripedRows
+            size="small"
+            filterDisplay="row"
+            selectionMode="single"
+            selection={selectedPdf}
+            onSelectionChange={(e) =>
+              setSelectedPdf(e.value as UploadedPdfRecord)
+            }
+            dataKey="Id"
+          >
+            <Column
+              header="Action"
+              body={(document: UploadedPdfRecord) => (
+                <Space size={4} onClick={(event) => event.stopPropagation()}>
+                  <Tooltip title="Update document">
                     <Button
                       type="text"
-                      danger
                       size="small"
-                      icon={<BiTrash className="text-lg" />}
+                      icon={<BiEdit className="text-lg text-emerald-600" />}
+                      onClick={() => void openEditDocument(document)}
                     />
                   </Tooltip>
-                </Popconfirm>
-              </Space>
-            )}
-            style={{ width: 88 }}
-          />
-          <Column
-            field="AppointmentType"
-            header="Appointment Type"
-            filter
-          ></Column>
-          <Column field="DateStr" header="Appointment Date" filter></Column>
-          <Column field="Description" header="Description" filter></Column>
-          <Column field="Department" header="Department" filter></Column>
-          <Column
-            field="ShowInCompanyPortal"
-            header="Show in Portal"
-            body={(document: UploadedPdfRecord) => {
-              const isVisible =
-                document.ShowInCompanyPortal?.toUpperCase() === 'Y';
-
-              return (
-                <Space size={6} onClick={(event) => event.stopPropagation()}>
-                  <Tooltip
-                    title={isVisible ? 'Hide from portal' : 'Show in portal'}
+                  <Popconfirm
+                    title="Delete this document?"
+                    description="This will also hide it from the portal."
+                    okText="Delete"
+                    cancelText="Cancel"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => void handleDeleteDocument(document)}
                   >
-                    <Switch
-                      size="small"
-                      checked={isVisible}
-                      loading={visibilityUpdatingId === document.Id}
-                      onChange={(checked) =>
-                        void handleVisibilityChange(document, checked)
-                      }
-                    />
-                  </Tooltip>
-                  <Tag color={isVisible ? 'green' : 'default'}>
-                    {isVisible ? 'Shown' : 'Hidden'}
-                  </Tag>
+                    <Tooltip title="Delete document">
+                      <Button
+                        type="text"
+                        danger
+                        size="small"
+                        icon={<BiTrash className="text-lg" />}
+                      />
+                    </Tooltip>
+                  </Popconfirm>
                 </Space>
-              );
-            }}
-            filter
-          />
-          <Column field="AddedBy" header="Added By" filter></Column>
-          <Column field="DateAdded" header="Date Added" filter></Column>
-        </DataTable>
-      </div>
+              )}
+              style={{ width: 88 }}
+            />
+            <Column
+              field="AppointmentType"
+              header="Appointment Type"
+              filter
+            ></Column>
+            <Column field="DateStr" header="Appointment Date" filter></Column>
+            <Column field="Description" header="Description" filter></Column>
+            <Column field="Department" header="Department" filter></Column>
+            <Column
+              field="ShowInCompanyPortal"
+              header="Portal"
+              body={(document: UploadedPdfRecord) => {
+                const isVisible =
+                  document.ShowInCompanyPortal?.toUpperCase() === 'Y';
 
-      <div className="mt-2">
-        {loading ? (
-          <Loading size={64} />
-        ) : pdfBase642 ? (
-          <iframe
-            title="Uploaded document preview"
-            style={{
-              width: '100%',
-              height: '600px',
-            }}
-            src={pdfBase642}
-          />
-        ) : (
-          <div className="flex h-40 items-center justify-center border border-dashed border-slate-300 text-sm text-slate-500">
-            Select a document to preview it.
+                return (
+                  <Space size={6} onClick={(event) => event.stopPropagation()}>
+                    <Tooltip
+                      title={isVisible ? 'Hide from portal' : 'Show in portal'}
+                    >
+                      <Switch
+                        size="small"
+                        checked={isVisible}
+                        loading={visibilityUpdatingId === document.Id}
+                        onChange={(checked) =>
+                          void handleVisibilityChange(document, checked)
+                        }
+                      />
+                    </Tooltip>
+                    <Tag color={isVisible ? 'green' : 'default'}>
+                      {isVisible ? 'Shown' : 'Hidden'}
+                    </Tag>
+                  </Space>
+                );
+              }}
+              filter
+            />
+            <Column field="AddedBy" header="Added By" filter></Column>
+            <Column field="DateAdded" header="Date Added" filter></Column>
+          </DataTable>
+        </div>
+
+        <div className="min-w-0 rounded border border-slate-200 bg-white p-3 shadow-sm xl:col-span-5">
+          <div className="mb-2">
+            <p className="font-semibold text-slate-800">Preview</p>
+            <p className="text-xs text-slate-500">
+              {selectedPdf?.Description ?? 'Select a document to preview'}
+            </p>
           </div>
-        )}
+          {loading ? (
+            <div className="flex h-[560px] items-center justify-center">
+              <Loading size={64} />
+            </div>
+          ) : pdfBase642 ? (
+            <iframe
+              title="Uploaded document preview"
+              className="h-[560px] w-full rounded border border-slate-200"
+              src={pdfBase642}
+            />
+          ) : (
+            <div className="flex h-[560px] items-center justify-center rounded border border-dashed border-slate-300 bg-slate-50">
+              <Empty description="Select a document to preview it." />
+            </div>
+          )}
+        </div>
       </div>
 
       <Modal
@@ -604,54 +682,87 @@ const UploadDocuments = () => {
         onCancel={closeDocumentModal}
         destroyOnClose
         footer={false}
-        width={screen.width - 100}
+        width={hasRequestedAppointment ? 980 : 1180}
         centered
       >
-        <div className="grid lg:grid-cols-12 gap-4">
-          <div className="col-span-4">
-            <DataTable
-              value={appointments}
-              // paginator
-              rows={10}
-              rowsPerPageOptions={[10, 25, 50]}
-              emptyMessage="No Records!"
-              stripedRows
-              size="small"
-              filterDisplay="row"
-              selectionMode="single"
-              selection={selectedRow}
-              onSelectionChange={(e) => setSelectedRow(e.value)}
-              dataKey="Id"
+        <div className="grid gap-4 lg:grid-cols-12">
+          {!hasRequestedAppointment && (
+            <div className="min-w-0 rounded border border-slate-200 p-3 lg:col-span-4">
+              <p className="mb-2 font-semibold text-slate-800">
+                Select Appointment
+              </p>
+              <DataTable
+                value={appointments}
+                // paginator
+                rows={10}
+                rowsPerPageOptions={[10, 25, 50]}
+                emptyMessage="No Records!"
+                stripedRows
+                size="small"
+                filterDisplay="row"
+                selectionMode="single"
+                selection={selectedRow}
+                onSelectionChange={(e) => setSelectedRow(e.value)}
+                dataKey="Id"
+              >
+                <Column field="Id" header="Id" filter></Column>
+                <Column field="DateStr" header="Date" filter></Column>
+                <Column
+                  field="AppointmentType"
+                  header="Appointment Type"
+                  filter
+                ></Column>
+              </DataTable>
+            </div>
+          )}
+          <div
+            className={
+              hasRequestedAppointment
+                ? 'min-w-0 lg:col-span-12'
+                : 'min-w-0 lg:col-span-8'
+            }
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              className="rounded border border-slate-200 !p-3"
             >
-              <Column field="Id" header="Id" filter></Column>
-              <Column field="DateStr" header="Date" filter></Column>
-              <Column
-                field="AppointmentType"
-                header="Appointment Type"
-                filter
-              ></Column>
-            </DataTable>
-          </div>
-          <div className="col-span-8">
-            <Form form={form} layout="vertical">
-              <div className="grid grid-cols-3 gap-4">
-                <Form.Item
-                  name="Department"
-                  label="Department"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                  ]}
-                >
-                  <Select>
-                    {departments?.map((v: TDepartments) => (
-                      <Select.Option value={v.Id} key={v.Id}>
-                        {v.Description}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+              <div className="grid grid-cols-2 gap-x-2">
+                {hasRequestedAppointment && selectedRow && (
+                  <div className="mb-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                    <span className="font-semibold">Appointment:</span>{' '}
+                    {selectedRow.DateStr} {selectedRow.AppointmentType}
+                  </div>
+                )}
+                {useRequestedDepartment && (
+                  <div className="mb-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                    <span className="font-semibold">Department:</span>{' '}
+                    {requestedDepartment?.Description ??
+                      `Department ${requestedDepartmentId}`}
+                  </div>
+                )}
+              </div>
+              <div>
+                {!useRequestedDepartment && (
+                  <Form.Item
+                    name="Department"
+                    label="Department"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}
+                  >
+                    <Select>
+                      {departments?.map((v: TDepartments) => (
+                        <Select.Option value={v.Id} key={v.Id}>
+                          {v.Description}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                )}
+
                 <Form.Item
                   name="ShowInCompanyPortal"
                   label="Show in Company Portal"
@@ -660,6 +771,7 @@ const UploadDocuments = () => {
                       required: true,
                     },
                   ]}
+                  className="!mb-2"
                 >
                   <Select>
                     <Select.Option value="Y" key="Y">
@@ -673,6 +785,7 @@ const UploadDocuments = () => {
                 <Form.Item
                   name="Description"
                   label="Description"
+                  className="md:col-span-3"
                   rules={[
                     {
                       required: true,
@@ -683,33 +796,39 @@ const UploadDocuments = () => {
                 </Form.Item>
               </div>
             </Form>
-            <Space>
-              <Button type="primary" onClick={handleSelectPdf}>
-                {editingPdf ? 'Replace PDF' : 'Select PDF'}
-              </Button>
-              <Button
-                type="primary"
-                loading={isSaving}
-                onClick={handleSaveDocument}
-              >
-                {editingPdf ? 'Update' : 'Upload'}
-              </Button>
-            </Space>
-            <div className="mt-2">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <Space>
+                <Button type="primary" onClick={handleSelectPdf}>
+                  {editingPdf ? 'Replace PDF' : 'Select PDF'}
+                </Button>
+                <Button
+                  type="primary"
+                  loading={isSaving}
+                  onClick={handleSaveDocument}
+                  disabled={!editingPdf && !pdfBase64}
+                >
+                  {editingPdf ? 'Update' : 'Upload'}
+                </Button>
+              </Space>
+              <span className="text-xs text-slate-500">
+                PDF only, maximum 2MB
+              </span>
+            </div>
+            <Divider className="my-3" />
+            <div>
               {loading ? (
-                <Loading size={64} />
+                <div className="flex h-[300px] items-center justify-center">
+                  <Loading size={64} />
+                </div>
               ) : pdfBase64 ? (
                 <iframe
                   title="Document upload preview"
-                  style={{
-                    width: '100%',
-                    height: '600px',
-                  }}
+                  className="h-[300px] w-full rounded border border-slate-200"
                   src={pdfBase64}
                 />
               ) : (
-                <div className="flex h-40 items-center justify-center border border-dashed border-slate-300 text-sm text-slate-500">
-                  Select a PDF to preview it.
+                <div className="flex h-[300px] items-center justify-center rounded border border-dashed border-slate-300 bg-slate-50">
+                  <Empty description="Select a PDF to preview it." />
                 </div>
               )}
             </div>

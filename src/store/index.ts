@@ -59,6 +59,20 @@ type AppState = {
   setTokenIdWebCims: (tokenIdWebCims: string) => void;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
+  lastQListQuery: {
+    dateFrom?: string;
+    dateTo?: string;
+    searchText?: string;
+    departmentId?: number;
+    expandedRowKeys?: string[];
+  };
+  setLastQListQuery: (lastQListQuery: {
+    dateFrom?: string;
+    dateTo?: string;
+    searchText?: string;
+    departmentId?: number;
+    expandedRowKeys?: string[];
+  }) => void;
 };
 const useAppStore = create<AppState>()(
   devtools(
@@ -154,6 +168,9 @@ const useAppStore = create<AppState>()(
           set((state) => ({ ...state, tokenIdWebCims })),
         collapsed: false,
         setCollapsed: (collapsed) => set((state) => ({ ...state, collapsed })),
+        lastQListQuery: {},
+        setLastQListQuery: (lastQListQuery) =>
+          set((state) => ({ ...state, lastQListQuery })),
       }),
       { name: 'AppStore' },
     ),

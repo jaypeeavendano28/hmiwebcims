@@ -36,6 +36,7 @@ import { BiArrowBack } from 'react-icons/bi';
 import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
 import AddReqPhysician from '../../components/add-req-physician';
 import PatientInfoHeader from '../../components/PatientInfoHeader';
+import UploadDocumentButton from '../../components/UploadDocumentButton';
 
 export const Route = createLazyFileRoute(
   '/_authenticated/cardiologyresult/$Id',
@@ -451,22 +452,30 @@ const MeasurementCells = ({
 
 type ExamDetailsFieldsProps = {
   dateOfExamination: Dayjs | null;
+  dateDone: Dayjs | null;
+  dateRead: Dayjs | null;
   requestingPhysician?: number;
   cardiologist?: number;
   requestingPhysicians: TDoctors[];
   cardiologists: TDoctors[];
   onDateOfExaminationChange: (date: Dayjs | null) => void;
+  onDateDoneChange: (date: Dayjs | null) => void;
+  onDateReadChange: (date: Dayjs | null) => void;
   onRequestingPhysicianChange: (doctorId?: number) => void;
   onCardiologistChange: (doctorId?: number) => void;
 };
 
 const ExamDetailsFields = ({
   dateOfExamination,
+  dateDone,
+  dateRead,
   requestingPhysician,
   cardiologist,
   requestingPhysicians,
   cardiologists,
   onDateOfExaminationChange,
+  onDateDoneChange,
+  onDateReadChange,
   onRequestingPhysicianChange,
   onCardiologistChange,
 }: ExamDetailsFieldsProps) => (
@@ -476,6 +485,18 @@ const ExamDetailsFields = ({
       readOnly
       type="hidden"
       value={dateOfExamination ? dateOfExamination.format('YYYY-MM-DD') : ''}
+    />
+    <input
+      name="DateDone"
+      readOnly
+      type="hidden"
+      value={dateDone ? dateDone.format('YYYY-MM-DD') : ''}
+    />
+    <input
+      name="DateRead"
+      readOnly
+      type="hidden"
+      value={dateRead ? dateRead.format('YYYY-MM-DD') : ''}
     />
     <input
       name="RequestingPhysician"
@@ -490,7 +511,7 @@ const ExamDetailsFields = ({
       value={cardiologist ?? ''}
     />
 
-    <div>
+    <div className="col-span-3">
       <label
         className="mb-1 block text-sm font-semibold text-slate-700"
         htmlFor="date-of-examination"
@@ -503,6 +524,38 @@ const ExamDetailsFields = ({
         id="date-of-examination"
         value={dateOfExamination}
         onChange={onDateOfExaminationChange}
+      />
+    </div>
+
+    <div className="col-span-3">
+      <label
+        className="mb-1 block text-sm font-semibold text-slate-700"
+        htmlFor="date-done"
+      >
+        Date Done <span className="text-red-600">*</span>
+      </label>
+      <DatePicker
+        className="w-full"
+        format="MM/DD/YYYY"
+        id="date-done"
+        value={dateDone}
+        onChange={onDateDoneChange}
+      />
+    </div>
+
+    <div className="col-span-3">
+      <label
+        className="mb-1 block text-sm font-semibold text-slate-700"
+        htmlFor="date-read"
+      >
+        Date Read <span className="text-red-600">*</span>
+      </label>
+      <DatePicker
+        className="w-full"
+        format="MM/DD/YYYY"
+        id="date-read"
+        value={dateRead}
+        onChange={onDateReadChange}
       />
     </div>
 
@@ -906,6 +959,8 @@ const CardiologyResult = () => {
   const [dateOfExamination, setDateOfExamination] = useState<Dayjs | null>(
     dayjs(),
   );
+  const [dateDone, setDateDone] = useState<Dayjs | null>(dayjs());
+  const [dateRead, setDateRead] = useState<Dayjs | null>(dayjs());
   const [chargesKey, setChargesKey] = useState(Math.random().toString());
   const [resultId, setResultId] = useState(
     Number.isFinite(searchResultId) && searchResultId > 0 ? searchResultId : 0,
@@ -1240,6 +1295,8 @@ const CardiologyResult = () => {
     setDateOfExamination(
       result.DateOfExamination ? dayjs(result.DateOfExamination) : dayjs(),
     );
+    setDateDone(result.DateDone ? dayjs(result.DateDone) : dayjs());
+    setDateRead(result.DateRead ? dayjs(result.DateRead) : dayjs());
     setRequestingPhysician(getNumberOrUndefined(result.RequestingPhysician));
     setCardiologist(getNumberOrUndefined(result.Cardiologist));
     setEcgImpression(
@@ -1278,6 +1335,24 @@ const CardiologyResult = () => {
     if (!dateOfExamination?.isValid()) {
       notification.error({
         message: 'Date of examination is required.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    if (!dateDone?.isValid()) {
+      notification.error({
+        message: 'Date done is required.',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    if (!dateRead?.isValid()) {
+      notification.error({
+        message: 'Date read is required.',
         placement: 'topRight',
         duration: 3,
       });
@@ -1326,6 +1401,8 @@ const CardiologyResult = () => {
         DateOfExamination: dateOfExamination
           ? dateOfExamination.format('YYYY-MM-DD')
           : data.DateOfExamination,
+        DateDone: dateDone ? dateDone.format('YYYY-MM-DD') : data.DateDone,
+        DateRead: dateRead ? dateRead.format('YYYY-MM-DD') : data.DateRead,
         RequestingPhysician: requestingPhysician ?? 0,
         Cardiologist: cardiologist ?? 0,
       });
@@ -1554,6 +1631,8 @@ const CardiologyResult = () => {
   const resetResultForm = () => {
     formRef.current?.reset();
     setDateOfExamination(dayjs());
+    setDateDone(dayjs());
+    setDateRead(dayjs());
     setRequestingPhysician(undefined);
     setCardiologist(undefined);
     setEcgKeyword('');
@@ -2107,19 +2186,26 @@ const CardiologyResult = () => {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <aside className="min-w-0 lg:col-span-3">
           <div className="lg:sticky lg:top-2">
-            <Button
-              className="mb-2"
-              icon={<BiArrowBack />}
-              onClick={() =>
-                router.navigate({
-                  to: '/registeredpatients/$station',
-                  params: { station: '1' },
-                  search: getCompletedResultsSearch(),
-                })
-              }
-            >
-              Back
-            </Button>
+            <Space wrap>
+              <Button
+                className="mb-2"
+                icon={<BiArrowBack />}
+                onClick={() =>
+                  router.navigate({
+                    to: '/registeredpatients/$station',
+                    params: { station: '1' },
+                    search: getCompletedResultsSearch(),
+                  })
+                }
+              >
+                Back
+              </Button>
+              <UploadDocumentButton
+                patientId={appointmentDetails.data?.fk_PatientInformation_Id}
+                appointmentId={appointmentDetails.data?.Id}
+                departmentId={onlineResultDepartmentId}
+              />
+            </Space>
             <Divider>Charges</Divider>
 
             <Tabs
@@ -2181,11 +2267,15 @@ const CardiologyResult = () => {
                 <ExamDetailsFields
                   cardiologist={cardiologist}
                   cardiologists={cardiologists.data ?? []}
+                  dateDone={dateDone}
                   dateOfExamination={dateOfExamination}
+                  dateRead={dateRead}
                   requestingPhysician={requestingPhysician}
                   requestingPhysicians={requestingPhysicians.data ?? []}
                   onCardiologistChange={setCardiologist}
+                  onDateDoneChange={setDateDone}
                   onDateOfExaminationChange={setDateOfExamination}
+                  onDateReadChange={setDateRead}
                   onRequestingPhysicianChange={setRequestingPhysician}
                 />
                 {exam === '2decho' && <TwoDEchoFields />}
