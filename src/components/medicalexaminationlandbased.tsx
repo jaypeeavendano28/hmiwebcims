@@ -22,6 +22,7 @@ import dayjs from 'dayjs';
 
 type Props = {
   AppointmentId: number;
+  Sex: string;
 };
 
 const formatDatePayload = (value: any) =>
@@ -68,7 +69,10 @@ function SummaryResultCheckboxes({
   );
 }
 
-export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
+export default function MedicalExaminationLandBased({
+  AppointmentId,
+  Sex,
+}: Props) {
   const { notification } = App.useApp();
   const [isProcessing, setIsProccessing] = useState(false);
   const [form] = Form.useForm();
@@ -364,7 +368,7 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
           Assessment: 'F',
           WithDateOfExpiration: 'Y',
           DateOfExamination: dayjs(),
-          MedicalExpirationDate: dayjs(),
+          MedicalExpirationDate: dayjs().add(3, 'month'),
           DateOfSigning: dayjs(),
         }}
       >
@@ -1226,9 +1230,19 @@ export default function MedicalExaminationLandBased({ AppointmentId }: Props) {
                 <Radio value="W">With Findings</Radio>
               </Radio.Group>
             </Form.Item>
-            <Form.Item name="UrinalysisRem" label="Result">
-              <Input />
-            </Form.Item>
+            <div className="grid">
+              <Form.Item name="UrinalysisRem" label="Result">
+                <Input />
+              </Form.Item>
+              {Sex === 'Female' && (
+                <Form.Item
+                  name="PregnancyTestResult"
+                  label="Pregnancy Test Result"
+                >
+                  <Input />
+                </Form.Item>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-4">
             <Form.Item name="Stool" label="E. STOOL">

@@ -17,6 +17,8 @@ type AppState = {
   setWithUtilities: (withUtilities: boolean) => void;
   withQueuing: boolean;
   setWithQueuing: (withQueuing: boolean) => void;
+  withQueueOverview: boolean;
+  setWithQueueOverview: (withQueueOverview: boolean) => void;
   withAR: boolean;
   setWithAR: (withAR: boolean) => void;
   withPharmacy: boolean;
@@ -111,6 +113,9 @@ const useAppStore = create<AppState>()(
         withQueuing: false,
         setWithQueuing: (withQueuing) =>
           set((state) => ({ ...state, withQueuing })),
+        withQueueOverview: false,
+        setWithQueueOverview: (withQueueOverview) =>
+          set((state) => ({ ...state, withQueueOverview })),
         withAR: false,
         setWithAR: (withAR) => set((state) => ({ ...state, withAR })),
         withPharmacy: false,

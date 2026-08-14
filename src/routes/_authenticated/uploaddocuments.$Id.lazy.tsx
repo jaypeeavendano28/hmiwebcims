@@ -494,7 +494,12 @@ const UploadDocuments = () => {
     handleGetInitialized();
   }, []);
   useEffect(() => {
-    if (shouldAutoOpen && hasRequestedAppointment && selectedRow && !showModal) {
+    if (
+      shouldAutoOpen &&
+      hasRequestedAppointment &&
+      selectedRow &&
+      !showModal
+    ) {
       openNewDocument();
     }
   }, [hasRequestedAppointment, selectedRow, shouldAutoOpen, showModal]);
@@ -568,7 +573,7 @@ const UploadDocuments = () => {
             emptyMessage="No Records!"
             stripedRows
             size="small"
-            filterDisplay="row"
+            // filterDisplay="row"
             selectionMode="single"
             selection={selectedPdf}
             onSelectionChange={(e) =>
@@ -609,14 +614,14 @@ const UploadDocuments = () => {
               )}
               style={{ width: 88 }}
             />
-            <Column
+            {/* <Column
               field="AppointmentType"
               header="Appointment Type"
-              filter
-            ></Column>
-            <Column field="DateStr" header="Appointment Date" filter></Column>
+              // filter
+            ></Column> */}
+            {/* <Column field="DateStr" header="Appointment Date" filter></Column> */}
             <Column field="Description" header="Description" filter></Column>
-            <Column field="Department" header="Department" filter></Column>
+            {/* <Column field="Department" header="Department" filter></Column> */}
             <Column
               field="ShowInCompanyPortal"
               header="Portal"

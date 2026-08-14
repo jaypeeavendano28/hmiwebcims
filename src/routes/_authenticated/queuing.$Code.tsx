@@ -336,7 +336,11 @@ const Queuing = () => {
         speech.voice = voices[0];
       }
 
-      speech.rate = 0.7;
+      window.speechSynthesis.cancel();
+      speech.lang = 'en-US';
+      speech.rate = 0.82;
+      speech.pitch = 1;
+      speech.volume = 1;
       speech.onend = () => resolve();
       speech.onerror = () => resolve();
       window.speechSynthesis.speak(speech);
@@ -351,6 +355,32 @@ const Queuing = () => {
     return `Patient ${qCalling.QNo} please proceed to STATION 2`;
   };
 
+  const getActiveCallingList = useCallback(async () => {
+    const res = await PostData('GetRecords', {
+      sp: 'udp_GetQCalling',
+      parameters: {},
+    });
+
+    return (res?.parameters?.lst ?? []) as TQCalling[];
+  }, []);
+
+  const isSameCalling = (current: TQCalling, target: TQCalling) =>
+    String(current.QNo ?? '').trim() === String(target.QNo ?? '').trim() &&
+    String(current.Counter ?? '').trim() ===
+      String(target.Counter ?? '').trim() &&
+    String(current.Station ?? '').trim() === String(target.Station ?? '').trim();
+
+  const isCallingStillActive = useCallback(
+    async (qCalling: TQCalling) => {
+      const activeCallingList = await getActiveCallingList();
+
+      return activeCallingList.some((activeCalling) =>
+        isSameCalling(activeCalling, qCalling),
+      );
+    },
+    [getActiveCallingList],
+  );
+
   const handleGetQCalling = useCallback(async () => {
     if (isGettingCallsRef.current) {
       return;
@@ -359,12 +389,7 @@ const Queuing = () => {
     isGettingCallsRef.current = true;
 
     try {
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetQCalling',
-        parameters: {},
-      });
-
-      const callingList: TQCalling[] = res?.parameters?.lst ?? [];
+      const callingList = await getActiveCallingList();
       setIsCalling(callingList.length > 0);
 
       for (const qCalling of callingList) {
@@ -372,13 +397,24 @@ const Queuing = () => {
           break;
         }
 
-        await speak(getCallText(qCalling));
-        await delay(750);
+        const callText = getCallText(qCalling);
+
+        for (let repeatIndex = 0; repeatIndex < 2; repeatIndex += 1) {
+          if (
+            stopCallingRef.current ||
+            !(await isCallingStillActive(qCalling))
+          ) {
+            break;
+          }
+
+          await speak(callText);
+          await delay(repeatIndex === 0 ? 650 : 1000);
+        }
       }
     } finally {
       isGettingCallsRef.current = false;
     }
-  }, [speak]);
+  }, [getActiveCallingList, isCallingStillActive, speak]);
 
   useEffect(() => {
     stopCallingRef.current = false;

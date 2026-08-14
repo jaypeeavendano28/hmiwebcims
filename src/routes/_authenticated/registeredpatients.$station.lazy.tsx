@@ -867,7 +867,7 @@ const RegisteredPatients = () => {
 
       const procedureName =
         departmentType === 'LABORATORY'
-          ? 'HISTOPATH / PAPSMEAR'
+          ? "HISTOPATH / Pap's Smear"
           : departmentType === 'ULTRASOUND'
             ? (professionalFeeProcedures.data ?? [])
                 .filter((procedure) => procedureIds.includes(procedure.Id))

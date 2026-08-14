@@ -755,6 +755,12 @@ const PatientsPerCounter: FC<Props> = ({
     const elapsedStart = data.ElapsedStart ?? data.DateAdded;
     if (!elapsedStart) return '-';
 
+    return formatLiveElapsed(elapsedStart);
+  };
+
+  const formatLiveElapsed = (elapsedStart?: string) => {
+    if (!elapsedStart) return '-';
+
     const dateAdded = dayjs(elapsedStart);
     if (!dateAdded.isValid()) return '-';
 
@@ -777,53 +783,65 @@ const PatientsPerCounter: FC<Props> = ({
     return `${minutes} min ${seconds.toString().padStart(2, '0')} sec`;
   };
 
-  const handleUploadDocument = async (data: TAppointments) => {
-    const appointmentId = Number((data as any).fk_Appointments_Id ?? 0);
-    let patientId = Number(data.fk_PatientInformation_Id ?? 0);
-
-    if (appointmentId <= 0) {
-      notification.error({
-        message: 'Unable to identify appointment for document upload.',
-        placement: 'topRight',
-        duration: 3,
-      });
-      return;
+  const actionBodyStatusElapsed = (data: TAppointments) => {
+    if (!data.SetStatusDate || data.Status === 'D') {
+      return null;
     }
 
-    try {
-      if (patientId <= 0) {
-        const res = await PostData('GetRecords', {
-          sp: 'udp_GetPatientInformationByAppointmentId',
-          parameters: {
-            AppointmentId: appointmentId,
-          },
-        });
-
-        patientId = Number(res?.parameters?.lst?.[0]?.Id ?? 0);
-      }
-
-      if (patientId <= 0) {
-        throw new Error('Unable to identify patient for document upload.');
-      }
-
-      router.navigate({
-        to: '/uploaddocuments/$Id',
-        params: {
-          Id: String(patientId),
-        },
-        search: {
-          appointmentId,
-          departmentId: DepartmentId,
-        },
-      });
-    } catch (error: any) {
-      notification.error({
-        message: error.message,
-        placement: 'topRight',
-        duration: 3,
-      });
-    }
+    return (
+      <div className="mt-1 text-[10px] font-semibold leading-none text-slate-500">
+        {formatLiveElapsed(data.SetStatusDate)}
+      </div>
+    );
   };
+
+  // const handleUploadDocument = async (data: TAppointments) => {
+  //   const appointmentId = Number((data as any).fk_Appointments_Id ?? 0);
+  //   let patientId = Number(data.fk_PatientInformation_Id ?? 0);
+
+  //   if (appointmentId <= 0) {
+  //     notification.error({
+  //       message: 'Unable to identify appointment for document upload.',
+  //       placement: 'topRight',
+  //       duration: 3,
+  //     });
+  //     return;
+  //   }
+
+  //   try {
+  //     if (patientId <= 0) {
+  //       const res = await PostData('GetRecords', {
+  //         sp: 'udp_GetPatientInformationByAppointmentId',
+  //         parameters: {
+  //           AppointmentId: appointmentId,
+  //         },
+  //       });
+
+  //       patientId = Number(res?.parameters?.lst?.[0]?.Id ?? 0);
+  //     }
+
+  //     if (patientId <= 0) {
+  //       throw new Error('Unable to identify patient for document upload.');
+  //     }
+
+  //     router.navigate({
+  //       to: '/uploaddocuments/$Id',
+  //       params: {
+  //         Id: String(patientId),
+  //       },
+  //       search: {
+  //         appointmentId,
+  //         departmentId: DepartmentId,
+  //       },
+  //     });
+  //   } catch (error: any) {
+  //     notification.error({
+  //       message: error.message,
+  //       placement: 'topRight',
+  //       duration: 3,
+  //     });
+  //   }
+  // };
 
   const actionBodyTemplate = (data: TAppointments) => {
     const rowCounterCode = data.CounterCode ?? CounterCode;
@@ -1028,11 +1046,22 @@ const PatientsPerCounter: FC<Props> = ({
           </>
         )}
         <Tooltip title="Upload Document">
-          <Button
-            type="primary"
-            icon={<FaUpload />}
-            onClick={() => handleUploadDocument(data)}
-          />
+          <Link
+            to="/uploaddocuments/$Id"
+            params={{
+              Id: data.fk_PatientInformation_Id?.toString() || '',
+            }}
+            search={{
+              appointmentId: appointmentId?.toString() || '',
+              departmentId: DepartmentId,
+            }}
+          >
+            <Button
+              type="primary"
+              icon={<FaUpload />}
+              onClick={() => console.log('Upload Document clicked', data)}
+            />
+          </Link>
         </Tooltip>
 
         {/* {data.Status === 'D' && <BsCheckLg size={32} color="green" />} */}
@@ -1057,9 +1086,12 @@ const PatientsPerCounter: FC<Props> = ({
     const color = statusTagColors[data.Status] ?? 'default';
 
     return (
-      <Tag color={color} className="m-0 font-semibold">
-        {statusDescription}
-      </Tag>
+      <div className="inline-flex flex-col items-start">
+        <Tag color={color} className="m-0 font-semibold">
+          {statusDescription}
+        </Tag>
+        {actionBodyStatusElapsed(data)}
+      </div>
     );
   };
   const completedStatusBodyTemplate = (data: TAppointments) => {
@@ -1186,12 +1218,12 @@ const PatientsPerCounter: FC<Props> = ({
         )}
         {Compact && (
           <Column
-            field="HmoCompany"
+            field="CompanyName"
             header="COMPANY"
             sortable
             body={(data) => (
               <span className="font-medium italic">
-                {data.HmoCompany || '-'}
+                {data.CompanyName || '-'}
               </span>
             )}
           />

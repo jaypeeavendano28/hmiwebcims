@@ -69,6 +69,8 @@ const App = () => {
     store.setWithMaterialManagementStockIssuance(x!);
     x = await handleWithAccess(54); ///Material Management-Quantity on Hand
     store.setWithMaterialManagementQuantityOnHand(x!);
+    x = await handleWithAccess(55); ///Queue Overview
+    store.setWithQueueOverview(x!);
   };
 
   useEffect(() => {

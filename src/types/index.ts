@@ -286,6 +286,7 @@ export type TAppointments = {
   AddedBy?: string;
   DateAdded?: string;
   ElapsedStart?: string;
+  SetStatusDate?: string;
   UpdatedBy?: string;
   DateUpdated?: string;
   PatientNo?: string;
@@ -334,7 +335,7 @@ export type TAppointments = {
   IsPackage?: boolean;
   LabTypeId?: number;
   LabTemplateId?: number;
-  Exam?: "2decho" | "treadmill" | "ecg";
+  Exam?: '2decho' | 'treadmill' | 'ecg';
   ResultId?: number;
   BranchName?: string;
   DateRead?: string;
@@ -371,12 +372,13 @@ export type TQueueDetail = {
   ItemId?: number;
   LabTypeId?: number;
   LabTemplateId?: number;
-  Exam?: "2decho" | "treadmill" | "ecg";
+  Exam?: '2decho' | 'treadmill' | 'ecg';
   ResultId?: number;
   DateQueued?: string;
   Description?: string;
   ChargeStatus?: string;
   Status: string;
+  SetStatusDate?: string;
 };
 
 export type TAppointmentType = {
@@ -1350,6 +1352,7 @@ export type TMedicalExamLandBased = {
   ExtremitiesRem?: string;
   Reflexes?: string;
   ReflexesRem?: string;
+  PregnancyTestResult?: string;
   Dental?: string;
   DentalRem?: string;
   ChestXray?: string;
@@ -1624,7 +1627,7 @@ export type TVendors = {
   EmailAddress: string;
   Id: number;
   Name: string;
-  Position: " ";
+  Position: ' ';
   Tax: number;
   Tin: string;
   UpdatedBy: string | null;

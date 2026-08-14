@@ -20,6 +20,7 @@ import { Route as AuthenticatedUsersImport } from './routes/_authenticated/users
 import { Route as AuthenticatedUpdateuserprofileImport } from './routes/_authenticated/updateuserprofile'
 import { Route as AuthenticatedSampleprint2Import } from './routes/_authenticated/sampleprint2'
 import { Route as AuthenticatedSampleprintImport } from './routes/_authenticated/sampleprint'
+import { Route as AuthenticatedQueueoverviewImport } from './routes/_authenticated/queueoverview'
 import { Route as AuthenticatedQcountersImport } from './routes/_authenticated/qcounters'
 import { Route as AuthenticatedPurchaseordersImport } from './routes/_authenticated/purchaseorders'
 import { Route as AuthenticatedPharmacyImport } from './routes/_authenticated/pharmacy'
@@ -274,6 +275,13 @@ const AuthenticatedSampleprintRoute = AuthenticatedSampleprintImport.update({
   path: '/sampleprint',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+
+const AuthenticatedQueueoverviewRoute = AuthenticatedQueueoverviewImport.update(
+  {
+    path: '/queueoverview',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any,
+)
 
 const AuthenticatedQcountersRoute = AuthenticatedQcountersImport.update({
   path: '/qcounters',
@@ -890,6 +898,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQcountersImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/_authenticated/queueoverview': {
+      preLoaderRoute: typeof AuthenticatedQueueoverviewImport
+      parentRoute: typeof AuthenticatedImport
+    }
     '/_authenticated/sampleprint': {
       preLoaderRoute: typeof AuthenticatedSampleprintImport
       parentRoute: typeof AuthenticatedImport
@@ -1216,6 +1228,7 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedPharmacyRoute,
     AuthenticatedPurchaseordersRoute,
     AuthenticatedQcountersRoute,
+    AuthenticatedQueueoverviewRoute,
     AuthenticatedSampleprintRoute,
     AuthenticatedSampleprint2Route,
     AuthenticatedUpdateuserprofileRoute,

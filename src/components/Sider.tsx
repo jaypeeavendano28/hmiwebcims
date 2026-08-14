@@ -16,6 +16,7 @@ import { GiMedicines } from 'react-icons/gi';
 import { TbReportMoney } from 'react-icons/tb';
 import { FiArchive } from 'react-icons/fi';
 import { GrTransaction } from 'react-icons/gr';
+import { FaChartSimple } from 'react-icons/fa6';
 
 const Sider = () => {
   const store = useAppStore();
@@ -191,6 +192,13 @@ const Sider = () => {
       key: 'transaction-summary',
       icon: <GrTransaction />,
     },
+    store.withQueueOverview
+      ? {
+          label: <Link to="/queueoverview">Queue Overview</Link>,
+          key: 'mnuQueueOverview',
+          icon: <FaChartSimple />,
+        }
+      : null,
     store.withQueuing
       ? {
           label: 'Queuing',

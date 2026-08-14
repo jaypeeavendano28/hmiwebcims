@@ -49,7 +49,10 @@ function MedicalExaminationLandBasedAppointment() {
       key: '1',
       label: <div className="font-semibold">Medical Examination</div>,
       children: (
-        <MedicalExaminationLandBased AppointmentId={Number(AppointmentId)} />
+        <MedicalExaminationLandBased
+          AppointmentId={Number(AppointmentId)}
+          Sex={appointmentDetails.data?.Sex || ''}
+        />
       ),
     },
     {
