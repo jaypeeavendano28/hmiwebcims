@@ -1166,9 +1166,11 @@ export const AppointmentDetails = ({
       .toUpperCase() === 'Y';
 
   const getChargeItemId = (data?: TCharges) =>
-    Number((data as (TCharges & { ItemId?: number }) | undefined)?.fk_Items_Id ??
-      (data as (TCharges & { ItemId?: number }) | undefined)?.ItemId ??
-      0);
+    Number(
+      (data as (TCharges & { ItemId?: number }) | undefined)?.fk_Items_Id ??
+        (data as (TCharges & { ItemId?: number }) | undefined)?.ItemId ??
+        0,
+    );
 
   const packageHasChildChargeStatus = (data: TCharges) => {
     const packageItemId = getChargeItemId(data);
@@ -1576,6 +1578,7 @@ export const AppointmentDetails = ({
     appointmentTypeWatch ??
     '-';
 
+  console.log('appointmentdetails', appointmentDetails);
   return (
     <div className="min-h-full bg-slate-100 p-3">
       <Helmet>
@@ -1646,6 +1649,12 @@ export const AppointmentDetails = ({
                       ? 'Female'
                       : appointmentDetails?.Sex ?? '-'}
                 </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="font-medium text-slate-600">
+                  Date of Birth
+                </span>
+                <span>{appointmentDetails?.DateOfBirthStr ?? '-'}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="font-medium text-slate-600">Civil Status</span>

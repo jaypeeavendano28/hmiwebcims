@@ -637,19 +637,17 @@ const Cashier = () => {
                             message: 'Enter starting OR No.',
                           },
                           {
-                            pattern: /^\d+$/,
-                            message: 'Numbers only',
+                            pattern: /^[a-zA-Z0-9-]+$/,
+                            message: 'Letters, numbers, and hyphen only',
                           },
                         ]}
-                        getValueFromEvent={(event) =>
-                          event.target.value.replace(/\D/g, '')
+                        normalize={(value) =>
+                          typeof value === 'string'
+                            ? value.trim().toUpperCase()
+                            : value
                         }
                       >
-                        <Input
-                          placeholder="00100"
-                          inputMode="numeric"
-                          autoComplete="off"
-                        />
+                        <Input placeholder="00100" autoComplete="off" />
                       </Form.Item>
 
                       <Form.Item
@@ -663,8 +661,8 @@ const Cashier = () => {
                             message: 'Enter ending OR No.',
                           },
                           {
-                            pattern: /^\d+$/,
-                            message: 'Numbers only',
+                            pattern: /^[a-zA-Z0-9-]+$/,
+                            message: 'Letters, numbers, and hyphen only',
                           },
                           ({ getFieldValue }) => ({
                             validator(_, value) {
@@ -673,7 +671,14 @@ const Cashier = () => {
                               if (
                                 !value ||
                                 !orNoFrom ||
-                                Number(value) >= Number(orNoFrom)
+                                String(value).localeCompare(
+                                  String(orNoFrom),
+                                  undefined,
+                                  {
+                                    numeric: true,
+                                    sensitivity: 'base',
+                                  },
+                                ) >= 0
                               ) {
                                 return Promise.resolve();
                               }
@@ -686,15 +691,13 @@ const Cashier = () => {
                             },
                           }),
                         ]}
-                        getValueFromEvent={(event) =>
-                          event.target.value.replace(/\D/g, '')
+                        normalize={(value) =>
+                          typeof value === 'string'
+                            ? value.trim().toUpperCase()
+                            : value
                         }
                       >
-                        <Input
-                          placeholder="00200"
-                          inputMode="numeric"
-                          autoComplete="off"
-                        />
+                        <Input placeholder="00200" autoComplete="off" />
                       </Form.Item>
                     </div>
                   ) : (

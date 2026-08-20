@@ -1,5 +1,5 @@
 import { AutoComplete, Checkbox, CheckboxProps, Input, Tooltip } from "antd";
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import { isNullOrUndefinedOrBlank, PostData } from "../helpers";
 
 type Props = {
@@ -63,80 +63,33 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
   const isHeader = isHeaderRow(data.IsHeader);
   const [result, setResult] = useState(stripResultSuffix(data.ResultSi, suffix));
   const [possibleValues, setPossibleValues] = useState<any[]>([]);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<
+    number | null
+  >(null);
+  const skipNextBlurSaveRef = useRef(false);
 
-  const getPossibleValueTexts = () =>
-    possibleValues
-      .map((item: any) => item.Value)
-      .filter((item: any) => !isNullOrUndefinedOrBlank(item))
-      .map((item: any) => item.toString());
+  const possibleValueOptions = possibleValues.map((v: any) => ({
+    value: v.Value,
+    label: v.Value,
+  }));
 
-  const getFirstMatchingPossibleValue = (value: any) => {
-    const typedValue = getResultText(value);
-    const searchValue = typedValue.toUpperCase();
-    if (searchValue === "") {
-      return undefined;
+  const getFilteredPossibleValueOptions = (value = result) => {
+    const inputValue = getResultText(value).toUpperCase();
+
+    if (inputValue === "") {
+      return [];
     }
 
-    const values = getPossibleValueTexts();
-
-    const exactMatch = values.find(
-      (item: string) => item.toUpperCase() === searchValue
-    );
-
-    if (exactMatch) {
-      return exactMatch;
-    }
-
-    const startsWithMatch = values.find((item: string) =>
-      item.toUpperCase().startsWith(searchValue)
-    );
-
-    if (startsWithMatch) {
-      return startsWithMatch;
-    }
-
-    return (
-      values.find((item: string) => item.toUpperCase().includes(searchValue)) ??
-      undefined
+    return possibleValueOptions.filter((option) =>
+      option.value
+        ?.toString()
+        .toUpperCase()
+        .includes(inputValue)
     );
   };
 
-  const addPossibleValueIfMissing = async (value: string) => {
-    if (possibleValues.length === 0 || isNullOrUndefinedOrBlank(data.TestId)) {
-      return;
-    }
-
-    const nextValue = getResultText(value);
-    if (nextValue === "") {
-      return;
-    }
-
-    const valueExists = getPossibleValueTexts().some(
-      (item: string) => item.trim().toUpperCase() === nextValue.toUpperCase()
-    );
-
-    if (valueExists) {
-      return;
-    }
-
-    const res = await PostData("AddPossibleValues", {
-      Id: 0,
-      TestId: data.TestId,
-      Value: nextValue,
-    });
-
-    if (res?.status === 1) {
-      handleGetPossibleValues();
-    }
-  };
-
-  const handleSave = async (submitAfterSave = false) => {
-    const cleanResult = stripResultSuffix(result, suffix);
-    const matchedPossibleValue = getFirstMatchingPossibleValue(cleanResult);
-    const resultToSave = stripResultSuffix(
-      matchedPossibleValue ?? cleanResult,
-      suffix
-    );
+  const saveResultValue = (value: any, submitAfterSave = false) => {
+    const resultToSave = stripResultSuffix(value, suffix);
     const showInPrintOut = isHeader
       ? ShowInPrintOut
       : !isNullOrUndefinedOrBlank(resultToSave);
@@ -147,10 +100,10 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
       ResultSi: resultToSave,
       ShowInPrintOut: showInPrintOut,
     }, submitAfterSave);
+  };
 
-    if (!matchedPossibleValue) {
-      await addPossibleValueIfMissing(resultToSave);
-    }
+  const handleSave = async (submitAfterSave = false) => {
+    saveResultValue(result, submitAfterSave);
   };
   const handleGetPossibleValues = async () => {
     const res = await PostData("GetRecords", {
@@ -204,10 +157,10 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
 
         <div className="flex">
           <AutoComplete
-            options={possibleValues.map((v: any) => ({
-              value: v.Value,
-              label: v.Value,
-            }))}
+            defaultActiveFirstOption={false}
+            options={
+              isNullOrUndefinedOrBlank(result) ? [] : possibleValueOptions
+            }
             filterOption={(inputValue, option) =>
               option!
                 .value!.toString()
@@ -217,10 +170,55 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
             style={{ width: "100%" }}
             value={result}
             onChange={(v) => {
+              skipNextBlurSaveRef.current = false;
+              setActiveSuggestionIndex(null);
               setResult(v);
             }}
-            onBlur={() => handleSave()}
+            onFocus={() => {
+              setActiveSuggestionIndex(null);
+            }}
+            onSelect={() => {
+              setActiveSuggestionIndex(null);
+            }}
+            onBlur={() => {
+              if (skipNextBlurSaveRef.current) {
+                skipNextBlurSaveRef.current = false;
+                return;
+              }
+
+              void handleSave();
+            }}
             onKeyDown={(event) => {
+              if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                const filteredOptions = getFilteredPossibleValueOptions();
+
+                if (filteredOptions.length > 0) {
+                  setActiveSuggestionIndex((current) => {
+                    if (current === null) {
+                      return event.key === "ArrowDown"
+                        ? 0
+                        : filteredOptions.length - 1;
+                    }
+
+                    return event.key === "ArrowDown"
+                      ? (current + 1) % filteredOptions.length
+                      : (current - 1 + filteredOptions.length) %
+                          filteredOptions.length;
+                  });
+                }
+              }
+
+              if (event.key === "Tab" && activeSuggestionIndex !== null) {
+                const selectedOption =
+                  getFilteredPossibleValueOptions()[activeSuggestionIndex];
+
+                if (selectedOption) {
+                  saveResultValue(selectedOption.value);
+                  skipNextBlurSaveRef.current = true;
+                  setActiveSuggestionIndex(null);
+                }
+              }
+
               if (event.key === "Enter") {
                 event.preventDefault();
                 void handleSave(true);

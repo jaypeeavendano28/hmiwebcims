@@ -105,12 +105,12 @@ const TransactionSummary = () => {
   const getProcedureFormDefaults = (): TProcedureFormValues => ({
     BranchCode: branchCode,
     DepartmentId: defaultDepartmentId,
-    Date: [dayjs().startOf('year'), dayjs()],
+    Date: [dayjs(), dayjs()],
   });
 
   const getPackageFormDefaults = (): TPackageFormValues => ({
     BranchCode: branchCode,
-    Date: [dayjs().startOf('year'), dayjs()],
+    Date: [dayjs(), dayjs()],
   });
 
   const getProcedureFilters = (

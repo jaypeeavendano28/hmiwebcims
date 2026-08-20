@@ -269,6 +269,7 @@ export type TAppointments = {
   Date?: Date;
   DateStr?: string;
   DateOnly?: string;
+  AppointmentDate?: string;
   CivilStatus?: string;
   ReferredBy?: string;
   AgeYears?: string;

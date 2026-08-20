@@ -385,7 +385,11 @@ const Reports = () => {
           });
 
           if (res) {
-            printClaimsTMPH(res.parameters.lst);
+            printClaimsTMPH(
+              res.parameters.lst,
+              dayjs(from).format('YYYY-MM-DD'),
+              dayjs(to).format('YYYY-MM-DD'),
+            );
           }
           break;
         }
@@ -1091,23 +1095,75 @@ const printBillingCash = (data: TBillingCash[]) => {
     `Cash All Departments.xlsx`,
   );
 };
-const printClaimsTMPH = (data: TClaimsTMPH[]) => {
-  const rows = data.map((item) => [
-    dayjs(item.ServiceCreated).format('MMM D, YYYY h:mm A'),
-    item.MemberNo,
-    item.Name,
-    item.Diagnosis,
-    item.Activity,
-    item.Doctor,
-    item.Spz,
-    item.HB,
-    item.PF,
-    item.Total,
-  ]);
+const printClaimsTMPH = (
+  data: TClaimsTMPH[],
+  dateFrom: string,
+  dateTo: string,
+) => {
+  const toNumber = (value?: string) => {
+    const parsed = Number(String(value ?? '').replace(/,/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const reportPeriod =
+    dayjs(dateFrom).format('YYYYMMDD') === dayjs(dateTo).format('YYYYMMDD')
+      ? dayjs(dateFrom).format('MMMM D, YYYY').toUpperCase()
+      : `${dayjs(dateFrom).format('MMMM D, YYYY').toUpperCase()} - ${dayjs(
+          dateTo,
+        )
+          .format('MMMM D, YYYY')
+          .toUpperCase()}`;
+
+  const groupedRows = data
+    .slice()
+    .sort((a, b) => {
+      const nameCompare = String(a.Name ?? '').localeCompare(
+        String(b.Name ?? ''),
+      );
+      if (nameCompare !== 0) return nameCompare;
+
+      const memberCompare = String(a.MemberNo ?? '').localeCompare(
+        String(b.MemberNo ?? ''),
+      );
+      if (memberCompare !== 0) return memberCompare;
+
+      return dayjs(a.ServiceCreated).valueOf() - dayjs(b.ServiceCreated).valueOf();
+    })
+    .reduce<Record<string, TClaimsTMPH[]>>((groups, item) => {
+      const key = `${item.MemberNo ?? ''}__${item.Name ?? ''}`;
+      groups[key] = groups[key] ?? [];
+      groups[key].push(item);
+      return groups;
+    }, {});
+
+  const rows = Object.values(groupedRows).flatMap((items) => {
+    return items.map((item, index) => [
+      index === 0 ? item.MemberNo : '',
+      index === 0 ? item.Name : '',
+      item.Diagnosis,
+      item.Activity,
+      item.Doctor,
+      item.Spz,
+      toNumber(item.HB),
+      toNumber(item.PF),
+      toNumber(item.Total),
+    ]);
+  });
+  const totals = rows.reduce(
+    (total, row) => ({
+      hb: total.hb + Number(row[6] ?? 0),
+      pf: total.pf + Number(row[7] ?? 0),
+      amount: total.amount + Number(row[8] ?? 0),
+    }),
+    { hb: 0, pf: 0, amount: 0 },
+  );
 
   const sheetData = [
+    ['HMI CARE INC.'],
+    [],
+    ['STATEMENT OF ACCOUNT'],
+    [reportPeriod],
+    [],
     [
-      'Service Created',
       'MemNo',
       'Name',
       'Diagnosis',
@@ -1116,13 +1172,18 @@ const printClaimsTMPH = (data: TClaimsTMPH[]) => {
       'Spz',
       'HB',
       'PF',
-      'Total',
+      'Amount',
     ],
     ...rows,
+    ['', '', '', '', '', 'TOTAL', totals.hb, totals.pf, totals.amount],
   ];
   const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } },
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } },
+  ];
   ws['!cols'] = [
-    { wch: 30 },
     { wch: 19 },
     { wch: 31 },
     { wch: 40 },
@@ -1134,24 +1195,56 @@ const printClaimsTMPH = (data: TClaimsTMPH[]) => {
     { wch: 15 },
   ];
 
-  const headers = sheetData[0];
+  const headerRowIndex = 5;
+  const totalRowIndex = sheetData.length - 1;
+  const headers = sheetData[headerRowIndex];
+  const borderStyle = {
+    top: { style: 'thin', color: { rgb: '000000' } },
+    bottom: { style: 'thin', color: { rgb: '000000' } },
+    left: { style: 'thin', color: { rgb: '000000' } },
+    right: { style: 'thin', color: { rgb: '000000' } },
+  };
+
+  ws['A1'].s = { font: { bold: true, sz: 16 } };
+  ws['A3'].s = { font: { bold: true } };
+  ws['A4'].s = { font: { bold: true } };
 
   headers.forEach((_, colIndex) => {
-    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+    const cellAddress = XLSX.utils.encode_cell({
+      r: headerRowIndex,
+      c: colIndex,
+    });
     ws[cellAddress].s = {
       font: { bold: true },
-      fill: { fgColor: { rgb: 'D9EAF7' } },
+      border: borderStyle,
+      alignment: { horizontal: 'center' },
     };
   });
 
-  const amountColIndex = 7;
+  for (let r = headerRowIndex + 1; r < sheetData.length; r++) {
+    for (let c = 0; c < headers.length; c++) {
+      const cellAddress = XLSX.utils.encode_cell({ r, c });
+      if (!ws[cellAddress]) {
+        ws[cellAddress] = { t: 's', v: '' };
+      }
+      ws[cellAddress].s = {
+        ...(ws[cellAddress].s ?? {}),
+        border: borderStyle,
+        ...(c >= 6 ? { numFmt: '#,##0.00' } : {}),
+      };
+    }
+  }
 
-  for (let r = 1; r < sheetData.length; r++) {
-    const cellAddress = XLSX.utils.encode_cell({ r, c: amountColIndex });
-    if (!ws[cellAddress]) continue;
-
+  for (let c = 0; c < headers.length; c++) {
+    const cellAddress = XLSX.utils.encode_cell({ r: totalRowIndex, c });
+    if (!ws[cellAddress]) {
+      ws[cellAddress] = { t: 's', v: '' };
+    }
     ws[cellAddress].s = {
-      numFmt: '#,##0.00',
+      ...(ws[cellAddress].s ?? {}),
+      font: { bold: true },
+      border: borderStyle,
+      ...(c >= 6 ? { numFmt: '#,##0.00' } : {}),
     };
   }
 

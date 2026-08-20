@@ -752,7 +752,8 @@ const PatientsPerCounter: FC<Props> = ({
   };
   const actionBodyElapseTime = (data: TAppointments) => {
     if (data.Status === 'D') return data.ElapseTime ?? '-';
-    const elapsedStart = data.ElapsedStart ?? data.DateAdded;
+    const elapsedStart =
+      data.ElapsedStart ?? (IsMobile ? data.AppointmentDate : data.DateAdded);
     if (!elapsedStart) return '-';
 
     return formatLiveElapsed(elapsedStart);

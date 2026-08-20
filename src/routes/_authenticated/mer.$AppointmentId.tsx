@@ -502,7 +502,7 @@ const Mer = () => {
           ClassC1Label: x.ClassC1Label,
           ClassC2Label: x.ClassC2Label,
           ClassDLabel: x.ClassDLabel,
-          ClassOLabel: x.ClassOLabel,
+          ClassOLabel: decodeReportLineBreaks(x.ClassOLabel),
           OthersResult: x.OthersResult,
           Appointment: x.Appointment,
           AppointmentRemarks: x.AppointmentRemarks,
@@ -928,6 +928,7 @@ const Mer = () => {
         EchoResult: encodeReportLineBreaks(v.EchoResult),
         UltrasoundResult: encodeReportLineBreaks(v.UltrasoundResult),
         OthersRemarks: encodeReportLineBreaks(v.OthersRemarks),
+        ClassOLabel: encodeReportLineBreaks(v.ClassOLabel),
         Remarks: encodeReportLineBreaks(v.Remarks),
         Type: 'R',
       };
@@ -981,6 +982,22 @@ const Mer = () => {
   const handleChangeOtherResult = () => {
     const v: TMerOtherTests = formOtherServices.getFieldsValue();
     let otherResult: string = '';
+    const appendOtherResult = (result: string) => {
+      otherResult = otherResult === '' ? result : `${otherResult},${result}`;
+    };
+    const buildNormalOtherResult = (
+      label: string,
+      unit: unknown,
+      result: unknown,
+    ) => {
+      const resultText = String(result ?? '');
+
+      if (resultText.trim().toUpperCase() === 'NORMAL') {
+        return `${label}-${resultText}`;
+      }
+
+      return `${label}-${String(unit ?? '')}-${resultText}`;
+    };
 
     if (v.StoolCs === true) {
       otherResult = 'Stool c/s-' + v.StoolCsValue;
@@ -1037,156 +1054,17 @@ const Mer = () => {
       }
     }
 
-    if (v.Glucose === true) {
-      if (otherResult === '') {
-        otherResult = 'Glucose-' + v.GlucoseValue2 + '-' + v.GlucoseValue;
-      } else {
-        otherResult =
-          otherResult + ',Glucose-' + v.GlucoseValue2 + '-' + v.GlucoseValue;
+    normalOtherTests.forEach((test) => {
+      if (v[test.checkName] === true) {
+        appendOtherResult(
+          buildNormalOtherResult(
+            test.label,
+            v[test.unitName],
+            v[test.resultName],
+          ),
+        );
       }
-    }
-    if (v.Creatinine === true) {
-      if (otherResult === '') {
-        otherResult =
-          'Creatinine-' + v.CreatinineValue2 + '-' + v.CreatinineValue;
-      } else {
-        otherResult =
-          otherResult +
-          ',Creatinine-' +
-          v.CreatinineValue2 +
-          '-' +
-          v.CreatinineValue;
-      }
-    }
-
-    if (v.Urea === true) {
-      if (otherResult === '') {
-        otherResult = 'Urea-' + v.UreaValue2 + '-' + v.UreaValue;
-      } else {
-        otherResult =
-          otherResult + ',Creatinine-' + v.UreaValue2 + '-' + v.UreaValue;
-      }
-    }
-
-    if (v.UricAcid === true) {
-      if (otherResult === '') {
-        otherResult = 'Uric Acid-' + v.UricAcidValue2 + '-' + v.UricAcidValue;
-      } else {
-        otherResult =
-          otherResult +
-          ',Uric Acid-' +
-          v.UricAcidValue2 +
-          '-' +
-          v.UricAcidValue;
-      }
-    }
-    if (v.Cholesterol === true) {
-      if (otherResult === '') {
-        otherResult =
-          'Cholesterol-' + v.CholesterolValue2 + '-' + v.CholesterolValue;
-      } else {
-        otherResult =
-          otherResult +
-          ',Cholesterol-' +
-          v.CholesterolValue2 +
-          '-' +
-          v.CholesterolValue;
-      }
-    }
-    if (v.Hdl === true) {
-      if (otherResult === '') {
-        otherResult = 'HDL-' + v.HdlValue2 + '-' + v.HdlValue;
-      } else {
-        otherResult = otherResult + ',HDL-' + v.HdlValue2 + '-' + v.HdlValue;
-      }
-    }
-
-    if (v.Sgpt === true) {
-      if (otherResult === '') {
-        otherResult = 'Sgpt-' + v.SgptValue2 + '-' + v.SgptValue;
-      } else {
-        otherResult = otherResult + ',Sgpt-' + v.SgptValue2 + '-' + v.SgptValue;
-      }
-    }
-    if (v.Globulin === true) {
-      if (otherResult === '') {
-        otherResult = 'Globulin-' + v.GlobulinValue2 + '-' + v.GlobulinValue;
-      } else {
-        otherResult =
-          otherResult + ',Globulin-' + v.GlobulinValue2 + '-' + v.GlobulinValue;
-      }
-    }
-    if (v.Tsh === true) {
-      if (otherResult === '') {
-        otherResult = 'Tsh-' + v.TshValue2 + '-' + v.TshValue;
-      } else {
-        otherResult = otherResult + ',Tsh-' + v.TshValue2 + '-' + v.TshValue;
-      }
-    }
-
-    if (v.Ft4 === true) {
-      if (otherResult === '') {
-        otherResult = 'Ft4-' + v.Ft4Value2 + '-' + v.Ft4Value;
-      } else {
-        otherResult = otherResult + ',Ft4-' + v.Ft4Value2 + '-' + v.Ft4Value;
-      }
-    }
-
-    if (v.Sodium === true) {
-      if (otherResult === '') {
-        otherResult = 'Sodium-' + v.SodiumValue2 + '-' + v.SodiumValue;
-      } else {
-        otherResult =
-          otherResult + ',Sodium-' + v.SodiumValue2 + '-' + v.SodiumValue;
-      }
-    }
-
-    if (v.Triglycerides === true) {
-      if (otherResult === '') {
-        otherResult =
-          'Triglycerides-' + v.TriglyceridesValue2 + '-' + v.TriglyceridesValue;
-      } else {
-        otherResult =
-          otherResult +
-          ',Triglycerides-' +
-          v.TriglyceridesValue2 +
-          '-' +
-          v.TriglyceridesValue;
-      }
-    }
-
-    if (v.Ldl === true) {
-      if (otherResult === '') {
-        otherResult = 'Ldl-' + v.LdlValue2 + '-' + v.LdlValue;
-      } else {
-        otherResult = otherResult + ',Ldl-' + v.LdlValue2 + '-' + v.LdlValue;
-      }
-    }
-
-    if (v.Sgot === true) {
-      if (otherResult === '') {
-        otherResult = 'Sgot-' + v.SgotValue2 + '-' + v.SgotValue;
-      } else {
-        otherResult = otherResult + ',Sgot-' + v.SgotValue2 + '-' + v.SgotValue;
-      }
-    }
-
-    if (v.HbA1c === true) {
-      if (otherResult === '') {
-        otherResult = 'HbA1c-' + v.HbA1cValue2 + '-' + v.HbA1cValue;
-      } else {
-        otherResult =
-          otherResult + ',HbA1c-' + v.HbA1cValue2 + '-' + v.HbA1cValue;
-      }
-    }
-
-    if (v.Ft3 === true) {
-      if (otherResult === '') {
-        otherResult = 'Ft3-' + v.Ft3Value2 + '-' + v.Ft3Value;
-      } else {
-        otherResult = otherResult + ',Ft3-' + v.Ft3Value2 + '-' + v.Ft3Value;
-      }
-    }
+    });
 
     formOtherServices.setFieldValue('OtherResult', otherResult);
     form.setFieldValue('OthersResult', otherResult);
@@ -2115,7 +1993,7 @@ const Mer = () => {
             noStyle
             initialValue={'Class O – Pending due to:'}
           >
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} />
           </Form.Item>
         </div>
 

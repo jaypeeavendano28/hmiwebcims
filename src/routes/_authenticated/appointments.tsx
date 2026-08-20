@@ -297,7 +297,12 @@ const Appointments = () => {
             onConfirm={() => handleDelete(data)}
             disabled={!canDelete}
           >
-            <Button danger type="primary" icon={<BiTrash />} disabled={!canDelete} />
+            <Button
+              danger
+              type="primary"
+              icon={<BiTrash />}
+              disabled={!canDelete}
+            />
           </Popconfirm>
         </Tooltip>
       </Space>
@@ -410,6 +415,7 @@ const Appointments = () => {
             <Select onChange={handleTypeChange}>
               <Select.Option value="D">Diagnostic</Select.Option>
               <Select.Option value="H">Hemodialysis/ASC</Select.Option>
+              <Select.Option value="M">Mobile</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="DateRange" label="Date Range" className="col-span-2">
@@ -498,11 +504,18 @@ const Appointments = () => {
             // style={{ minWidth: "12rem" }}
           ></Column>
           <Column
+            field="DateOnly"
+            header="Appointment Date"
+            // style={{ minWidth: "12rem" }}
+            filter
+          ></Column>
+          <Column
             field="DateAdded"
             header="Date Added"
             // style={{ minWidth: "12rem" }}
             filter
           ></Column>
+
           <Column
             field="Company"
             header="Patient Company"
