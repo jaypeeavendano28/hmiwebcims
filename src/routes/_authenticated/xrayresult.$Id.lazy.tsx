@@ -607,6 +607,8 @@ const XrayResult = () => {
                       AppointmentId={appointmentDetails?.Id}
                       handleOpen={(data) => handleOpenResult(data.Id)}
                       counter="XRAY"
+                      reloadKey={Key}
+                      activeChargeId={chargeId}
                     />
                   ),
                 },

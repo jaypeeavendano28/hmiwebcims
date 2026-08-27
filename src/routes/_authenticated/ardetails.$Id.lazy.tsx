@@ -103,6 +103,11 @@ const ArDetails = () => {
       console.log(error);
     }
   };
+  const getPaymentTypeParam = (paymentType?: string) =>
+    isNullOrUndefinedOrBlank(paymentType) || paymentType === '-'
+      ? undefined
+      : paymentType;
+
   const actionBodyTemplate = (data: TAccountsReceivable) => {
     return (
       <Space>
@@ -113,7 +118,7 @@ const ArDetails = () => {
             onClick={() => {
               setSelected(data);
               setShowModal(true);
-              handleGetArPayments(data.Id);
+              handleGetArPayments(data.Id, getPaymentTypeParam(data.PaymentType));
             }}
           />
         </Tooltip>
@@ -137,6 +142,7 @@ const ArDetails = () => {
                 Amount: data.Amount,
                 Reference: data.Reference,
                 Ewt: data.Ewt,
+                PaymentType: data.PaymentType,
               });
             }}
           />
@@ -209,6 +215,7 @@ const ArDetails = () => {
           }}
         />
         <Column className="text-lg text-right" footer={totalAmount} />
+        <Column />
         <Column className="text-lg text-right" footer={totalPayments} />
         <Column className="text-lg text-right" footer={totalBalance} />
       </Row>
@@ -216,12 +223,15 @@ const ArDetails = () => {
   );
   const handleSubmit = async (values: any) => {
     if (!isDelete) {
-      if (values.Amount > selected!.Balance!) {
+      const availableBalance = selected?.Balance ?? 0;
+
+      if (values.Amount > availableBalance) {
         notification.error({
           message: 'Amount must not be greater than balance!',
           placement: 'topRight',
           duration: 3,
         });
+        return;
       }
     }
 
@@ -233,7 +243,8 @@ const ArDetails = () => {
       HmoCompany: details.data?.Id,
       Reference: values.Reference,
       IsDelete: isDelete,
-      Ewt: isNullOrUndefinedOrBlank(values.EWT) ? 0 : values.EWT,
+      Ewt: isNullOrUndefinedOrBlank(values.Ewt) ? 0 : values.Ewt,
+      PaymentType: getPaymentTypeParam(selected?.PaymentType),
     });
     if (res) {
       form.resetFields();
@@ -247,6 +258,9 @@ const ArDetails = () => {
   const handleDeletePayment = async (Id: number) => {
     const res = await PostData('SaveArPayment', {
       Id,
+      fk_AccountsReceivable_Id: selected?.Id,
+      HmoCompany: details.data?.Id,
+      PaymentType: getPaymentTypeParam(selected?.PaymentType),
       IsDelete: true,
     });
     if (res) {
@@ -265,7 +279,12 @@ const ArDetails = () => {
   };
   const rowExpansionTemplate = (data: TAccountsReceivable) => {
     if (isNullOrUndefinedOrBlank(data.AppointmentId)) return null;
-    return <ChargesPerAppointment AppointmentId={data.AppointmentId!} />;
+    return (
+      <ChargesPerAppointment
+        AppointmentId={data.AppointmentId!}
+        PaymentType={getPaymentTypeParam(data.PaymentType)}
+      />
+    );
   };
 
   const rowExpansionTemplate2 = (data: TArPayments) => {
@@ -315,7 +334,18 @@ const ArDetails = () => {
   };
   const exportExcel = () => {
     import('xlsx').then((xlsx) => {
-      const worksheet = xlsx.utils.json_to_sheet(lstArDetails!);
+      const rows = (lstArDetails ?? []).map((detail) => ({
+        AppointmentId: detail.AppointmentId,
+        AppointmentType: detail.AppointmentType,
+        Date: detail.Date ? dayjs(detail.Date).format('MM/DD/YYYY') : '',
+        PatientName: detail.PatientName,
+        Amount: detail.Amount,
+        PaymentType: detail.PaymentType,
+        Payment: detail.Payment,
+        Balance: detail.Balance,
+        Age: detail.Age,
+      }));
+      const worksheet = xlsx.utils.json_to_sheet(rows);
       const workbook = { Sheets: { data: worksheet }, SheetNames: ['data'] };
       const excelBuffer = xlsx.write(workbook, {
         bookType: 'xlsx',
@@ -326,11 +356,15 @@ const ArDetails = () => {
     });
   };
 
-  const handleGetArPayments = async (rowId: number) => {
+  const handleGetArPayments = async (
+    rowId: number,
+    paymentType?: string,
+  ) => {
     const res = await PostData('GetRecords', {
       sp: 'udp_GetArPayments',
       parameters: {
         Id: rowId,
+        PaymentType: paymentType,
       },
     });
     if (res) {
@@ -492,6 +526,7 @@ const ArDetails = () => {
               })
             }
           ></Column>
+          <Column field="PaymentType" header="Payment Type"></Column>
           <Column
             field="Payment"
             header="Payments"
@@ -543,7 +578,11 @@ const ArDetails = () => {
             maximumFractionDigits: 2,
           })}
         </p>
+        <p className="font-bold mb-2">Payment Type: {selected?.PaymentType}</p>
         <Form form={form} onFinish={handleSubmit} layout="inline">
+          <Form.Item name="PaymentType" hidden>
+            <Input />
+          </Form.Item>
           <Form.Item
             label="Date"
             name="Date"
@@ -608,6 +647,11 @@ const ArDetails = () => {
               field="Reference"
               header="Reference"
               style={{ width: '200px' }}
+            ></Column>
+            <Column
+              field="PaymentType"
+              header="Payment Type"
+              style={{ width: '120px' }}
             ></Column>
             <Column
               field="Amount"

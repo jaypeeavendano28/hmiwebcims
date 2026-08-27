@@ -1151,10 +1151,16 @@ export const AppointmentDetails = ({
     const charge = data as
       | (TCharges & { ChargeStatus?: string; DateCompleted?: string })
       | undefined;
+    const status = String(charge?.Status ?? charge?.ChargeStatus ?? '')
+      .trim()
+      .toUpperCase();
+
+    if (status === 'CANCELLED' || status === 'CANCELED') {
+      return false;
+    }
 
     return (
-      String(charge?.Status ?? '').trim() !== '' ||
-      String(charge?.ChargeStatus ?? '').trim() !== '' ||
+      status !== '' ||
       String(charge?.StatusDate ?? '').trim() !== '' ||
       String(charge?.DateCompleted ?? '').trim() !== ''
     );

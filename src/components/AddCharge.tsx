@@ -25,6 +25,10 @@ import { useQuery } from '@tanstack/react-query';
 import VirtualList from 'rc-virtual-list';
 import Loading from './loading';
 const ContainerHeight = 400;
+const paymentTypesRequiringHmoCompany = ['HMO', 'CTC', 'MOB'];
+const isMissingHmoCompany = (value: unknown) =>
+  isNullOrUndefinedOrBlank(value) || Number(value) === 0;
+
 type Props = {
   Id: string;
   ChargeDetails: TCharges | undefined;
@@ -138,6 +142,15 @@ const AddCharge: FC<Props> = ({
   );
 
   useEffect(() => {
+    if (
+      ChargeDetails &&
+      ChargeDetails.PaymentType === paymentTypeQuery &&
+      paymentTypesRequiringHmoCompany.includes(paymentTypeQuery ?? '')
+    ) {
+      form.setFieldValue('HmoCompany', ChargeDetails.fk_HmoCompany_Id);
+      return;
+    }
+
     if (AppointmentDetails) {
       if (paymentTypeQuery === 'HMO') {
         form.setFieldValue('HmoCompany', AppointmentDetails?.fk_HmoCompany_Id);
@@ -151,7 +164,7 @@ const AddCharge: FC<Props> = ({
         form.setFieldValue('HmoCompany', undefined);
       }
     }
-  }, [paymentTypeQuery, AppointmentDetails]);
+  }, [paymentTypeQuery, AppointmentDetails, ChargeDetails]);
 
   const hmoCompanyLabel =
     paymentTypeQuery === 'HMO'
@@ -160,9 +173,8 @@ const AddCharge: FC<Props> = ({
         ? 'Company'
         : 'HMO/Company';
   const showHmoCompany =
-    paymentTypeQuery === 'HMO' ||
-    paymentTypeQuery === 'CTC' ||
-    paymentTypeQuery === 'MOB';
+    paymentTypeQuery !== undefined &&
+    paymentTypesRequiringHmoCompany.includes(paymentTypeQuery);
   const hmoCompanyOptions = hmoCompany.data?.filter((item: THmoCompany) => {
     if (paymentTypeQuery === 'HMO') {
       return item.Type === 'H';
@@ -237,12 +249,8 @@ const AddCharge: FC<Props> = ({
   const handleAdd = async (v: TCharges) => {
     // console.log({ paymentType: v.PaymentType, hmoCompany: v.HmoCompany });
     if (
-      (v.PaymentType === 'HMO' ||
-        v.PaymentType === 'CTC' ||
-        v.PaymentType === 'CAR' ||
-        v.PaymentType === 'TMP' ||
-        v.PaymentType === 'MOB') &&
-      isNullOrUndefinedOrBlank(v.HmoCompany)
+      paymentTypesRequiringHmoCompany.includes(v.PaymentType ?? '') &&
+      isMissingHmoCompany(v.HmoCompany)
     ) {
       notification.error({
         message: 'Please select an Hmo/Company!',
@@ -317,9 +325,7 @@ const AddCharge: FC<Props> = ({
       fk_Appointments_Id: Id,
       Id: ChargeDetails !== undefined ? ChargeDetails.Id : 0,
       Description: selectedItem!.Description,
-      fk_HmoCompany_Id: isNullOrUndefinedOrBlank(v.HmoCompany)
-        ? 0
-        : v.HmoCompany,
+      fk_HmoCompany_Id: isMissingHmoCompany(v.HmoCompany) ? 0 : v.HmoCompany,
       fk_Items_Id: fkItemsId,
       fk_Charges_Id: selectedItem!.Id,
       PriceCategory: selectedItem!.PriceCategory2,
@@ -378,6 +384,7 @@ const AddCharge: FC<Props> = ({
         Qty: ChargeDetails.Qty,
         fk_Items_Id: itemId,
         PaymentType: ChargeDetails.PaymentType,
+        HmoCompany: ChargeDetails.fk_HmoCompany_Id,
         fk_Doctors_Id: ChargeDetails.fk_Doctors_Id,
         Diagnosis: ChargeDetails.Diagnosis,
       });
@@ -630,6 +637,19 @@ const AddCharge: FC<Props> = ({
                 name="HmoCompany"
                 label={hmoCompanyLabel}
                 hidden={!showHmoCompany}
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      if (!showHmoCompany || !isMissingHmoCompany(value)) {
+                        return Promise.resolve();
+                      }
+
+                      return Promise.reject(
+                        new Error('Please select an HMO/Company!'),
+                      );
+                    },
+                  },
+                ]}
               >
                 <Select
                   style={{ width: '100%' }}

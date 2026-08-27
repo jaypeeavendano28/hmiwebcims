@@ -571,6 +571,8 @@ const UltrasoundResult = () => {
                       AppointmentId={appointmentDetails?.Id}
                       handleOpen={(data) => handleOpenResult(data.Id)}
                       counter="ULT"
+                      reloadKey={Key}
+                      activeChargeId={chargeId}
                     />
                   ),
                 },

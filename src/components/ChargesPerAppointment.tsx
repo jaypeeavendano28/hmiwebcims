@@ -10,11 +10,15 @@ import { Row } from "primereact/row";
 
 type Props = {
   AppointmentId: number;
+  PaymentType?: string;
 };
 
-export default function ChargesPerAppointment({ AppointmentId }: Props) {
+export default function ChargesPerAppointment({
+  AppointmentId,
+  PaymentType,
+}: Props) {
   const listOfCharges = useQuery<TCharges[]>({
-    queryKey: ["listOfCharges"],
+    queryKey: ["listOfCharges", AppointmentId, PaymentType],
     queryFn: async () => {
       const res = await PostData("GetRecords", {
         sp: "udp_GetChargesByAppointmentId",
@@ -23,9 +27,18 @@ export default function ChargesPerAppointment({ AppointmentId }: Props) {
         },
       });
       if (res) {
-        console.log(res);
-        return res.parameters.lst;
+        const charges = res.parameters.lst as TCharges[];
+
+        if (!PaymentType) return charges;
+
+        return charges.filter(
+          (charge) =>
+            charge.PaymentType?.trim().toUpperCase() ===
+            PaymentType.trim().toUpperCase(),
+        );
       }
+
+      return [];
     },
     refetchOnWindowFocus: false,
     staleTime: 0,
@@ -33,7 +46,7 @@ export default function ChargesPerAppointment({ AppointmentId }: Props) {
 
   const totalAmount = () => {
     let total = 0;
-    for (let sale of listOfCharges.data!) {
+    for (let sale of listOfCharges.data ?? []) {
       total += sale.Gross!;
     }
     return total.toLocaleString(undefined, {
@@ -43,7 +56,7 @@ export default function ChargesPerAppointment({ AppointmentId }: Props) {
   };
   const totalPayments = () => {
     let total = 0;
-    for (let sale of listOfCharges.data!) {
+    for (let sale of listOfCharges.data ?? []) {
       total += sale.CashPayment!;
     }
     return total.toLocaleString(undefined, {
@@ -53,7 +66,7 @@ export default function ChargesPerAppointment({ AppointmentId }: Props) {
   };
   const totalBalance = () => {
     let total = 0;
-    for (let sale of listOfCharges.data!) {
+    for (let sale of listOfCharges.data ?? []) {
       total += sale.Net!;
     }
     return total.toLocaleString(undefined, {

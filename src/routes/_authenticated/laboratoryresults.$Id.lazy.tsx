@@ -1292,8 +1292,16 @@ const LaboratoryResults = () => {
                   key: '2',
                   children: (
                     <ExistingLabResults
-                      PatientId={appointmentDetails?.fk_PatientInformation_Id}
-                      handleOpen={(data) => handleOpenResult(data.Id)}
+                      AppointmentId={appointmentDetails?.Id}
+                      activeChargeId={chargeId}
+                      handleOpen={(data) => {
+                        setActiveCharge(data);
+                        setChargeDescription(String(data?.Description ?? ''));
+                        handleOpenResult(
+                          getPositiveNumber(data?.ResultId),
+                          getPositiveNumber(data?.Id),
+                        );
+                      }}
                       Key={key}
                     />
                   ),

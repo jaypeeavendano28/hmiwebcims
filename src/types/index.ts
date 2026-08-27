@@ -994,6 +994,14 @@ export type TAccountsReceivable = {
   Name?: string;
   PatientName?: string;
   AppointmentId?: number;
+  AppointmentType?: string;
+  Date?: Date;
+  Age?: string;
+  OriginalAmount?: number;
+  OriginalPayment?: number;
+  OriginalBalance?: number;
+  PaymentType?: string;
+  PaymentTypeRowNumber?: number;
 };
 
 export type TArPayments = {
@@ -1009,6 +1017,7 @@ export type TArPayments = {
   DeletedBy?: string;
   DateDeleted?: string;
   Reference?: string;
+  PaymentType?: string;
   Ewt?: number;
 };
 

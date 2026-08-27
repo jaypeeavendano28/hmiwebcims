@@ -63,10 +63,12 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
   const isHeader = isHeaderRow(data.IsHeader);
   const [result, setResult] = useState(stripResultSuffix(data.ResultSi, suffix));
   const [possibleValues, setPossibleValues] = useState<any[]>([]);
+  const [isFocused, setIsFocused] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<
     number | null
   >(null);
   const skipNextBlurSaveRef = useRef(false);
+  const keyboardSearchValueRef = useRef<string | null>(null);
 
   const possibleValueOptions = possibleValues.map((v: any) => ({
     value: v.Value,
@@ -77,7 +79,7 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
     const inputValue = getResultText(value).toUpperCase();
 
     if (inputValue === "") {
-      return [];
+      return possibleValueOptions;
     }
 
     return possibleValueOptions.filter((option) =>
@@ -158,9 +160,12 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
         <div className="flex">
           <AutoComplete
             defaultActiveFirstOption={false}
-            options={
-              isNullOrUndefinedOrBlank(result) ? [] : possibleValueOptions
+            open={
+              isFocused &&
+              data.IsWithResult !== "N" &&
+              possibleValueOptions.length > 0
             }
+            options={possibleValueOptions}
             filterOption={(inputValue, option) =>
               option!
                 .value!.toString()
@@ -172,15 +177,21 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
             onChange={(v) => {
               skipNextBlurSaveRef.current = false;
               setActiveSuggestionIndex(null);
+              keyboardSearchValueRef.current = null;
               setResult(v);
             }}
             onFocus={() => {
+              setIsFocused(true);
               setActiveSuggestionIndex(null);
+              keyboardSearchValueRef.current = null;
             }}
             onSelect={() => {
               setActiveSuggestionIndex(null);
+              keyboardSearchValueRef.current = null;
             }}
             onBlur={() => {
+              setIsFocused(false);
+              keyboardSearchValueRef.current = null;
               if (skipNextBlurSaveRef.current) {
                 skipNextBlurSaveRef.current = false;
                 return;
@@ -190,37 +201,52 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
             }}
             onKeyDown={(event) => {
               if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                const filteredOptions = getFilteredPossibleValueOptions();
+                if (keyboardSearchValueRef.current === null) {
+                  keyboardSearchValueRef.current = result;
+                }
+
+                const filteredOptions = getFilteredPossibleValueOptions(
+                  keyboardSearchValueRef.current
+                );
 
                 if (filteredOptions.length > 0) {
                   setActiveSuggestionIndex((current) => {
+                    let nextIndex: number;
+
                     if (current === null) {
-                      return event.key === "ArrowDown"
+                      nextIndex = event.key === "ArrowDown"
                         ? 0
                         : filteredOptions.length - 1;
+                    } else {
+                      nextIndex =
+                        event.key === "ArrowDown"
+                          ? (current + 1) % filteredOptions.length
+                          : (current - 1 + filteredOptions.length) %
+                            filteredOptions.length;
                     }
 
-                    return event.key === "ArrowDown"
-                      ? (current + 1) % filteredOptions.length
-                      : (current - 1 + filteredOptions.length) %
-                          filteredOptions.length;
+                    return nextIndex;
                   });
                 }
               }
 
               if (event.key === "Tab" && activeSuggestionIndex !== null) {
                 const selectedOption =
-                  getFilteredPossibleValueOptions()[activeSuggestionIndex];
+                  getFilteredPossibleValueOptions(
+                    keyboardSearchValueRef.current ?? result
+                  )[activeSuggestionIndex];
 
                 if (selectedOption) {
                   saveResultValue(selectedOption.value);
                   skipNextBlurSaveRef.current = true;
                   setActiveSuggestionIndex(null);
+                  keyboardSearchValueRef.current = null;
                 }
               }
 
               if (event.key === "Enter") {
                 event.preventDefault();
+                keyboardSearchValueRef.current = null;
                 void handleSave(true);
               }
             }}

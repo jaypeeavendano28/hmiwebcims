@@ -2235,6 +2235,8 @@ const CardiologyResult = () => {
                       }
                       AppointmentId={appointmentDetails.data?.Id}
                       handleOpen={handleOpenExistingResult}
+                      reloadKey={chargesKey}
+                      activeChargeId={chargeId}
                     />
                   ),
                 },

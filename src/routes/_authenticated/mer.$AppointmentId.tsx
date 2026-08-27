@@ -891,6 +891,9 @@ const Mer = () => {
         MerDate: isNullOrUndefinedOrBlank(v.MerDate)
           ? undefined
           : dayjs(v.MerDate).format('YYYY-MM-DD'),
+        Lmp: isNullOrUndefinedOrBlank(v.Lmp)
+          ? undefined
+          : dayjs(v.Lmp).format('YYYY-MM-DD'),
         ChestXrayDate: isNullOrUndefinedOrBlank(v.ChestXrayDate)
           ? undefined
           : dayjs(v.ChestXrayDate).format('YYYY-MM-DD'),
@@ -1330,7 +1333,7 @@ const Mer = () => {
           {form.getFieldValue('Sex') === 'Female' && (
             <>
               <Form.Item name="Lmp" label="Last menstrual period (LMP)">
-                <DatePicker />
+                <DatePicker format="MM/DD/YYYY" />
               </Form.Item>
               <Form.Item name="LmpRemarks" label="LMP Remarks">
                 <Input />
