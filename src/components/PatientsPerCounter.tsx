@@ -104,6 +104,9 @@ const normalizeStatusText = (value: unknown) =>
 
 const resultBlockedStatuses = new Set(['DEFERRED', 'CANCELLED']);
 
+const getProcedureStatus = (patient: any) =>
+  normalizeStatusText(patient?.ChargeStatus) || 'NOT SET';
+
 const isDeferredQueueOrProcedure = (patient: any) =>
   normalizeStatusText(patient.Status) === 'E' ||
   normalizeStatusText(patient.StatusDesc) === 'DEFERRED' ||
@@ -111,7 +114,7 @@ const isDeferredQueueOrProcedure = (patient: any) =>
   normalizeStatusText(patient.ChargeStatus) === 'DEFERRED';
 
 const isResultBlockedProcedure = (patient: any) =>
-  resultBlockedStatuses.has(normalizeStatusText(patient.ChargeStatus));
+  resultBlockedStatuses.has(getProcedureStatus(patient));
 
 const getVisibleQueueDetails = (details: TQueueDetail[]) =>
   details.filter((detail) => !isDeferredQueueOrProcedure(detail));
@@ -860,6 +863,8 @@ const PatientsPerCounter: FC<Props> = ({
       isConsultationResult ||
       isRehabilitationResult;
     const resultBlocked = isResultBlockedProcedure(data);
+    const canChangeProcedureStatus =
+      canSetProcedureStatus(data) && (!hasResultWorkspace || resultBlocked);
     const resultTooltip = resultBlocked
       ? `${data.ChargeStatus} procedure cannot have a result.`
       : 'Result';
@@ -899,8 +904,10 @@ const PatientsPerCounter: FC<Props> = ({
             </Dropdown>
           </Tooltip>
         )}
-        {!hasResultWorkspace && canSetProcedureStatus(data) && (
-          <Tooltip title="Set or cancel status">
+        {canChangeProcedureStatus && (
+          <Tooltip
+            title={resultBlocked ? 'Change procedure status' : 'Set status'}
+          >
             <Button
               type="primary"
               icon={<BiEdit />}
@@ -1096,14 +1103,16 @@ const PatientsPerCounter: FC<Props> = ({
     );
   };
   const completedStatusBodyTemplate = (data: TAppointments) => {
-    const chargeStatus = data.ChargeStatus?.trim() || 'NOT SET';
+    const chargeStatus = getProcedureStatus(data);
     const color =
       chargeStatus === 'DONE'
         ? 'success'
         : chargeStatus === 'TO FOLLOW'
           ? 'warning'
-          : chargeStatus === 'DEFERRED' || chargeStatus === 'CANCELLED'
-            ? 'error'
+          : chargeStatus === 'DEFERRED'
+            ? 'warning'
+            : chargeStatus === 'CANCELLED'
+              ? 'error'
             : 'default';
 
     return (
@@ -1311,13 +1320,20 @@ const PatientsPerCounter: FC<Props> = ({
         )}
         {!Compact && <Column field="QueueNo" header="Queue No." filter />}
         {!Compact && <Column field="MemberNo" header="Member No." filter />}
-        {!Compact && (
+        {!Compact && !IsMobile && (
           <Column
-            hidden={IsMobile}
             field="StatusDesc"
             header="Status"
             filter
             body={(data) => statusBodyTemplate(data)}
+          />
+        )}
+        {!Compact && IsMobile && (
+          <Column
+            field="ChargeStatus"
+            header="Status"
+            filter
+            body={completedStatusBodyTemplate}
           />
         )}
         {!Compact && (

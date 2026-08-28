@@ -230,11 +230,32 @@ const LabResult: FC<Props> = ({ data, handleSaveResult, ResultId }) => {
                 }
               }
 
-              if (event.key === "Tab" && activeSuggestionIndex !== null) {
-                const selectedOption =
-                  getFilteredPossibleValueOptions(
-                    keyboardSearchValueRef.current ?? result
-                  )[activeSuggestionIndex];
+              if (event.key === "Tab") {
+                const inputValue = getResultText(result).trim();
+                let selectedOption =
+                  activeSuggestionIndex === null
+                    ? undefined
+                    : getFilteredPossibleValueOptions(
+                        keyboardSearchValueRef.current ?? result
+                      )[activeSuggestionIndex];
+
+                if (!selectedOption && inputValue !== "") {
+                  const normalizedInput = inputValue.toUpperCase();
+                  selectedOption = possibleValueOptions.find(
+                    (option) =>
+                      getResultText(option.value).trim().toUpperCase() ===
+                      normalizedInput
+                  );
+
+                  if (!selectedOption && inputValue.length === 1) {
+                    selectedOption = possibleValueOptions.find((option) =>
+                      getResultText(option.value)
+                        .trim()
+                        .toUpperCase()
+                        .startsWith(normalizedInput)
+                    );
+                  }
+                }
 
                 if (selectedOption) {
                   saveResultValue(selectedOption.value);
