@@ -6,14 +6,14 @@ import { BsCalendar3, BsCheckCircleFill, BsCircleFill } from 'react-icons/bs';
 import dayjs from 'dayjs';
 
 type Props = {
-  AppointmentId?: number;
+  PatientId?: number;
   handleOpen: (data: any) => void;
   Key?: string;
   activeChargeId?: number | string;
 };
 
 const ExistingLabResults: FC<Props> = ({
-  AppointmentId,
+  PatientId,
   handleOpen,
   Key,
   activeChargeId,
@@ -74,33 +74,22 @@ const ExistingLabResults: FC<Props> = ({
       : statusDateText;
   };
 
-  const isPackageCharge = (value?: unknown) => {
-    const packageValue = String(value ?? '')
-      .trim()
-      .toUpperCase();
-
-    return (
-      packageValue === 'Y' || packageValue === 'TRUE' || packageValue === '1'
-    );
-  };
-
   const handleLabResults = async () => {
+    if (Number(PatientId ?? 0) <= 0) {
+      setLabResults([]);
+      return;
+    }
+
     try {
       const res = await PostData('GetRecords', {
-        sp: 'udp_GetChargesByAppointmentIdForResult',
+        sp: 'udp_GetResultChargesByPatientDepartment',
         parameters: {
-          AppointmentId: AppointmentId,
+          PatientId,
+          DepartmentId: 1000,
         },
       });
       if (res) {
-        setLabResults(
-          res.parameters.lst.filter(
-            (charge: any) =>
-              !isPackageCharge(charge.IsPackage) &&
-              Number(charge.ResultId ?? 0) > 0 &&
-              String(charge.QCounter ?? '').trim() === 'LAB',
-          ),
-        );
+        setLabResults(res.parameters.lst ?? []);
       }
     } catch (error) {
       console.log(error);
@@ -121,7 +110,7 @@ const ExistingLabResults: FC<Props> = ({
   };
   useEffect(() => {
     handleLabResults();
-  }, [AppointmentId, Key]);
+  }, [PatientId, Key]);
   return (
     <div>
       <div className="overflow-hidden rounded border border-slate-200 bg-white text-xs shadow-sm">
@@ -166,6 +155,11 @@ const ExistingLabResults: FC<Props> = ({
                       {charge.PackageName}
                     </div>
                   )}
+                  <div className="mt-1 truncate text-[10px] text-slate-400">
+                    {charge.AppointmentNo || 'No appointment number'}
+                    {charge.AppointmentDate &&
+                      ` | ${dayjs(charge.AppointmentDate).format('MM/DD/YYYY')}`}
+                  </div>
                 </div>
 
                 <div className="min-w-0">

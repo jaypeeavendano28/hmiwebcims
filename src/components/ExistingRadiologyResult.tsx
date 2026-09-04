@@ -8,9 +8,8 @@ import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
 
 type Props = {
   PatientId?: number;
-  AppointmentId?: number;
   handleOpen: (data: any) => void;
-  counter: string;
+  DepartmentId: 1001 | 1002;
   reloadKey?: string;
   activeChargeId?: number | string;
 };
@@ -68,18 +67,10 @@ const formatStatusDate = (value?: unknown) => {
     : statusDateText;
 };
 
-const isPackageCharge = (value?: unknown) => {
-  const packageValue = String(value ?? '')
-    .trim()
-    .toUpperCase();
-
-  return packageValue === 'Y' || packageValue === 'TRUE' || packageValue === '1';
-};
-
 export const ExistingRadiologyResults: FC<Props> = ({
-  AppointmentId,
+  PatientId,
   handleOpen,
-  counter,
+  DepartmentId,
   reloadKey,
   activeChargeId,
 }) => {
@@ -87,16 +78,17 @@ export const ExistingRadiologyResults: FC<Props> = ({
   const { data = [] } = useQuery<any[]>({
     queryKey: [
       'existing-radiology-charge-results',
-      AppointmentId,
-      counter,
+      PatientId,
+      DepartmentId,
       reloadKey,
     ],
-    enabled: !!AppointmentId,
+    enabled: Number(PatientId ?? 0) > 0,
     queryFn: async () => {
       const res = await PostData('GetRecords', {
-        sp: 'udp_GetChargesByAppointmentIdForResult',
+        sp: 'udp_GetResultChargesByPatientDepartment',
         parameters: {
-          AppointmentId,
+          PatientId,
+          DepartmentId,
         },
       });
 
@@ -104,14 +96,7 @@ export const ExistingRadiologyResults: FC<Props> = ({
         ? res.parameters.lst
         : [];
 
-      return rows
-        .filter(
-          (charge: any) =>
-            !isPackageCharge(charge.IsPackage) &&
-            Number(charge.ResultId ?? 0) > 0 &&
-            String(charge.QCounter ?? '').trim() === counter,
-        )
-        .map((charge: any) => ({
+      return rows.map((charge: any) => ({
           ...charge,
           Id: charge.ResultId,
           ChargeId: charge.Id,
@@ -164,6 +149,11 @@ export const ExistingRadiologyResults: FC<Props> = ({
                     {charge.PackageName}
                   </div>
                 )}
+                <div className="mt-1 truncate text-[10px] text-slate-400">
+                  {charge.AppointmentNo || 'No appointment number'}
+                  {charge.AppointmentDate &&
+                    ` | ${dayjs(charge.AppointmentDate).format('MM/DD/YYYY')}`}
+                </div>
               </div>
 
               <div className="min-w-0">

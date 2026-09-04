@@ -381,6 +381,8 @@ const Mer = () => {
         DateOfBirthStr: x.DateOfBirthStr,
         Age: x.AgeYears,
         ContactNos: x.ContactNos,
+        Company: x.Employer,
+        CivilStatus: x.CivilStatus,
         AppointmentId: AppointmentId,
         Street: x.Street,
         City: x.City,
@@ -496,12 +498,12 @@ const Mer = () => {
           Street: x.Street,
           City: x.City,
           Barangay: x.Barangay,
-          ClassALabel: x.ClassALabel,
-          ClassBLabel: x.ClassBLabel,
-          ClassCLabel: x.ClassCLabel,
-          ClassC1Label: x.ClassC1Label,
-          ClassC2Label: x.ClassC2Label,
-          ClassDLabel: x.ClassDLabel,
+          ClassALabel: decodeReportLineBreaks(x.ClassALabel),
+          ClassBLabel: decodeReportLineBreaks(x.ClassBLabel),
+          ClassCLabel: decodeReportLineBreaks(x.ClassCLabel),
+          ClassC1Label: decodeReportLineBreaks(x.ClassC1Label),
+          ClassC2Label: decodeReportLineBreaks(x.ClassC2Label),
+          ClassDLabel: decodeReportLineBreaks(x.ClassDLabel),
           ClassOLabel: decodeReportLineBreaks(x.ClassOLabel),
           OthersResult: x.OthersResult,
           Appointment: x.Appointment,
@@ -931,6 +933,12 @@ const Mer = () => {
         EchoResult: encodeReportLineBreaks(v.EchoResult),
         UltrasoundResult: encodeReportLineBreaks(v.UltrasoundResult),
         OthersRemarks: encodeReportLineBreaks(v.OthersRemarks),
+        ClassALabel: encodeReportLineBreaks(v.ClassALabel),
+        ClassBLabel: encodeReportLineBreaks(v.ClassBLabel),
+        ClassCLabel: encodeReportLineBreaks(v.ClassCLabel),
+        ClassC1Label: encodeReportLineBreaks(v.ClassC1Label),
+        ClassC2Label: encodeReportLineBreaks(v.ClassC2Label),
+        ClassDLabel: encodeReportLineBreaks(v.ClassDLabel),
         ClassOLabel: encodeReportLineBreaks(v.ClassOLabel),
         Remarks: encodeReportLineBreaks(v.Remarks),
         Type: 'R',
@@ -1255,6 +1263,14 @@ const Mer = () => {
                   </AutoComplete.Option>
                 ))}
             </AutoComplete>
+          </Form.Item>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Form.Item name="Company" label="Company" className="lg:col-span-2">
+            <Input readOnly />
+          </Form.Item>
+          <Form.Item name="CivilStatus" label="Civil Status">
+            <Input readOnly />
           </Form.Item>
         </div>
         <div className="font-bold text-xl text-center mb-2">
@@ -1890,7 +1906,7 @@ const Mer = () => {
             noStyle
             initialValue={'Class A - Medically fit for employment'}
           >
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} />
           </Form.Item>
         </div>
         <div className="flex flex-row">
@@ -1909,7 +1925,7 @@ const Mer = () => {
               'Class B – Medically fit for employment with manageable findings:'
             }
           >
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} />
           </Form.Item>
         </div>
         <div className="flex flex-row">
@@ -1926,7 +1942,7 @@ const Mer = () => {
             noStyle
             initialValue={'Class C – Employable but requires:'}
           >
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} />
           </Form.Item>
         </div>
         <div className="flex flex-row ml-4">
@@ -1943,7 +1959,7 @@ const Mer = () => {
             initialValue={'Regular follow-up treatment/periodic evaluation.'}
             className="w-full"
           >
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} />
           </Form.Item>
         </div>
         <div className="flex flex-row ml-4">
@@ -1962,7 +1978,7 @@ const Mer = () => {
               'Special placement at work or limited duty in a special assignment'
             }
           >
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} />
           </Form.Item>
         </div>
         <div className="flex flex-row ml-4">
@@ -1979,7 +1995,7 @@ const Mer = () => {
             noStyle
             initialValue={'Class D- Medically unfit for employment'}
           >
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} />
           </Form.Item>
         </div>
         <div className="flex flex-row ml-4">

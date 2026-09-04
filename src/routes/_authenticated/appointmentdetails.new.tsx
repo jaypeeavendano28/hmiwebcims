@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import {
   App,
+  Avatar,
   Button,
   Divider,
   Form,
@@ -11,9 +12,12 @@ import {
   Popover,
   Select,
 } from "antd";
+import { CameraOutlined, UploadOutlined, UserOutlined } from "@ant-design/icons";
+import axios from "axios";
 import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import VirtualList from "rc-virtual-list";
+import Webcam from "react-webcam";
 import Loading from "../../components/loading";
 import PatientProfile from "../../components/PatientProfile";
 import { isNullOrUndefinedOrBlank, PostData } from "../../helpers";
@@ -32,6 +36,21 @@ export const Route = createFileRoute("/_authenticated/appointmentdetails/new")({
 });
 
 const patientResultsHeight = 360;
+const maxPictureSize = 2_000_000;
+const isDev = import.meta.env.DEV;
+const ApiUrl = isDev
+  ? import.meta.env.VITE_DEV_API
+  : import.meta.env.VITE_PROD_API;
+
+const normalizePatientPicture = (value: unknown) => {
+  const image = String(value ?? "").trim();
+  if (!image || ["null", "undefined"].includes(image.toLowerCase())) {
+    return null;
+  }
+
+  const match = image.match(/^data:image\/jpe?g;base64,(.+)$/i);
+  return match?.[1]?.trim() ? image : null;
+};
 
 type TNewAppointmentValues = TPatientInformation & {
   AppointmentType?: string;
@@ -49,6 +68,12 @@ function NewAppointment() {
   const [followUpExam, setFollowUpExam] = useState<TCharges[]>([]);
   const [lastAppointment, setLastAppointment] = useState<TAppointments>();
   const [confirmationModal, setConfirmationModal] = useState(false);
+  const [picture, setPicture] = useState<string | null>(null);
+  const [pictureError, setPictureError] = useState(false);
+  const [showWebCam, setShowWebCam] = useState(false);
+  const webcamRef = useRef<Webcam>(null);
+  const pictureInputRef = useRef<HTMLInputElement>(null);
+  const pictureLoadRequestRef = useRef(0);
 
   const patients = useQuery({
     queryKey: ["appointment-patient-search"],
@@ -95,6 +120,29 @@ function NewAppointment() {
       .slice(0, 50);
   }, [patients.data, searchQuery]);
 
+  const loadLastPatientPicture = async (selectedPatientId: number) => {
+    const requestId = ++pictureLoadRequestRef.current;
+    setPicture(null);
+    setPictureError(false);
+
+    try {
+      const res = await PostData("GetRecords", {
+        sp: "udp_GetLastPatientImage",
+        parameters: {
+          PatientId: selectedPatientId,
+        },
+      });
+      const latestPicture = res?.parameters?.lst?.[0]?.Image;
+      if (requestId === pictureLoadRequestRef.current) {
+        setPicture(normalizePatientPicture(latestPicture));
+      }
+    } catch {
+      if (requestId === pictureLoadRequestRef.current) {
+        setPicture(null);
+      }
+    }
+  };
+
   const usePatientForNewAppointment = (patient: TPatientInformation) => {
     setPatientId(patient.Id);
     setProfileKey((key) => key + 1);
@@ -108,6 +156,7 @@ function NewAppointment() {
     setPendingPatient(undefined);
     setFollowUpExam([]);
     setLastAppointment(undefined);
+    void loadLastPatientPicture(patient.Id);
   };
 
   const selectPatient = async (patient: TPatientInformation) => {
@@ -179,6 +228,73 @@ function NewAppointment() {
     setFollowUpExam([]);
     setLastAppointment(undefined);
     setConfirmationModal(false);
+    pictureLoadRequestRef.current += 1;
+    setPicture(null);
+    setPictureError(false);
+  };
+
+  const handleCapture = () => {
+    const image = webcamRef.current?.getScreenshot();
+    if (!image) return;
+
+    pictureLoadRequestRef.current += 1;
+    setPicture(normalizePatientPicture(image));
+    setPictureError(false);
+    setShowWebCam(false);
+  };
+
+  const handlePictureFile = (file?: File) => {
+    if (!file) return;
+
+    const isJpeg =
+      file.type === "image/jpeg" || /\.jpe?g$/i.test(file.name ?? "");
+    if (!isJpeg) {
+      notification.error({
+        message: "Please select a JPG image.",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
+    if (file.size >= maxPictureSize) {
+      notification.error({
+        message: "Picture must not be greater than 2MB.",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      pictureLoadRequestRef.current += 1;
+      setPicture(normalizePatientPicture(reader.result));
+      setPictureError(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadAppointmentPicture = async (
+    appointmentId: number,
+    image: string,
+  ) => {
+    const formData = new FormData();
+    formData.append("image", image);
+    formData.append("AppointmentId", appointmentId.toString());
+
+    const response = await axios.post(
+      `${ApiUrl}/api/UploadApppointmentPicture`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${store.tokenIdWebCims}`,
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+
+    return response.data;
   };
 
   const formatAppointmentDate = (appointment?: TAppointments) => {
@@ -232,6 +348,18 @@ function NewAppointment() {
   };
 
   const handleSave = async (values: TNewAppointmentValues) => {
+    const patientPicture = normalizePatientPicture(picture);
+    if (!patientPicture) {
+      setPictureError(true);
+      notification.error({
+        message: "Patient picture is required!",
+        placement: "topRight",
+        duration: 3,
+      });
+      return;
+    }
+
+    setPictureError(false);
     let appointmentPatientId = patientId;
     const patientValues = { ...values };
     delete patientValues.AppointmentType;
@@ -313,16 +441,45 @@ function NewAppointment() {
       return;
     }
 
+    const appointmentId = Number(appointmentRes.parameters.AppointmentId);
+
+    try {
+      const pictureRes = await uploadAppointmentPicture(
+        appointmentId,
+        patientPicture,
+      );
+      if (!pictureRes || pictureRes.status !== 1) {
+        throw new Error(pictureRes?.message ?? "Unable to upload patient picture.");
+      }
+    } catch (error) {
+      notification.error({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Appointment was saved, but the picture upload failed.",
+        placement: "topRight",
+        duration: 5,
+      });
+      sessionStorage.setItem("Id", appointmentId.toString());
+      router.navigate({
+        to: "/appointmentdetails/$Id",
+        params: {
+          Id: appointmentId.toString(),
+        },
+      });
+      return;
+    }
+
     notification.success({
       message: "Appointment successfully saved!",
       placement: "topRight",
       duration: 3,
     });
-    sessionStorage.setItem("Id", appointmentRes.parameters.AppointmentId);
+    sessionStorage.setItem("Id", appointmentId.toString());
     router.navigate({
       to: "/appointmentdetails/$Id",
       params: {
-        Id: appointmentRes.parameters.AppointmentId.toString(),
+        Id: appointmentId.toString(),
       },
     });
   };
@@ -397,6 +554,9 @@ function NewAppointment() {
                 if (patientId > 0) {
                   setPatientId(0);
                   setProfileKey((key) => key + 1);
+                  pictureLoadRequestRef.current += 1;
+                  setPicture(null);
+                  setPictureError(false);
                 }
                 setSearchQuery(value);
                 setSearchOpen(value.trim().length > 0);
@@ -408,6 +568,55 @@ function NewAppointment() {
       </div>
 
       <div className="rounded-md border p-4">
+        <div
+          className={`mb-5 flex flex-col items-center gap-4 border-b pb-5 sm:flex-row sm:items-start ${
+            pictureError ? "border-red-300" : "border-gray-200"
+          }`}
+        >
+          <Avatar
+            size={112}
+            src={picture ?? undefined}
+            icon={!picture ? <UserOutlined /> : undefined}
+          />
+          <div>
+            <div className="font-semibold text-gray-700">
+              <span className="mr-1 text-red-500">*</span>
+              Patient Picture
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="primary"
+                icon={<CameraOutlined />}
+                onClick={() => setShowWebCam(true)}
+              >
+                Capture Photo
+              </Button>
+              <Button
+                icon={<UploadOutlined />}
+                onClick={() => pictureInputRef.current?.click()}
+              >
+                Upload JPG
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">JPG only, maximum 2MB.</p>
+            {pictureError && (
+              <p className="mt-1 text-sm text-red-500" role="alert">
+                Patient picture is required.
+              </p>
+            )}
+          </div>
+          <input
+            ref={pictureInputRef}
+            type="file"
+            accept=".jpg,.jpeg,image/jpeg"
+            className="hidden"
+            onChange={(event) => {
+              handlePictureFile(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+          />
+        </div>
+
         <PatientProfile
           key={`${patientId}-${profileKey}`}
           Id={patientId}
@@ -516,6 +725,37 @@ function NewAppointment() {
             appointment?
           </p>
         )}
+      </Modal>
+
+      <Modal
+        open={showWebCam}
+        title="Capture Patient Picture"
+        footer={null}
+        centered
+        onCancel={() => setShowWebCam(false)}
+      >
+        <div className="flex flex-col items-center">
+          <Webcam
+            audio={false}
+            ref={webcamRef}
+            width={400}
+            height={400}
+            screenshotFormat="image/jpeg"
+            videoConstraints={{
+              width: 400,
+              height: 400,
+              facingMode: "user",
+            }}
+          />
+          <Button
+            type="primary"
+            icon={<CameraOutlined />}
+            className="mt-3"
+            onClick={handleCapture}
+          >
+            Capture
+          </Button>
+        </div>
       </Modal>
     </div>
   );

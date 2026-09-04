@@ -7,14 +7,12 @@ import { PostData } from '../helpers';
 
 type Props = {
   PatientId?: number;
-  AppointmentId?: number;
   reloadKey?: string;
   handleOpen: (data: any) => void;
 };
 
 const ExistingConsultationResults: FC<Props> = ({
   PatientId,
-  AppointmentId,
   reloadKey,
   handleOpen,
 }) => {
@@ -22,7 +20,6 @@ const ExistingConsultationResults: FC<Props> = ({
     queryKey: [
       'consultation-results-by-patient',
       PatientId,
-      AppointmentId,
       reloadKey,
     ],
     enabled: Number(PatientId ?? 0) > 0,
@@ -31,7 +28,6 @@ const ExistingConsultationResults: FC<Props> = ({
         sp: 'udp_GetConsultationResultsByPatientId',
         parameters: {
           PatientId,
-          AppointmentId,
         },
       });
 
@@ -64,9 +60,9 @@ const ExistingConsultationResults: FC<Props> = ({
               {result.SpecialistName || '-'}
             </p>
             <p className="mt-0.5 text-[10px] text-slate-400">
-              {result.Started
-                ? dayjs(result.Started).format('MM/DD/YYYY h:mm A')
-                : '-'}
+              {result.AppointmentNo || 'No appointment number'}
+              {result.AppointmentDate &&
+                ` | ${dayjs(result.AppointmentDate).format('MM/DD/YYYY')}`}
             </p>
           </div>
           <Tooltip title="Open result">

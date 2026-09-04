@@ -5,6 +5,7 @@ import {
   AutoComplete,
   Button,
   Divider,
+  Empty,
   Form,
   Input,
   Select,
@@ -18,7 +19,7 @@ import TextArea from 'antd/es/input/TextArea';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
-import { BiArrowBack } from 'react-icons/bi';
+import { BiArrowBack, BiBookOpen } from 'react-icons/bi';
 import { MdOutlinePrint, MdSave } from 'react-icons/md';
 import ChargesPerPatient, {
   getResultBlockedMessage,
@@ -58,37 +59,36 @@ type PatExamFieldType = {
 
 type ExistingRehabResultsProps = {
   PatientId?: number;
-  AppointmentId?: number;
   reloadKey: string;
-  handleOpen: (result: TPatientExaminationRecord) => void;
+  handleOpen: (result: ExistingRehabResult) => void;
+};
+
+type ExistingRehabResult = TPatientExaminationRecord & {
+  AppointmentNo?: string;
+  AppointmentDate?: string;
+  ChargeDescription?: string;
+  DoctorName?: string;
 };
 
 const isDev = import.meta.env.DEV;
 const apiRoot = String(
   isDev ? import.meta.env.VITE_DEV_API : import.meta.env.VITE_PROD_API,
 ).replace(/\/$/, '');
-const rehabCounters = ['REHAB'];
+const rehabDepartmentId = 1023;
 
 const ExistingRehabResults = ({
   PatientId,
-  AppointmentId,
   reloadKey,
   handleOpen,
 }: ExistingRehabResultsProps) => {
-  const results = useQuery<TPatientExaminationRecord[]>({
-    queryKey: [
-      'patient-examination-results',
-      PatientId,
-      AppointmentId,
-      reloadKey,
-    ],
+  const results = useQuery<ExistingRehabResult[]>({
+    queryKey: ['patient-examination-results', PatientId, reloadKey],
     enabled: Number(PatientId ?? 0) > 0,
     queryFn: async () => {
       const res = await PostData('GetRecords', {
         sp: 'udp_GetPatientExaminationResultsByPatientId',
         parameters: {
           PatientId,
-          AppointmentId,
         },
       });
 
@@ -96,37 +96,46 @@ const ExistingRehabResults = ({
     },
   });
 
-  if (results.isLoading) {
-    return <Loading size={48} />;
-  }
-
-  if (!results.data?.length) {
-    return (
-      <div className="rounded border border-dashed border-slate-200 px-3 py-6 text-center text-xs font-medium text-slate-400">
-        No existing rehab results.
-      </div>
-    );
-  }
+  if (!results.isLoading && !results.data?.length) {
+    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No results" />;
+  };
 
   return (
-    <div className="space-y-2">
-      {results.data.map((result) => (
-        <button
+    <div className="overflow-hidden rounded border border-slate-200 bg-white text-xs">
+      <div className="grid grid-cols-[minmax(0,1fr)_32px] gap-2 bg-slate-100 px-3 py-2 text-[10px] font-bold uppercase text-slate-600">
+        <span>Rehabilitation Result</span>
+        <span />
+      </div>
+      {(results.data ?? []).map((result, index) => (
+        <div
           key={result.Id}
-          type="button"
-          onClick={() => handleOpen(result)}
-          className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+          className={`grid grid-cols-[minmax(0,1fr)_32px] items-center gap-2 border-t border-slate-100 px-3 py-2.5 ${
+            index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+          }`}
         >
-          <div className="font-bold uppercase text-sky-800">
-            {result.ChargeDescription || 'Rehabilitation Result'}
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-bold uppercase text-sky-800">
+              {result.ChargeDescription || 'Rehabilitation Result'}
+            </p>
+            <p className="mt-1 truncate text-[10px] text-slate-500">
+              {result.Therapist || result.DoctorName || '-'}
+            </p>
+            <p className="mt-0.5 text-[10px] text-slate-400">
+              {result.AppointmentNo || 'No appointment number'}
+              {result.AppointmentDate &&
+                ` | ${dayjs(result.AppointmentDate).format('MM/DD/YYYY')}`}
+            </p>
           </div>
-          <div className="mt-1 truncate text-slate-500">
-            {result.Diagnosis || result.Remarks || '-'}
-          </div>
-          <div className="mt-1 text-[10px] text-slate-400">
-            Result ID: {result.Id}
-          </div>
-        </button>
+          <Tooltip title="Open result">
+            <Button
+              type="text"
+              size="small"
+              aria-label="Open result"
+              icon={<BiBookOpen size={17} />}
+              onClick={() => handleOpen(result)}
+            />
+          </Tooltip>
+        </div>
       ))}
     </div>
   );
@@ -420,7 +429,7 @@ const PatientExaminationRecord = () => {
 
       if (
         charge &&
-        rehabCounters.includes(String(charge.QCounter ?? '').trim())
+        Number(charge.fk_Departments_Id ?? 0) === rehabDepartmentId
       ) {
         await handleSelectCharge(charge);
       }
@@ -498,7 +507,7 @@ const PatientExaminationRecord = () => {
                           AppointmentId={appointmentId}
                           handleNewResult={handleSelectCharge}
                           Key={reloadKey}
-                          Counter={rehabCounters}
+                          DepartmentId={rehabDepartmentId}
                           activeChargeId={chargeId}
                           onActiveChargeChange={setActiveCharge}
                         />
@@ -510,9 +519,28 @@ const PatientExaminationRecord = () => {
                       children: (
                         <ExistingRehabResults
                           PatientId={patient.fk_PatientInformation_Id}
-                          AppointmentId={appointmentId}
                           reloadKey={reloadKey}
-                          handleOpen={(result) => handleOpenResult(result.Id)}
+                          handleOpen={(result) => {
+                            const resultAppointmentId = Number(
+                              result.fk_Appointments_Id ?? 0,
+                            );
+
+                            if (
+                              resultAppointmentId > 0 &&
+                              resultAppointmentId !== appointmentId
+                            ) {
+                              void router.navigate({
+                                to: '/patientexamrecord/$Id',
+                                params: { Id: String(resultAppointmentId) },
+                                search: {
+                                  chargeId: Number(result.fk_Charges_Id ?? 0),
+                                },
+                              });
+                              return;
+                            }
+
+                            handleOpenResult(result.Id);
+                          }}
                         />
                       ),
                     },

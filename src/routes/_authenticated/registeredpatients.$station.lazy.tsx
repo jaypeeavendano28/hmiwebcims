@@ -545,18 +545,18 @@ const RegisteredPatients = () => {
   ).trim();
   const Name = SearchText;
   const MemberNo = '';
+  const hasSearchTextFilter = !isNullOrUndefinedOrBlank(SearchText);
   const parsedDepartmentId = Number(search.DepartmentId);
   const DepartmentId =
     Number.isFinite(parsedDepartmentId) && parsedDepartmentId > 0
       ? parsedDepartmentId
       : undefined;
   const isAllAuthorizedDepartments = DepartmentId === undefined;
-  const hasSearchTerm = !isNullOrUndefinedOrBlank(SearchText);
   const selectedDateRange = getDateRangeFromSearch(search);
-  const DateFrom = hasSearchTerm
+  const DateFrom = hasSearchTextFilter
     ? ''
     : selectedDateRange[0].format(DATE_QUERY_FORMAT);
-  const DateTo = hasSearchTerm
+  const DateTo = hasSearchTextFilter
     ? ''
     : selectedDateRange[1].format(DATE_QUERY_FORMAT);
   const isDone = IsMobile || search.QueueStatus === 'done';
@@ -577,8 +577,6 @@ const RegisteredPatients = () => {
 
   const [form] = Form.useForm();
   const [pfForm] = Form.useForm<ProfessionalFeeFormValues>();
-  const searchTextFilter = Form.useWatch('SearchText', form);
-  const hasPatientFilter = !isNullOrUndefinedOrBlank(searchTextFilter);
   const pfDepartmentType = getProfessionalFeeDepartmentType(
     pfDepartment?.DepartmentName,
   );
@@ -751,6 +749,7 @@ const RegisteredPatients = () => {
 
   const updateFilterSearch = (values: QueueFilterFormValues) => {
     const dateRange = formatDateRange(values.DateRange);
+    const hasSearchText = !isNullOrUndefinedOrBlank(values.SearchText);
 
     setExpandedRows(null);
     void router.navigate({
@@ -759,11 +758,9 @@ const RegisteredPatients = () => {
       search: (previous) => ({
         ...previous,
         DateRange: undefined,
-        DateFrom: dateRange.DateFrom,
-        DateTo: dateRange.DateTo,
-        SearchText: isNullOrUndefinedOrBlank(values.SearchText)
-          ? undefined
-          : values.SearchText,
+        DateFrom: hasSearchText ? undefined : dateRange.DateFrom,
+        DateTo: hasSearchText ? undefined : dateRange.DateTo,
+        SearchText: hasSearchText ? values.SearchText : undefined,
         PatientName: undefined,
         MemberNo: undefined,
         DepartmentId: values.DepartmentId ?? 'all',
@@ -773,21 +770,9 @@ const RegisteredPatients = () => {
   };
 
   const handleFilterChange = (
-    changedValues: Partial<QueueFilterFormValues>,
+    _changedValues: Partial<QueueFilterFormValues>,
     values: QueueFilterFormValues,
   ) => {
-    if (Object.prototype.hasOwnProperty.call(changedValues, 'SearchText')) {
-      const hasSearchValue = !isNullOrUndefinedOrBlank(values.SearchText);
-      const nextDateRange = hasSearchValue ? undefined : getDateRange();
-
-      form.setFieldValue('DateRange', nextDateRange);
-      updateFilterSearch({
-        ...values,
-        DateRange: nextDateRange,
-      });
-      return;
-    }
-
     updateFilterSearch(values);
   };
 
@@ -961,9 +946,7 @@ const RegisteredPatients = () => {
 
   useEffect(() => {
     form.setFieldsValue({
-      DateRange: hasSearchTerm
-        ? undefined
-        : getDateRangeFromQueryValues(DateFrom, DateTo),
+      DateRange: getDateRangeFromQueryValues(DateFrom, DateTo),
       SearchText,
       DepartmentId,
       QueueStatus: isDone ? 'done' : 'not-done',
@@ -973,7 +956,6 @@ const RegisteredPatients = () => {
     DateTo,
     DepartmentId,
     form,
-    hasSearchTerm,
     isDone,
     SearchText,
     search.MemberNo,
@@ -1047,9 +1029,7 @@ const RegisteredPatients = () => {
       <Form
         form={form}
         initialValues={{
-          DateRange: hasSearchTerm
-            ? undefined
-            : getDateRangeFromQueryValues(DateFrom, DateTo),
+          DateRange: getDateRangeFromQueryValues(DateFrom, DateTo),
           SearchText,
           DepartmentId,
           QueueStatus: isDone ? 'done' : 'not-done',
@@ -1066,13 +1046,24 @@ const RegisteredPatients = () => {
             <DatePicker.RangePicker
               allowClear={false}
               className="!w-full"
-              disabled={hasPatientFilter}
+              disabled={hasSearchTextFilter}
               format={DATE_DISPLAY_FORMAT}
               presets={dateRangePresets}
             />
           </Form.Item>
           <Form.Item name="SearchText" label="Search" className="md:col-span-4">
-            <Input allowClear placeholder="Patient name, member no, company" />
+            <Input
+              allowClear
+              placeholder="Patient name, member no, company"
+              onChange={(event) => {
+                const hasValue = !isNullOrUndefinedOrBlank(event.target.value);
+
+                form.setFieldValue(
+                  'DateRange',
+                  hasValue ? undefined : getDateRange(),
+                );
+              }}
+            />
           </Form.Item>
           <Form.Item
             name="DepartmentId"

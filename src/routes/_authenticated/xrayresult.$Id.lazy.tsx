@@ -604,9 +604,26 @@ const XrayResult = () => {
                   children: (
                     <ExistingRadiologyResults
                       PatientId={appointmentDetails?.fk_PatientInformation_Id}
-                      AppointmentId={appointmentDetails?.Id}
-                      handleOpen={(data) => handleOpenResult(data.Id)}
-                      counter="XRAY"
+                      DepartmentId={1001}
+                      handleOpen={(data) => {
+                        const resultAppointmentId = Number(
+                          data?.fk_Appointments_Id ?? 0,
+                        );
+
+                        if (
+                          resultAppointmentId > 0 &&
+                          resultAppointmentId !== Number(Id)
+                        ) {
+                          void router.navigate({
+                            to: '/xrayresult/$Id',
+                            params: { Id: String(resultAppointmentId) },
+                            search: { chargeId: Number(data?.ChargeId ?? 0) },
+                          });
+                          return;
+                        }
+
+                        handleOpenResult(data.Id);
+                      }}
                       reloadKey={Key}
                       activeChargeId={chargeId}
                     />
@@ -913,11 +930,6 @@ const XrayResult = () => {
           </Form>
         </div>
       </div>
-      <ExistingRadiologyResults
-        PatientId={appointmentDetails?.fk_PatientInformation_Id}
-        handleOpen={() => {}}
-        counter="XRAY"
-      />
       <Modal
         open={showFinalize}
         destroyOnClose

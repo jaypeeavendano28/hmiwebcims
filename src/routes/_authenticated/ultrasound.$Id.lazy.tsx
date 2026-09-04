@@ -568,9 +568,26 @@ const UltrasoundResult = () => {
                   children: (
                     <ExistingRadiologyResults
                       PatientId={appointmentDetails?.fk_PatientInformation_Id}
-                      AppointmentId={appointmentDetails?.Id}
-                      handleOpen={(data) => handleOpenResult(data.Id)}
-                      counter="ULT"
+                      DepartmentId={1002}
+                      handleOpen={(data) => {
+                        const resultAppointmentId = Number(
+                          data?.fk_Appointments_Id ?? 0,
+                        );
+
+                        if (
+                          resultAppointmentId > 0 &&
+                          resultAppointmentId !== Number(Id)
+                        ) {
+                          void router.navigate({
+                            to: '/ultrasound/$Id',
+                            params: { Id: String(resultAppointmentId) },
+                            search: { chargeId: Number(data?.ChargeId ?? 0) },
+                          });
+                          return;
+                        }
+
+                        handleOpenResult(data.Id);
+                      }}
                       reloadKey={Key}
                       activeChargeId={chargeId}
                     />
@@ -668,7 +685,7 @@ const UltrasoundResult = () => {
               </Select>
             </Form.Item>
             <Form.Item
-              label="Rad. Technologist"
+              label="Ultrasound Technologist"
               name="RadTech"
               // rules={[
               //   {
@@ -694,7 +711,7 @@ const UltrasoundResult = () => {
               </Select>
             </Form.Item>
             <Form.Item
-              label="Radiologist 1"
+              label="Sonologist 1"
               name="Rad1"
               // rules={[
               //   {
@@ -720,7 +737,7 @@ const UltrasoundResult = () => {
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item label="Radiologist 2" name="Rad2">
+            <Form.Item label="Sonologist 2" name="Rad2">
               <Select
                 showSearch
                 allowClear

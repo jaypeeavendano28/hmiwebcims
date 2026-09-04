@@ -341,6 +341,7 @@ export type TAppointments = {
   BranchName?: string;
   DateRead?: string;
   HasResult?: boolean | number;
+  HasActiveQueue?: boolean | number;
   ChargeStatus?: string;
   ChargeStatusDate?: string;
   ChargeStatusSetBy?: string;
@@ -837,6 +838,7 @@ export type TLaboratoryResultMain = {
   AdmissionId?: number;
   ReportDate?: Date;
   Pathologist?: number;
+  Pathologist2?: number;
   Medtech?: number;
   Qa?: number;
   Status: string;
@@ -852,6 +854,7 @@ export type TLaboratoryResultMain = {
   FinalizedBy?: string;
   DateFinalized?: string;
   Specimen?: string;
+  Msu?: string;
   Remarks?: string;
   TestPrinciple?: string;
   fk_LaboratoryResultTemplates_Id?: number;

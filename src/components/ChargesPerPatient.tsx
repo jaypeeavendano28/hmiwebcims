@@ -19,6 +19,7 @@ type Props = {
   handleNewResult?: (data: any) => void;
   Key?: string;
   Counter?: string[];
+  DepartmentId?: number;
   activeChargeId?: number | string;
   onActiveChargeChange?: (data?: any) => void;
 };
@@ -45,6 +46,7 @@ const ChargesPerPatient: FC<Props> = ({
   handleNewResult,
   Key,
   Counter,
+  DepartmentId,
   activeChargeId,
   onActiveChargeChange,
 }) => {
@@ -54,9 +56,11 @@ const ChargesPerPatient: FC<Props> = ({
   const [charges, setCharges] = useState([]);
   const isIncludedCounter = (qCounter?: string) =>
     Counter?.includes(String(qCounter ?? '').trim()) ?? false;
-  const filteredCharges = charges.filter((c: any) =>
-    isIncludedCounter(c.QCounter),
-  );
+  const isIncludedCharge = (charge: any) =>
+    Number(DepartmentId) > 0
+      ? Number(charge.fk_Departments_Id) === Number(DepartmentId)
+      : isIncludedCounter(charge.QCounter);
+  const filteredCharges = charges.filter(isIncludedCharge);
   const selectedChargeId = Number(activeChargeId ?? 0);
 
   const getStatusDetails = (status?: unknown) => {
@@ -144,7 +148,7 @@ const ChargesPerPatient: FC<Props> = ({
     //  store.setItemDetails(data);
     return (
       <Space size={2} className="justify-end">
-        {isIncludedCounter(data.QCounter) && (
+        {isIncludedCharge(data) && (
           <Tooltip title="Set Status">
             <Button
               type="link"
@@ -166,7 +170,7 @@ const ChargesPerPatient: FC<Props> = ({
           </Tooltip>
         )}
 
-        {isIncludedCounter(data.QCounter) &&
+        {isIncludedCharge(data) &&
           handleNewResult &&
           !isPackageCharge(data.IsPackage) && (
             <>

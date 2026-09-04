@@ -15,6 +15,7 @@ import {
 } from '../../types';
 import { useEffect, useRef, useState } from 'react';
 import {
+  AutoComplete,
   Button,
   DatePicker,
   Divider,
@@ -91,6 +92,17 @@ const isQualityControlMedtech = (value: unknown) =>
       .trim()
       .toUpperCase(),
   );
+const isDrugTestDescription = (...values: unknown[]) =>
+  values.some((value) => {
+    const normalizedValue = String(value ?? '')
+      .trim()
+      .toUpperCase();
+
+    return (
+      normalizedValue.includes('DRUG TEST') ||
+      normalizedValue === 'DRUGTEST.RDL'
+    );
+  });
 const getLaboratoryDetailKey = (row: any) => {
   const analyteId = getPositiveNumber(
     row?.TestId ?? row?.fk_Analytes_Id ?? row?.AnalyteId,
@@ -147,6 +159,7 @@ const LaboratoryResults = () => {
   const [Medtechs, setMedtechs] = useState<TMedtechs[]>([]);
   const [QualityControls, setQualityControls] = useState<TMedtechs[]>([]);
   const [Pathologist, setPathologist] = useState<any[]>([]);
+  const [drugTestMsuValues, setDrugTestMsuValues] = useState<string[]>([]);
   const [RequestingPhysician, setRequestingPhysician] = useState([]);
   const [IsSaving, setIsSaving] = useState(false);
   const [ResultNo, setResultNo] = useState('');
@@ -188,6 +201,12 @@ const LaboratoryResults = () => {
   );
   const [activeCharge, setActiveCharge] = useState<any>();
   const [chargeDescription, setChargeDescription] = useState('');
+  const isDrugTestResult = isDrugTestDescription(
+    selectedTemplate?.Description,
+    selectedTemplate?.ReportDisplay,
+    selectedTemplate?.ReportName,
+    chargeDescription,
+  );
   const age = appointmentDetails
     ? `${appointmentDetails.AgeYears}Y${appointmentDetails.AgeMonths}M${appointmentDetails.AgeDays}D`
     : '';
@@ -380,11 +399,13 @@ const LaboratoryResults = () => {
         ? undefined
         : dayjs(x.ChargeDateCollected ?? x.DateCollected),
       Pathologist: x.Pathologist,
+      Pathologist2: x.Pathologist2,
       Medtech: x.Medtech,
       Qa: x.Qa,
       ResultNo: x.ResultNo,
       RequestingPhysician: x.RequestingPhysician,
       Specimen: x.Specimen,
+      Msu: x.Msu,
       Remarks: x.ChargeRemarks ?? x.Remarks,
       LabNo: x.LabNo,
       FinalizedBy: x.FinalizedBy,
@@ -463,6 +484,7 @@ const LaboratoryResults = () => {
   const handleNew = async (
     templateId?: string | number,
     selectedChargeId?: string | number,
+    selectedChargeDescription?: string,
   ) => {
     const nextTemplateId = templateId ?? selectedTemplateId;
     const nextChargeId =
@@ -484,6 +506,16 @@ const LaboratoryResults = () => {
     setRowsCol1([]);
     await handleLoadTemplate(nextTemplateId, nextChargeId);
     const sharedHeader = await getSharedLaboratoryHeader();
+    const nextTemplate = templates?.find(
+      (template) => Number(template.Id) === Number(nextTemplateId),
+    );
+    const isNextDrugTest = isDrugTestDescription(
+      nextTemplate?.Description,
+      nextTemplate?.ReportDisplay,
+      nextTemplate?.ReportName,
+      selectedChargeDescription,
+      chargeDescription,
+    );
     form.resetFields();
     form.setFieldsValue({
       ReportDate: dayjs(),
@@ -505,6 +537,10 @@ const LaboratoryResults = () => {
         undefined,
       Pathologist:
         getPositiveNumber(sharedHeader?.Pathologist) || DEFAULT_PATHOLOGIST_ID,
+      Pathologist2: isNextDrugTest
+        ? getPositiveNumber(sharedHeader?.Pathologist2) || undefined
+        : undefined,
+      Msu: isNextDrugTest ? sharedHeader?.Msu || undefined : undefined,
       Remarks: sharedHeader?.Remarks || undefined,
     });
     setResultNo('');
@@ -813,6 +849,18 @@ const LaboratoryResults = () => {
     });
     if (res) {
       // setSpecimen(res.parameters.lst);
+    }
+
+    res = await PostData('GetRecords', {
+      sp: 'udp_GetDrugTestMsuValues',
+      parameters: {},
+    });
+    if (res) {
+      setDrugTestMsuValues(
+        (res.parameters.lst ?? [])
+          .map((item: any) => String(item.Value ?? '').trim())
+          .filter(Boolean),
+      );
     }
 
     ///udp_GetBranchDetails
@@ -1210,7 +1258,11 @@ const LaboratoryResults = () => {
           hasRequestedCharge ? requestedChargeId : undefined,
         );
       } else {
-        await handleNew(nextTemplateId, requestedChargeId);
+        await handleNew(
+          nextTemplateId,
+          requestedChargeId,
+          nextChargeDescription,
+        );
       }
 
       if (nextChargeDescription) {
@@ -1292,14 +1344,37 @@ const LaboratoryResults = () => {
                   key: '2',
                   children: (
                     <ExistingLabResults
-                      AppointmentId={appointmentDetails?.Id}
+                      PatientId={appointmentDetails?.fk_PatientInformation_Id}
                       activeChargeId={chargeId}
                       handleOpen={(data) => {
+                        const resultAppointmentId = getPositiveNumber(
+                          data?.fk_Appointments_Id,
+                        );
+                        const resultChargeId = getPositiveNumber(data?.Id);
+                        const resultTemplateId = getPositiveNumber(
+                          data?.LabTemplateId,
+                        );
+
+                        if (
+                          resultAppointmentId > 0 &&
+                          resultAppointmentId !== appointmentDetails?.Id
+                        ) {
+                          void router.navigate({
+                            to: '/laboratoryresults/$Id',
+                            params: { Id: String(resultAppointmentId) },
+                            search: {
+                              templateId: resultTemplateId,
+                              chargeId: resultChargeId,
+                            },
+                          });
+                          return;
+                        }
+
                         setActiveCharge(data);
                         setChargeDescription(String(data?.Description ?? ''));
                         handleOpenResult(
                           getPositiveNumber(data?.ResultId),
-                          getPositiveNumber(data?.Id),
+                          resultChargeId,
                         );
                       }}
                       Key={key}
@@ -1325,6 +1400,13 @@ const LaboratoryResults = () => {
             </div>
           ) : (
             <>
+              {isDrugTestResult && (
+                <div className="mb-4 border-b border-slate-200 pb-3">
+                  <h2 className="text-sm font-semibold uppercase text-slate-800">
+                    Drug Test Result
+                  </h2>
+                </div>
+              )}
               <div className="mt-2">
                 <div className="grid grid-cols-4 gap-4">
                   <div className="font-bold text-md">Test Name</div>
@@ -1384,7 +1466,9 @@ const LaboratoryResults = () => {
                 </Form.Item>
 
                 <Form.Item
-                  label="Date Received"
+                  label={
+                    isDrugTestResult ? 'Specimen Collected' : 'Date Received'
+                  }
                   name="DateReceived"
                   rules={[
                     {
@@ -1396,7 +1480,9 @@ const LaboratoryResults = () => {
                   <DatePicker showTime showToday format="MM/DD/YYYY hh:mm A" />
                 </Form.Item>
                 <Form.Item
-                  label="Date Recorded"
+                  label={
+                    isDrugTestResult ? 'Specimen Recorded' : 'Date Recorded'
+                  }
                   name="DateCollected"
                   rules={[
                     {
@@ -1499,6 +1585,23 @@ const LaboratoryResults = () => {
                   </Select>
                 </Form.Item>
 
+                {isDrugTestResult && (
+                  <Form.Item label="MSU" name="Msu">
+                    <AutoComplete
+                      allowClear
+                      options={drugTestMsuValues.map((value) => ({
+                        value,
+                      }))}
+                      filterOption={(inputValue, option) =>
+                        String(option?.value ?? '')
+                          .toUpperCase()
+                          .includes(inputValue.toUpperCase())
+                      }
+                      placeholder="Enter or select MSU"
+                    />
+                  </Form.Item>
+                )}
+
                 <Form.Item
                   label="Quality Control"
                   name="Qa"
@@ -1527,7 +1630,7 @@ const LaboratoryResults = () => {
                 </Form.Item>
 
                 <Form.Item
-                  label="Pathologist"
+                  label={isDrugTestResult ? 'Pathologist 1' : 'Pathologist'}
                   name="Pathologist"
                   rules={[
                     {
@@ -1553,6 +1656,32 @@ const LaboratoryResults = () => {
                   </Select>
                 </Form.Item>
 
+                {/* {isDrugTestResult && (
+                  <Form.Item label="Pathologist 2" name="Pathologist2">
+                    <Select
+                      showSearch
+                      allowClear
+                      filterOption={(inputValue, option: any) =>
+                        option.title
+                          .toUpperCase()
+                          .indexOf(inputValue.toUpperCase()) !== -1
+                      }
+                    >
+                      {Pathologist.map((d: any) => (
+                        <Select.Option key={d.Id} title={d.Name} value={d.Id}>
+                          {d.Name}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                )} */}
+
+                {/* {isDrugTestResult && (
+                  <div className="mb-2 grid grid-cols-[minmax(100px,1fr)_minmax(0,3fr)] gap-4 border-b border-slate-200 pb-2 text-xs font-semibold uppercase text-slate-500">
+                    <span>Test</span>
+                    <span>Results</span>
+                  </div>
+                )} */}
                 <Form.Item label="Remarks" name="Remarks">
                   <Input.TextArea rows={4} />
                 </Form.Item>
@@ -1575,7 +1704,7 @@ const LaboratoryResults = () => {
                         // disabled={IsSaving || ReportStatus === "F"}
 
                         disabled={
-                          rowsCol1.length <= 0 ||
+                          (rowsCol1.length <= 0 && !isDrugTestResult) ||
                           isFinalized ||
                           isOnlineResultShown ||
                           isResultSubmitBlocked

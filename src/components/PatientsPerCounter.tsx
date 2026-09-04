@@ -26,6 +26,7 @@ import { Link, useRouter } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 import { FaUpload } from 'react-icons/fa6';
 import { GiMedicines } from 'react-icons/gi';
+import { PiQueueLight } from 'react-icons/pi';
 import RequestForMedicines from './RequestForMedicines';
 
 type Props = {
@@ -73,6 +74,7 @@ const consultationCounterCodes = [
   'CONSULTATION',
   'PHYS',
 ];
+const consultationDepartmentId = 1043;
 const rehabilitationCounterCodes = ['REHAB'];
 const resultCounterCodes = [
   'LAB',
@@ -86,7 +88,11 @@ const isConsultationCounter = (counterCode?: string) =>
   consultationCounterCodes.includes(String(counterCode ?? '').trim());
 const isRehabilitationCounter = (counterCode?: string) =>
   rehabilitationCounterCodes.includes(String(counterCode ?? '').trim());
-const isConsultationDepartment = (departmentName?: string) =>
+const isConsultationDepartment = (
+  departmentId?: unknown,
+  departmentName?: string,
+) =>
+  Number(departmentId) === consultationDepartmentId ||
   String(departmentName ?? '')
     .trim()
     .toUpperCase()
@@ -123,6 +129,7 @@ const canOpenResultFromQueue = (
   data: any,
   counterCode?: string,
   departmentName?: string,
+  departmentId?: number,
 ) => {
   if (!data || isResultBlockedProcedure(data)) {
     return false;
@@ -136,8 +143,11 @@ const canOpenResultFromQueue = (
     resultCounterCodes.includes(effectiveCounterCode) ||
     isConsultationCounter(effectiveCounterCode) ||
     isRehabilitationCounter(effectiveCounterCode) ||
-    isConsultationDepartment(departmentName) ||
-    isConsultationDepartment(data.DepartmentName) ||
+    isConsultationDepartment(
+      data.DepartmentId ?? data.fk_Departments_Id,
+      data.DepartmentName,
+    ) ||
+    isConsultationDepartment(departmentId, departmentName) ||
     isRehabilitationDepartment(departmentName) ||
     isRehabilitationDepartment(data.DepartmentName)
   );
@@ -171,6 +181,9 @@ const PatientsPerCounter: FC<Props> = ({
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusRecord, setStatusRecord] = useState<TAppointments>();
   const [isStatusSubmitting, setIsStatusSubmitting] = useState(false);
+  const [queueingFollowUpChargeId, setQueueingFollowUpChargeId] = useState<
+    number | undefined
+  >();
   const [statusForm] = Form.useForm<ProcedureStatusFormValues>();
   const [IsSubmitting, setIsSubmitting] = useState(false);
   const [now, setNow] = useState(dayjs());
@@ -357,6 +370,67 @@ const PatientsPerCounter: FC<Props> = ({
     }
   };
 
+  const handleSendFollowUpToQueue = async (data: TAppointments) => {
+    const appointmentId = getPositiveNumber(
+      (data as TAppointments & { fk_Appointments_Id?: number })
+        .fk_Appointments_Id,
+    );
+    const chargeId = getPositiveNumber(data.ChargeId ?? data.Id);
+    const itemId = getPositiveNumber(data.ItemId);
+
+    if (!appointmentId || !chargeId || !itemId) {
+      notification.error({
+        message: 'The mobile follow-up procedure is incomplete.',
+        placement: 'topRight',
+        duration: 4,
+      });
+      return;
+    }
+
+    setQueueingFollowUpChargeId(chargeId);
+    try {
+      const res = await PostData('follow-up', {
+        AppointmentId: appointmentId,
+        ChargeId: chargeId,
+        ItemId: itemId,
+      });
+
+      if (res?.status !== 1) {
+        throw new Error(res?.message ?? 'Unable to send follow-up to queue.');
+      }
+
+      notification.success({
+        message: res.message ?? 'Follow-up sent to queue.',
+        placement: 'topRight',
+        duration: 4,
+      });
+      await refreshPatientQueries();
+    } catch (error) {
+      notification.error({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Unable to send follow-up to queue.',
+        placement: 'topRight',
+        duration: 5,
+      });
+    } finally {
+      setQueueingFollowUpChargeId(undefined);
+    }
+  };
+
+  const confirmSendFollowUpToQueue = (data: TAppointments) => {
+    Modal.confirm({
+      title: 'Send Follow-up to Queue?',
+      content:
+        'This mobile procedure will be added to its department queue. Continue?',
+      okText: 'Yes',
+      cancelText: 'No',
+      centered: true,
+      onOk: () => handleSendFollowUpToQueue(data),
+    });
+  };
+
   const handleCall = async (
     data: any,
     options: { openResultAfterAccept?: boolean } = {},
@@ -527,6 +601,7 @@ const PatientsPerCounter: FC<Props> = ({
               selectedRecord,
               CounterCode,
               DepartmentName,
+              DepartmentId,
             ),
           },
         );
@@ -659,8 +734,11 @@ const PatientsPerCounter: FC<Props> = ({
 
     if (
       isConsultationCounter(counterCode) ||
-      isConsultationDepartment(DepartmentName) ||
-      isConsultationDepartment(data.DepartmentName)
+      isConsultationDepartment(DepartmentId, DepartmentName) ||
+      isConsultationDepartment(
+        data.DepartmentId ?? data.fk_Departments_Id,
+        data.DepartmentName,
+      )
     ) {
       handleConsultationResult(data);
       return;
@@ -706,8 +784,11 @@ const PatientsPerCounter: FC<Props> = ({
 
     if (
       isConsultationCounter(counterCode) ||
-      isConsultationDepartment(DepartmentName) ||
-      isConsultationDepartment(data.DepartmentName)
+      isConsultationDepartment(DepartmentId, DepartmentName) ||
+      isConsultationDepartment(
+        data.DepartmentId ?? data.fk_Departments_Id,
+        data.DepartmentName,
+      )
     ) {
       openResultLocation({
         to: '/consultation/$Id',
@@ -852,8 +933,11 @@ const PatientsPerCounter: FC<Props> = ({
     const appointmentId = String((data as any).fk_Appointments_Id ?? '');
     const isConsultationResult =
       isConsultationCounter(rowCounterCode) ||
-      isConsultationDepartment(DepartmentName) ||
-      isConsultationDepartment((data as any).DepartmentName);
+      isConsultationDepartment(DepartmentId, DepartmentName) ||
+      isConsultationDepartment(
+        (data as any).DepartmentId ?? (data as any).fk_Departments_Id,
+        (data as any).DepartmentName,
+      );
     const isRehabilitationResult =
       isRehabilitationCounter(rowCounterCode) ||
       isRehabilitationDepartment(DepartmentName) ||
@@ -863,6 +947,11 @@ const PatientsPerCounter: FC<Props> = ({
       isConsultationResult ||
       isRehabilitationResult;
     const resultBlocked = isResultBlockedProcedure(data);
+    const chargeId = getPositiveNumber(data.ChargeId ?? data.Id);
+    const canQueueMobileFollowUp =
+      IsMobile &&
+      getProcedureStatus(data) === 'TO FOLLOW' &&
+      !Boolean(data.HasActiveQueue);
     const canChangeProcedureStatus =
       canSetProcedureStatus(data) && (!hasResultWorkspace || resultBlocked);
     const resultTooltip = resultBlocked
@@ -887,7 +976,11 @@ const PatientsPerCounter: FC<Props> = ({
               }}
               className="text-center"
               loading={IsSubmitting}
-              disabled={data.CurrentQStatus === 'A' || data.cantCall}
+              disabled={
+                data.CurrentQStatus === 'A' ||
+                data.cantCall ||
+                isDeferredQueueOrProcedure(data)
+              }
             />
           </Tooltip>
         )}
@@ -913,6 +1006,17 @@ const PatientsPerCounter: FC<Props> = ({
               icon={<BiEdit />}
               onClick={() => openSetProcedureStatus(data)}
               loading={isStatusSubmitting}
+            />
+          </Tooltip>
+        )}
+        {canQueueMobileFollowUp && (
+          <Tooltip title="Send Follow-up to Queue">
+            <Button
+              type="primary"
+              icon={<PiQueueLight />}
+              loading={queueingFollowUpChargeId === chargeId}
+              disabled={queueingFollowUpChargeId !== undefined}
+              onClick={() => confirmSendFollowUpToQueue(data)}
             />
           </Tooltip>
         )}
@@ -1525,6 +1629,7 @@ const PatientsPerCounter: FC<Props> = ({
             selectedRecord,
             CounterCode,
             DepartmentName,
+            DepartmentId,
           ) && (
             <Tooltip title="Accept and open result">
               <Button

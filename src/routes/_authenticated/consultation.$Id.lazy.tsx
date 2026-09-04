@@ -41,21 +41,7 @@ const isDev = import.meta.env.DEV;
 const apiRoot = String(
   isDev ? import.meta.env.VITE_DEV_API : import.meta.env.VITE_PROD_API,
 ).replace(/\/$/, '');
-const consultationCounters = [
-  'CONCARDIO',
-  'CONDERMA',
-  'CONEENT',
-  'CONFAMMEN',
-  'CONGASTRO',
-  'CONINTMED',
-  'CONOPTHA',
-  'CONORTHO',
-  'CONPEDIA',
-  'CONSUR',
-  'CONPULMPO',
-  'CONSULTATION',
-  'PHYS',
-];
+const consultationDepartmentId = 1043;
 
 const ConsultationResult = () => {
   const router = useRouter();
@@ -322,7 +308,10 @@ const ConsultationResult = () => {
         (item: any) => Number(item.Id) === requestedChargeId,
       );
 
-      if (charge && consultationCounters.includes(charge.QCounter)) {
+      if (
+        charge &&
+        Number(charge.fk_Departments_Id) === consultationDepartmentId
+      ) {
         await handleSelectCharge(charge);
       }
     };
@@ -397,7 +386,7 @@ const ConsultationResult = () => {
                       AppointmentId={appointmentId}
                       handleNewResult={handleSelectCharge}
                       Key={reloadKey}
-                      Counter={consultationCounters}
+                      DepartmentId={consultationDepartmentId}
                       activeChargeId={chargeId}
                       onActiveChargeChange={setActiveCharge}
                     />
@@ -409,9 +398,28 @@ const ConsultationResult = () => {
                   children: (
                     <ExistingConsultationResults
                       PatientId={patient?.fk_PatientInformation_Id}
-                      AppointmentId={appointmentId}
                       reloadKey={reloadKey}
-                      handleOpen={(result) => handleOpenResult(result.Id)}
+                      handleOpen={(result) => {
+                        const resultAppointmentId = Number(
+                          result?.fk_Appointments_Id ?? 0,
+                        );
+
+                        if (
+                          resultAppointmentId > 0 &&
+                          resultAppointmentId !== appointmentId
+                        ) {
+                          void router.navigate({
+                            to: '/consultation/$Id',
+                            params: { Id: String(resultAppointmentId) },
+                            search: {
+                              chargeId: Number(result?.fk_Charges_Id ?? 0),
+                            },
+                          });
+                          return;
+                        }
+
+                        handleOpenResult(result.Id);
+                      }}
                     />
                   ),
                 },
@@ -499,7 +507,9 @@ const ConsultationResult = () => {
                       name="Started"
                       label="Started"
                       className="!mb-0"
-                      rules={[{ required: true, message: 'Started is required.' }]}
+                      rules={[
+                        { required: true, message: 'Started is required.' },
+                      ]}
                     >
                       <DatePicker
                         className="w-full"
@@ -511,7 +521,9 @@ const ConsultationResult = () => {
                       name="Ended"
                       label="Ended"
                       className="!mb-0"
-                      rules={[{ required: true, message: 'Ended is required.' }]}
+                      rules={[
+                        { required: true, message: 'Ended is required.' },
+                      ]}
                     >
                       <DatePicker
                         className="w-full"

@@ -149,6 +149,7 @@ export const AppointmentDetails = ({
     facingMode: 'user',
   };
   const [picture, setPicture] = useState<string | null>(null);
+  const [pictureError, setPictureError] = useState(false);
   const [expandedRows, setExpandedRows] = useState(null);
   const store = useAppStore();
   const [form] = Form.useForm();
@@ -776,6 +777,7 @@ export const AppointmentDetails = ({
       });
       if (res) {
         setPicture(res.parameters.lst[0].Image);
+        setPictureError(false);
       }
     }
   };
@@ -790,6 +792,7 @@ export const AppointmentDetails = ({
       if (res) {
         console.log(res);
         setPicture(res.parameters.lst[0].Image);
+        setPictureError(false);
       }
     } catch (error) {
       console.log(error);
@@ -803,6 +806,17 @@ export const AppointmentDetails = ({
     });
   }
   const handleSubmitForm = async (v: TAppointments) => {
+    if (isNullOrUndefinedOrBlank(picture)) {
+      setPictureError(true);
+      notification.error({
+        message: 'Patient picture is required!',
+        placement: 'topRight',
+        duration: 3,
+      });
+      return;
+    }
+
+    setPictureError(false);
     const QNo: TQNo = !isNullOrUndefinedOrBlank(
       sessionStorage.getItem('selectedInReception'),
     )
@@ -950,6 +964,7 @@ export const AppointmentDetails = ({
 
     if (imageSrc) {
       setPicture(imageSrc);
+      setPictureError(false);
     }
 
     setShowWebCam(false);
@@ -978,6 +993,7 @@ export const AppointmentDetails = ({
       return;
     }
     setPicture(URL.createObjectURL(files?.[0]));
+    setPictureError(false);
 
     const p = await blobToBase64(files?.[0]);
     if (p) {
@@ -1142,13 +1158,8 @@ export const AppointmentDetails = ({
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   };
-  const isCancelledCharge = (data: TCharges) =>
-    String(data.Status ?? '')
-      .trim()
-      .toUpperCase() === 'CANCELLED';
-
   const actionBodyTemplate = (data: TCharges) => {
-    const canEditCharge = data.Editable || isCancelledCharge(data);
+    const canEditCharge = Number(data.Id ?? 0) > 0;
     const canDeleteCharge = Number(data.Id ?? 0) > 0;
 
     return (
@@ -1539,6 +1550,15 @@ export const AppointmentDetails = ({
           <section className="border-t-2 border-emerald-500 bg-white p-4 shadow-sm">
             <div className="flex flex-col items-center text-center">
               <Avatar size={112} src={picture as string} />
+              <div className="mt-2 text-sm font-medium text-slate-600">
+                <span className="mr-1 text-red-500">*</span>
+                Patient Picture
+              </div>
+              {pictureError && (
+                <p className="mt-1 text-xs text-red-500" role="alert">
+                  Patient picture is required.
+                </p>
+              )}
               <h2 className="mt-3 text-lg font-medium uppercase text-slate-700">
                 {appointmentDetails?.Name ?? patientNameWatch ?? 'Patient'}
               </h2>
