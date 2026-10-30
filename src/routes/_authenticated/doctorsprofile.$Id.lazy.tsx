@@ -169,6 +169,7 @@ const DoctorProfile = () => {
             Sonologist: x.Sonologist,
             Pathologist: x.Pathologist,
             Cardiologist: x.Cardiologist,
+            Psychologist: x.Psychologist,
           });
 
              res = await PostData("GetRecords", {
@@ -196,6 +197,8 @@ const DoctorProfile = () => {
         Id: "0",
         Sonologist: false,
         Pathologist: false,
+        Cardiologist: false,
+        Psychologist: false,
         Title: "PHYSICIAN",
       });
     } else {
@@ -322,6 +325,14 @@ const DoctorProfile = () => {
               name="Cardiologist"
               label="Cardiologist"
               extra="Check if cardiologist"
+              valuePropName="checked"
+            >
+              <Checkbox />
+            </Form.Item>
+            <Form.Item
+              name="Psychologist"
+              label="Psychologist"
+              extra="Check if psychologist"
               valuePropName="checked"
             >
               <Checkbox />

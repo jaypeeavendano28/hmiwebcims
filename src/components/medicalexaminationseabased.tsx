@@ -1013,11 +1013,6 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
             <Form.Item
               name="EarRightRemarks"
               label="Ear Right Inadequate Remarks"
-              rules={[
-                {
-                  required: earRightWatch === 'I' ? true : false,
-                },
-              ]}
             >
               <Input disabled={earRightWatch !== 'I'} />
             </Form.Item>
@@ -1032,11 +1027,6 @@ export default function MedicalExaminationSeabased({ AppointmentId }: Props) {
             <Form.Item
               name="EarLeftRemarks"
               label="Ear Left Inadequate Remarks"
-              rules={[
-                {
-                  required: earLeftWatch === 'I' ? true : false,
-                },
-              ]}
             >
               <Input disabled={earLeftWatch !== 'I'} />
             </Form.Item>

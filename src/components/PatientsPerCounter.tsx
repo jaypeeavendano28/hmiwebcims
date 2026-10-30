@@ -28,6 +28,7 @@ import { FaUpload } from 'react-icons/fa6';
 import { GiMedicines } from 'react-icons/gi';
 import { PiQueueLight } from 'react-icons/pi';
 import RequestForMedicines from './RequestForMedicines';
+import { psychologyDepartmentId } from './psychology/psychologyForm';
 
 type Props = {
   CounterCode?: string;
@@ -41,6 +42,7 @@ type Props = {
   Name: string;
   IsMobile: boolean;
   Compact?: boolean;
+  CompletedStatus?: string;
   ItemId?: number;
 };
 
@@ -81,6 +83,9 @@ const resultCounterCodes = [
   'XRAY',
   'ULT',
   'CARDIO',
+  'PSYCH',
+  'PSYCHO',
+  'PSYCHOLOGY',
   ...rehabilitationCounterCodes,
   ...consultationCounterCodes,
 ];
@@ -102,6 +107,13 @@ const isRehabilitationDepartment = (departmentName?: string) =>
     .trim()
     .toUpperCase()
     .includes('REHAB');
+const isPsychologyCounter = (counterCode?: string) =>
+  ['PSYCH', 'PSYCHO', 'PSYCHOLOGY'].includes(
+    String(counterCode ?? '').trim().toUpperCase(),
+  );
+const isPsychologyDepartment = (departmentId?: unknown, departmentName?: string) =>
+  Number(departmentId) === psychologyDepartmentId ||
+  String(departmentName ?? '').trim().toUpperCase().includes('PSYCHOLOGY');
 const allQueueDetailsOption = 0;
 const normalizeStatusText = (value: unknown) =>
   String(value ?? '')
@@ -143,6 +155,9 @@ const canOpenResultFromQueue = (
     resultCounterCodes.includes(effectiveCounterCode) ||
     isConsultationCounter(effectiveCounterCode) ||
     isRehabilitationCounter(effectiveCounterCode) ||
+    isPsychologyCounter(effectiveCounterCode) ||
+    isPsychologyDepartment(data.DepartmentId ?? data.fk_Departments_Id, data.DepartmentName) ||
+    isPsychologyDepartment(departmentId, departmentName) ||
     isConsultationDepartment(
       data.DepartmentId ?? data.fk_Departments_Id,
       data.DepartmentName,
@@ -165,6 +180,7 @@ const PatientsPerCounter: FC<Props> = ({
   Name,
   IsMobile,
   Compact = false,
+  CompletedStatus,
   ItemId,
 }) => {
   const [showRequest, setShowRequest] = useState(false);
@@ -273,7 +289,12 @@ const PatientsPerCounter: FC<Props> = ({
           Number(patient.ItemId ?? patient.fk_Items_Id) === selectedItemId,
       )
     : rawListOfPatients;
-  const listOfPatients = itemFilteredPatients;
+  const selectedCompletedStatus = normalizeStatusText(CompletedStatus);
+  const listOfPatients = effectiveIsDone && selectedCompletedStatus
+    ? itemFilteredPatients.filter(
+        (patient: any) => getProcedureStatus(patient) === selectedCompletedStatus,
+      )
+    : itemFilteredPatients;
 
   const refreshPatientQueries = async () => {
     await Promise.all([
@@ -664,6 +685,14 @@ const PatientsPerCounter: FC<Props> = ({
     });
   };
 
+  const handlePsychologyResult = (data: any) => {
+    openResultLocation({
+      to: '/psychologyresult/$Id',
+      params: { Id: data.fk_Appointments_Id.toString() },
+      search: { chargeId: Number(data.ChargeId ?? 0) },
+    });
+  };
+
   const handleCardioResult = (data: any) => {
     // router.navigate({
     //   to: '/cardioresult/$Id',
@@ -724,6 +753,14 @@ const PatientsPerCounter: FC<Props> = ({
   const openProcedureWorkspace = (data: any) => {
     const counterCode = data.CounterCode ?? CounterCode;
     if (
+      isPsychologyCounter(counterCode) ||
+      isPsychologyDepartment(DepartmentId, DepartmentName) ||
+      isPsychologyDepartment(data.DepartmentId ?? data.fk_Departments_Id, data.DepartmentName)
+    ) {
+      handlePsychologyResult(data);
+      return;
+    }
+    if (
       isRehabilitationCounter(counterCode) ||
       isRehabilitationDepartment(DepartmentName) ||
       isRehabilitationDepartment(data.DepartmentName)
@@ -768,6 +805,17 @@ const PatientsPerCounter: FC<Props> = ({
     }
 
     const counterCode = data.CounterCode ?? CounterCode;
+    if (
+      isPsychologyCounter(counterCode) ||
+      isPsychologyDepartment(DepartmentId, DepartmentName) ||
+      isPsychologyDepartment(data.DepartmentId ?? data.fk_Departments_Id, data.DepartmentName)
+    ) {
+      openResultLocation({
+        to: '/psychologyresult/$Id',
+        params: { Id: appointmentId },
+      });
+      return;
+    }
     if (
       isRehabilitationCounter(counterCode) ||
       isRehabilitationDepartment(DepartmentName) ||
@@ -942,10 +990,18 @@ const PatientsPerCounter: FC<Props> = ({
       isRehabilitationCounter(rowCounterCode) ||
       isRehabilitationDepartment(DepartmentName) ||
       isRehabilitationDepartment((data as any).DepartmentName);
+    const isPsychologyResult =
+      isPsychologyCounter(rowCounterCode) ||
+      isPsychologyDepartment(DepartmentId, DepartmentName) ||
+      isPsychologyDepartment(
+        (data as any).DepartmentId ?? (data as any).fk_Departments_Id,
+        (data as any).DepartmentName,
+      );
     const hasResultWorkspace =
       resultCounterCodes.includes(rowCounterCode ?? '') ||
       isConsultationResult ||
-      isRehabilitationResult;
+      isRehabilitationResult ||
+      isPsychologyResult;
     const resultBlocked = isResultBlockedProcedure(data);
     const chargeId = getPositiveNumber(data.ChargeId ?? data.Id);
     const canQueueMobileFollowUp =
@@ -1018,6 +1074,18 @@ const PatientsPerCounter: FC<Props> = ({
               disabled={queueingFollowUpChargeId !== undefined}
               onClick={() => confirmSendFollowUpToQueue(data)}
             />
+          </Tooltip>
+        )}
+        {isPsychologyResult && effectiveIsDone && resultBlocked && disabledResultButton}
+        {isPsychologyResult && effectiveIsDone && !resultBlocked && (
+          <Tooltip title={resultTooltip}>
+            <Link
+              to="/psychologyresult/$Id"
+              params={{ Id: appointmentId }}
+              search={{ chargeId: Number(data.ChargeId ?? 0) }}
+            >
+              {resultButton}
+            </Link>
           </Tooltip>
         )}
         {rowCounterCode === 'LAB' &&

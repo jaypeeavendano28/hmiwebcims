@@ -9,7 +9,9 @@ import { PiQueueLight } from 'react-icons/pi';
 // import { useRouter } from '@tanstack/react-router';
 import { TCharges } from '../types';
 import { useState } from 'react';
-import dayjs from 'dayjs';
+import ChargeDateAddedEditor, {
+  formatChargeDateTime,
+} from './ChargeDateAddedEditor';
 
 type Props = {
   AppointmentId?: number;
@@ -162,7 +164,20 @@ export default function ({ AppointmentId }: Props) {
         <Column
           field="DateAdded"
           header="Date Added"
-          body={(data: TCharges) => dayjs(data.DateAdded).format('MM/DD/YYYY')}
+          body={(data: TCharges) => (
+            <ChargeDateAddedEditor
+              charge={data}
+              appointmentId={AppointmentId}
+              onSaved={async () => {
+                await resultStatus.refetch();
+              }}
+            />
+          )}
+        ></Column>
+        <Column
+          field="TransDate"
+          header="Originally Recorded"
+          body={(data: TCharges) => formatChargeDateTime(data.TransDate)}
         ></Column>
         <Column field="Status" header="Status"></Column>
         <Column field="StatusDate" header="Date"></Column>

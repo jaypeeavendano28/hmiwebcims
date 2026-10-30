@@ -54,6 +54,9 @@ import { FiAlertCircle, FiCheckCircle, FiRefreshCw } from 'react-icons/fi';
 import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
 import ResultStatus from '../../components/ResultStatus';
+import ChargeDateAddedEditor, {
+  formatChargeDateTime,
+} from '../../components/ChargeDateAddedEditor';
 export const Route = createFileRoute('/_authenticated/appointmentdetails/$Id')({
   component: AppointmentDetailsRoute,
 });
@@ -1249,7 +1252,20 @@ export const AppointmentDetails = ({
         </div>
         <div>Date Added</div>
         <div>
-          <strong>{data.DateAdded}</strong>
+          <ChargeDateAddedEditor
+            charge={data}
+            appointmentId={Number(Id)}
+            onSaved={async () => {
+              await handleGetCharges();
+              await q.invalidateQueries({
+                queryKey: ['resultStatus', appointmentDetails?.Id],
+              });
+            }}
+          />
+        </div>
+        <div>Originally Recorded</div>
+        <div>
+          <strong>{formatChargeDateTime(data.TransDate)}</strong>
         </div>
         <div>Updated By</div>
       </div>

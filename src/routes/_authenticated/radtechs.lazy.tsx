@@ -1,12 +1,19 @@
 import { createLazyFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Button, Divider, notification, Space, Tooltip } from "antd";
+import {
+  Button,
+  Divider,
+  notification,
+  Popconfirm,
+  Space,
+  Tooltip,
+} from "antd";
 import { useEffect, useState } from "react";
 import useAppStore from "../../store";
 import { useQuery } from "@tanstack/react-query";
 import { PostData, WithAccess } from "../../helpers";
 import { FilterMatchMode } from "primereact/api";
 import { TMedtechs } from "../../types";
-import { BiEdit } from "react-icons/bi";
+import { BiEdit, BiTrash } from "react-icons/bi";
 import Loading from "../../components/loading";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -18,6 +25,7 @@ const Radtechs = () => {
   const router = useRouter();
   const store = useAppStore();
   const [expandedRows, setExpandedRows] = useState(null);
+  const [deletingId, setDeletingId] = useState(0);
   const [filters] = useState({
     Name: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
@@ -39,6 +47,37 @@ const Radtechs = () => {
     staleTime: 0,
   });
 
+  const handleDelete = async (record: TMedtechs) => {
+    try {
+      setDeletingId(record.Id);
+      const res = await PostData("DeleteMedtech", { Id: record.Id });
+
+      if (res?.status !== 1) {
+        notification.error({
+          message: res?.message || "Unable to delete radiology technologist.",
+          placement: "topRight",
+        });
+        return;
+      }
+
+      notification.success({
+        message: "Radiology technologist deleted.",
+        placement: "topRight",
+      });
+      await data.refetch();
+    } catch (error: any) {
+      notification.error({
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Unable to delete radiology technologist.",
+        placement: "topRight",
+      });
+    } finally {
+      setDeletingId(0);
+    }
+  };
+
   const actionBodyTemplate = (data: TMedtechs) => {
     return (
       <Space>
@@ -52,6 +91,23 @@ const Radtechs = () => {
             <Button type="primary" icon={<BiEdit />} />
           </Link>
         </Tooltip>
+        <Popconfirm
+          title="Delete this radiology technologist?"
+          description="This record will be removed from the active list."
+          okText="Delete"
+          cancelText="Cancel"
+          okButtonProps={{ danger: true }}
+          onConfirm={() => handleDelete(data)}
+        >
+          <Tooltip title="Delete">
+            <Button
+              type="primary"
+              danger
+              icon={<BiTrash />}
+              loading={deletingId === data.Id}
+            />
+          </Tooltip>
+        </Popconfirm>
       </Space>
     );
   };

@@ -58,12 +58,26 @@ const otherMedicalHistory: TMerOthers[] = [
   { Id: 5, Description: 'Occasional alcoholic beverage drinker' },
   { Id: 6, Description: 'Covid-19 Vaccinated' },
 ];
-const reactiveOtherTests: {
+const reactiveResultOptions = [
+  { value: 'Reactive', label: 'Reactive' },
+  { value: 'Non Reactive', label: 'Non Reactive' },
+];
+const normalResultOptions = [
+  { value: 'Normal', label: 'Normal' },
+  { value: 'Not Normal', label: 'Not Normal' },
+];
+const choiceOtherTests: {
   checkName: keyof TMerOtherTests;
   valueName: keyof TMerOtherTests;
   label: string;
+  resultOptions?: { value: string; label: string }[];
 }[] = [
-  { checkName: 'StoolCs', valueName: 'StoolCsValue', label: 'Stool c/s' },
+  {
+    checkName: 'StoolCs',
+    valueName: 'StoolCsValue',
+    label: 'Stool c/s',
+    resultOptions: normalResultOptions,
+  },
   { checkName: 'AntiHbs', valueName: 'AntiHbsValue', label: 'ANTI - HBS' },
   { checkName: 'HbSag', valueName: 'HbSagValue', label: 'HBsAg' },
   { checkName: 'HepaAIgG', valueName: 'HepaAIgGValue', label: 'Hepa A - IgG' },
@@ -1089,8 +1103,8 @@ const Mer = () => {
 
   const evaluatedBy = Form.useWatch('EvaluatedBy', form);
 
-  const renderReactiveOtherTest = (
-    test: (typeof reactiveOtherTests)[number],
+  const renderChoiceOtherTest = (
+    test: (typeof choiceOtherTests)[number],
   ) => (
     <div
       key={String(test.checkName)}
@@ -1101,8 +1115,11 @@ const Mer = () => {
       </Form.Item>
       <Form.Item name={test.valueName} noStyle>
         <Radio.Group className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-          <Radio value="Reactive">Reactive</Radio>
-          <Radio value="Non Reactive">Non Reactive</Radio>
+          {(test.resultOptions ?? reactiveResultOptions).map((option) => (
+            <Radio key={option.value} value={option.value}>
+              {option.label}
+            </Radio>
+          ))}
         </Radio.Group>
       </Form.Item>
     </div>
@@ -2231,7 +2248,7 @@ const Mer = () => {
                 Serology / Immunology
               </div> */}
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {reactiveOtherTests.map(renderReactiveOtherTest)}
+                {choiceOtherTests.map(renderChoiceOtherTest)}
               </div>
             </section>
 

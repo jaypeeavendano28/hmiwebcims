@@ -98,6 +98,9 @@ const AuthenticatedArLazyImport = createFileRoute('/_authenticated/ar')()
 const AuthenticatedXrayresultIdLazyImport = createFileRoute(
   '/_authenticated/xrayresult/$Id',
 )()
+const AuthenticatedUtilitiesPsychometriciansLazyImport = createFileRoute(
+  '/_authenticated/utilities/psychometricians',
+)()
 const AuthenticatedUploaddocumentsIdLazyImport = createFileRoute(
   '/_authenticated/uploaddocuments/$Id',
 )()
@@ -115,6 +118,9 @@ const AuthenticatedReceptionCodeLazyImport = createFileRoute(
 )()
 const AuthenticatedRadtechIdLazyImport = createFileRoute(
   '/_authenticated/radtech/$Id',
+)()
+const AuthenticatedPsychologyresultIdLazyImport = createFileRoute(
+  '/_authenticated/psychologyresult/$Id',
 )()
 const AuthenticatedPatientexamrecordIdLazyImport = createFileRoute(
   '/_authenticated/patientexamrecord/$Id',
@@ -160,6 +166,9 @@ const AuthenticatedBillingAppointmentIdLazyImport = createFileRoute(
 )()
 const AuthenticatedArdetailsIdLazyImport = createFileRoute(
   '/_authenticated/ardetails/$Id',
+)()
+const AuthenticatedUtilitiesPsychometricianIdLazyImport = createFileRoute(
+  '/_authenticated/utilities/psychometrician/$Id',
 )()
 const AuthenticatedMaterialManagementStockIssuanceTransNoLazyImport =
   createFileRoute(
@@ -381,6 +390,16 @@ const AuthenticatedXrayresultIdLazyRoute =
     import('./routes/_authenticated/xrayresult.$Id.lazy').then((d) => d.Route),
   )
 
+const AuthenticatedUtilitiesPsychometriciansLazyRoute =
+  AuthenticatedUtilitiesPsychometriciansLazyImport.update({
+    path: '/utilities/psychometricians',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/utilities/psychometricians.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
 const AuthenticatedUploaddocumentsIdLazyRoute =
   AuthenticatedUploaddocumentsIdLazyImport.update({
     path: '/uploaddocuments/$Id',
@@ -435,6 +454,16 @@ const AuthenticatedRadtechIdLazyRoute = AuthenticatedRadtechIdLazyImport.update(
 ).lazy(() =>
   import('./routes/_authenticated/radtech.$Id.lazy').then((d) => d.Route),
 )
+
+const AuthenticatedPsychologyresultIdLazyRoute =
+  AuthenticatedPsychologyresultIdLazyImport.update({
+    path: '/psychologyresult/$Id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/psychologyresult.$Id.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 const AuthenticatedPatientexamrecordIdLazyRoute =
   AuthenticatedPatientexamrecordIdLazyImport.update({
@@ -755,6 +784,16 @@ const AuthenticatedMaterialManagementPurchaseOrderIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedMaterialManagementPurchaseOrderRoute,
   } as any)
+
+const AuthenticatedUtilitiesPsychometricianIdLazyRoute =
+  AuthenticatedUtilitiesPsychometricianIdLazyImport.update({
+    path: '/utilities/psychometrician/$Id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/utilities/psychometrician.$Id.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 const AuthenticatedMaterialManagementStockIssuanceTransNoLazyRoute =
   AuthenticatedMaterialManagementStockIssuanceTransNoLazyImport.update({
@@ -1110,6 +1149,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPatientexamrecordIdLazyImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/_authenticated/psychologyresult/$Id': {
+      preLoaderRoute: typeof AuthenticatedPsychologyresultIdLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
     '/_authenticated/radtech/$Id': {
       preLoaderRoute: typeof AuthenticatedRadtechIdLazyImport
       parentRoute: typeof AuthenticatedImport
@@ -1132,6 +1175,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/uploaddocuments/$Id': {
       preLoaderRoute: typeof AuthenticatedUploaddocumentsIdLazyImport
+      parentRoute: typeof AuthenticatedImport
+    }
+    '/_authenticated/utilities/psychometricians': {
+      preLoaderRoute: typeof AuthenticatedUtilitiesPsychometriciansLazyImport
       parentRoute: typeof AuthenticatedImport
     }
     '/_authenticated/xrayresult/$Id': {
@@ -1161,6 +1208,10 @@ declare module '@tanstack/react-router' {
     '/_authenticated/material-management/stock-issuance/$transNo': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementStockIssuanceTransNoLazyImport
       parentRoute: typeof AuthenticatedMaterialManagementStockIssuanceImport
+    }
+    '/_authenticated/utilities/psychometrician/$Id': {
+      preLoaderRoute: typeof AuthenticatedUtilitiesPsychometricianIdLazyImport
+      parentRoute: typeof AuthenticatedImport
     }
     '/_authenticated/material-management/purchase-order/': {
       preLoaderRoute: typeof AuthenticatedMaterialManagementPurchaseOrderIndexImport
@@ -1276,13 +1327,16 @@ export const routeTree = rootRoute.addChildren([
     AuthenticatedMedicalexaminationseabasedAppointmentIdLazyRoute,
     AuthenticatedMedtechIdLazyRoute,
     AuthenticatedPatientexamrecordIdLazyRoute,
+    AuthenticatedPsychologyresultIdLazyRoute,
     AuthenticatedRadtechIdLazyRoute,
     AuthenticatedReceptionCodeLazyRoute,
     AuthenticatedReferencevaluesIdLazyRoute,
     AuthenticatedRegisteredpatientsStationLazyRoute,
     AuthenticatedUltrasoundIdLazyRoute,
     AuthenticatedUploaddocumentsIdLazyRoute,
+    AuthenticatedUtilitiesPsychometriciansLazyRoute,
     AuthenticatedXrayresultIdLazyRoute,
+    AuthenticatedUtilitiesPsychometricianIdLazyRoute,
   ]),
   LoginRoute,
 ])

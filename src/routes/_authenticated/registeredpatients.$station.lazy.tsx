@@ -50,6 +50,7 @@ type QueueSearch = {
   MemberNo?: string;
   DepartmentId?: number | string;
   QueueStatus?: 'done' | 'not-done';
+  CompletedStatus?: string;
 };
 
 type QueueFilterFormValues = {
@@ -57,6 +58,7 @@ type QueueFilterFormValues = {
   SearchText?: string;
   DepartmentId?: number;
   QueueStatus: 'done' | 'not-done';
+  CompletedStatus?: string;
 };
 
 type ExpandedRowsState = Record<string, boolean>;
@@ -120,6 +122,13 @@ const DATE_QUERY_FORMAT = 'YYYYMMDD';
 const DATE_DISPLAY_FORMAT = 'MM/DD/YYYY';
 const PF_TAX_RATE = 0.1;
 const SELECT_ALL_PROCEDURES_VALUE = '__ALL_PROCEDURES__';
+const completedStatusOptions = [
+  { value: 'DONE', label: 'Done' },
+  { value: 'TO FOLLOW', label: 'To Follow' },
+  { value: 'DEFERRED', label: 'Deferred' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'NOT SET', label: 'Not Set' },
+];
 
 const dateRangeOptions: { value: DateRangePreset; label: string }[] = [
   { value: 'today', label: 'Today' },
@@ -560,6 +569,7 @@ const RegisteredPatients = () => {
     ? ''
     : selectedDateRange[1].format(DATE_QUERY_FORMAT);
   const isDone = IsMobile || search.QueueStatus === 'done';
+  const completedStatus = isDone ? search.CompletedStatus : undefined;
 
   const queryClient = useQueryClient();
 
@@ -736,6 +746,7 @@ const RegisteredPatients = () => {
         MemberNo={MemberNo}
         IsMobile={IsMobile}
         Compact={compact}
+        CompletedStatus={completedStatus}
         ItemId={
           data.DepartmentId
             ? departmentItemFilters[data.DepartmentId]
@@ -765,6 +776,7 @@ const RegisteredPatients = () => {
         MemberNo: undefined,
         DepartmentId: values.DepartmentId ?? 'all',
         QueueStatus: values.QueueStatus,
+        CompletedStatus: values.QueueStatus === 'done' ? values.CompletedStatus : undefined,
       }),
     });
   };
@@ -950,6 +962,7 @@ const RegisteredPatients = () => {
       SearchText,
       DepartmentId,
       QueueStatus: isDone ? 'done' : 'not-done',
+      CompletedStatus: completedStatus,
     });
   }, [
     DateFrom,
@@ -957,6 +970,7 @@ const RegisteredPatients = () => {
     DepartmentId,
     form,
     isDone,
+    completedStatus,
     SearchText,
     search.MemberNo,
     search.PatientName,
@@ -1033,6 +1047,7 @@ const RegisteredPatients = () => {
           SearchText,
           DepartmentId,
           QueueStatus: isDone ? 'done' : 'not-done',
+          CompletedStatus: completedStatus,
         }}
         layout="vertical"
         onValuesChange={handleFilterChange}
@@ -1091,6 +1106,19 @@ const RegisteredPatients = () => {
               <Radio value="not-done"> In Queue </Radio>
             </Radio.Group>
           </Form.Item>
+          {isDone && (
+            <Form.Item
+              name="CompletedStatus"
+              label="Procedure Status"
+              className="md:col-span-2"
+            >
+              <Select
+                allowClear
+                placeholder="All statuses"
+                options={completedStatusOptions}
+              />
+            </Form.Item>
+          )}
           <Form.Item label="Mobile" className="md:col-span-1">
             <Switch
               checked={IsMobile}

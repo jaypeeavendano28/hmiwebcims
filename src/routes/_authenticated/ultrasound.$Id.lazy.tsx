@@ -30,6 +30,7 @@ import FinalizeForm from '../../components/FinalizeForm';
 import { ExistingRadiologyResults } from '../../components/ExistingRadiologyResult';
 import { BiArrowBack } from 'react-icons/bi';
 import { getCompletedResultsSearch } from '../../helpers/resultNavigation';
+import AddReqPhysician from '../../components/add-req-physician';
 import PatientInfoHeader from '../../components/PatientInfoHeader';
 import UploadDocumentButton from '../../components/UploadDocumentButton';
 const isDev = import.meta.env.DEV;
@@ -667,23 +668,30 @@ const UltrasoundResult = () => {
               <Input />
             </Form.Item>
 
-            <Form.Item label="Requesting Physician" name="RequestingPhysician">
-              <Select
-                showSearch
-                allowClear
-                filterOption={(inputValue, option: any) =>
-                  option.title
-                    .toUpperCase()
-                    .indexOf(inputValue.toUpperCase()) !== -1
-                }
+            <div className="flex gap-x-1 ">
+              <Form.Item
+                label="Requesting Physician"
+                name="RequestingPhysician"
+                className="flex-grow"
               >
-                {RequestingPhysician.map((d: any) => (
-                  <Select.Option key={d.Id} value={d.Id} title={d.Name}>
-                    {d.Name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
+                <Select
+                  showSearch
+                  allowClear
+                  filterOption={(inputValue, option: any) =>
+                    option.title
+                      .toUpperCase()
+                      .indexOf(inputValue.toUpperCase()) !== -1
+                  }
+                >
+                  {RequestingPhysician.map((d: any) => (
+                    <Select.Option key={d.Id} value={d.Id} title={d.Name}>
+                      {d.Name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <AddReqPhysician />
+            </div>
             <Form.Item
               label="Ultrasound Technologist"
               name="RadTech"

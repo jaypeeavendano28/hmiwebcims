@@ -964,11 +964,6 @@ export default function MedicalExaminationLandBased({
               <Form.Item
                 name="EarRightRemarks"
                 label="Ear Right Inadequate Remarks"
-                rules={[
-                  {
-                    required: earRightWatch === 'I',
-                  },
-                ]}
               >
                 <Input disabled={earRightWatch !== 'I'} />
               </Form.Item>
@@ -983,11 +978,6 @@ export default function MedicalExaminationLandBased({
               <Form.Item
                 name="EarLeftRemarks"
                 label="Ear Left Inadequate Remarks"
-                rules={[
-                  {
-                    required: earLeftWatch === 'I',
-                  },
-                ]}
               >
                 <Input disabled={earLeftWatch !== 'I'} />
               </Form.Item>

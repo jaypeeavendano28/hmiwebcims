@@ -14,12 +14,13 @@ import {
   Tooltip,
   notification,
 } from 'antd';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PostData, apiUrl, isNullOrUndefinedOrBlank } from '../../helpers';
 import useAppStore from '../../store';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
-import { DataTable } from 'primereact/datatable';
+import { DataTable, type DataTableProps } from 'primereact/datatable';
+import { FilterMatchMode } from 'primereact/api';
 import { TAppointments } from '../../types';
 import { Column } from 'primereact/column';
 import { SlBookOpen } from 'react-icons/sl';
@@ -90,10 +91,42 @@ const formatDateRange = (value: FormDateRangeValue) => {
   };
 };
 
+type AppointmentSearch = {
+  DateFrom: string | null;
+  DateTo: string | null;
+  PatientName: string;
+  TypeOfAppointment: string;
+};
+
+type AppointmentTableFilters = NonNullable<DataTableProps<TAppointments[]>['filters']>;
+
+const getColumnFilterValue = (filters: AppointmentTableFilters, field: string) => {
+  const filter = filters[field];
+  return filter && 'value' in filter
+    ? String(filter.value ?? '').trim()
+    : '';
+};
+
 const Appointments = () => {
-  const [appointments, setAppointments] = useState<
-    TAppointments[] | undefined
-  >();
+  const [search, setSearch] = useState<AppointmentSearch>(() => {
+    const dateRange = formatDateRange(getDateRange());
+    return {
+      DateFrom: dateRange.DateFrom ?? null,
+      DateTo: dateRange.DateTo ?? null,
+      PatientName: '',
+      TypeOfAppointment: Cookies.get('TypeOfAppointment') ?? 'D',
+    };
+  });
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
+  const [columnFilters, setColumnFilters] = useState<AppointmentTableFilters>({
+    AppointmentNo: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    AppointmentTypeDesc: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    Name: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    DateOnly: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    DateAdded: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    Company: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  });
   const [selectedRecord, setSelectedRecord] = useState<
     TAppointments | undefined
   >();
@@ -104,9 +137,49 @@ const Appointments = () => {
   const store = useAppStore();
   const auth = useAuth();
   const router = useRouter();
-  const TypeOfAppointment = form.getFieldValue('TypeOfAppointment');
   const patientNameFilter = Form.useWatch('PatientName', form);
   const hasPatientNameFilter = !isNullOrUndefinedOrBlank(patientNameFilter);
+
+  const appointmentsQuery = useQuery({
+    queryKey: ['appointments', store.branchCode, search, first, rows, columnFilters],
+    enabled: Boolean(store.branchCode),
+    retry: false,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const res = await PostData('GetRecords', {
+        sp: 'udp_GetAppointments',
+        parameters: {
+          BranchCode: store.branchCode,
+          ...search,
+          PageNumber: Math.floor(first / rows) + 1,
+          PageSize: rows,
+          AppointmentNoFilter: getColumnFilterValue(columnFilters, 'AppointmentNo'),
+          AppointmentTypeDescFilter: getColumnFilterValue(columnFilters, 'AppointmentTypeDesc'),
+          NameFilter: getColumnFilterValue(columnFilters, 'Name'),
+          DateOnlyFilter: getColumnFilterValue(columnFilters, 'DateOnly'),
+          DateAddedFilter: getColumnFilterValue(columnFilters, 'DateAdded'),
+          CompanyFilter: getColumnFilterValue(columnFilters, 'Company'),
+        },
+      });
+
+      if (res?.status !== 1 || !Array.isArray(res.parameters?.lst)) {
+        throw new Error(res?.message ?? 'Unable to load appointments.');
+      }
+
+      const appointments = res.parameters.lst as TAppointments[];
+      return {
+        appointments,
+        totalRecords: Number(appointments[0]?.TotalCount ?? 0),
+      };
+    },
+  });
+  const appointments = appointmentsQuery.data?.appointments ?? [];
+
+  useEffect(() => {
+    if (first > 0 && appointmentsQuery.isSuccess && appointments.length === 0) {
+      setFirst(Math.max(0, first - rows));
+    }
+  }, [first, rows, appointmentsQuery.isSuccess, appointments.length]);
 
   const handleWithAccess = async () => {
     const res = await auth.isWithAccess(15);
@@ -135,9 +208,10 @@ const Appointments = () => {
             placement: 'topRight',
             duration: 3,
           });
-          q.invalidateQueries({
-            queryKey: ['appointments'],
-          });
+          if (appointments.length === 1 && first > 0) {
+            setFirst(Math.max(0, first - rows));
+          }
+          void q.invalidateQueries({ queryKey: ['appointments'] });
         } else {
           notification.error({
             message: res.message,
@@ -356,53 +430,46 @@ const Appointments = () => {
   };
 
   useEffect(() => {
-    handleWithAccess();
-    form.setFieldsValue({
-      DateRange: getDateRange(),
-      TypeOfAppointment: Cookies.get('TypeOfAppointment'),
-    });
-    q.invalidateQueries({
-      queryKey: ['appointments'],
-    });
+    void handleWithAccess();
   }, []);
-  const handleSearch = async (dateRangeOverride?: FormDateRangeValue) => {
-    try {
-      const TypeOfAppointment = form.getFieldValue('TypeOfAppointment');
-      const PatientName = form.getFieldValue('PatientName');
-      const hasPatientName = !isNullOrUndefinedOrBlank(PatientName);
-      const dateRange = formatDateRange(
-        dateRangeOverride ?? form.getFieldValue('DateRange') ?? getDateRange(),
-      );
+  const handleSearch = (dateRangeOverride?: FormDateRangeValue) => {
+    const patientName = String(form.getFieldValue('PatientName') ?? '').trim();
+    const dateRange = formatDateRange(
+      dateRangeOverride ?? form.getFieldValue('DateRange') ?? getDateRange(),
+    );
+    const nextSearch: AppointmentSearch = {
+      DateFrom: patientName ? null : dateRange.DateFrom ?? null,
+      DateTo: patientName ? null : dateRange.DateTo ?? null,
+      PatientName: patientName,
+      TypeOfAppointment: form.getFieldValue('TypeOfAppointment') ?? 'D',
+    };
+    const isSameSearch =
+      search.DateFrom === nextSearch.DateFrom &&
+      search.DateTo === nextSearch.DateTo &&
+      search.PatientName === nextSearch.PatientName &&
+      search.TypeOfAppointment === nextSearch.TypeOfAppointment;
 
-      const res = await PostData('GetRecords', {
-        sp: 'udp_GetAppointments',
-        parameters: {
-          BranchCode: store.branchCode,
-          DateFrom: hasPatientName ? null : dateRange.DateFrom,
-          DateTo: hasPatientName ? null : dateRange.DateTo,
-          PatientName: isNullOrUndefinedOrBlank(PatientName) ? '' : PatientName,
-          TypeOfAppointment,
-        },
-      });
-      if (res) {
-        setAppointments(res.parameters.lst);
-      }
-    } catch (error) {
-      console.log(error);
+    setFirst(0);
+    setExpandedRows(null);
+    if (first === 0 && isSameSearch) {
+      void appointmentsQuery.refetch();
+    } else {
+      setSearch(nextSearch);
     }
   };
-  useEffect(() => {
-    handleSearch();
-  }, [TypeOfAppointment]);
-
-  useEffect(() => {
-    handleSearch();
-  }, []);
   return (
     <div className="cardBackGround">
       <Divider>Appointments</Divider>
 
-      <Form form={form} layout="vertical" onFinish={() => handleSearch()}>
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          DateRange: getDateRange(),
+          TypeOfAppointment: search.TypeOfAppointment,
+        }}
+        onFinish={() => handleSearch()}
+      >
         <div className="grid md:grid-cols-8 gap-4">
           <Form.Item
             name="TypeOfAppointment"
@@ -441,9 +508,6 @@ const Appointments = () => {
                   'DateRange',
                   hasValue ? undefined : getDateRange(),
                 );
-                q.invalidateQueries({
-                  queryKey: ['appointments'],
-                });
               }}
             />
           </Form.Item>
@@ -466,18 +530,37 @@ const Appointments = () => {
           value={appointments}
           // tableStyle={{ minWidth: "50rem" }}
           paginator
-          rows={10}
+          lazy
+          loading={appointmentsQuery.isFetching}
+          first={first}
+          rows={rows}
+          totalRecords={appointmentsQuery.data?.totalRecords ?? 0}
+          onPage={(event) => {
+            setExpandedRows(null);
+            setFirst(event.first);
+            setRows(event.rows);
+          }}
           rowsPerPageOptions={[10, 25, 50]}
-          emptyMessage="No Records!"
+          emptyMessage={
+            appointmentsQuery.isError
+              ? 'Unable to load appointments. Please retry.'
+              : 'No Records!'
+          }
           stripedRows
           size="small"
           filterDisplay="row"
+          filters={columnFilters}
+          onFilter={(event) => {
+            setExpandedRows(null);
+            setFirst(0);
+            setColumnFilters(event.filters);
+          }}
           rowExpansionTemplate={rowExpansionTemplate}
           expandedRows={expandedRows as any}
           onRowToggle={(e) => setExpandedRows(e.data as any)}
         >
           <Column
-            expander={appointments && appointments!.length > 0}
+            expander={appointments.length > 0}
             style={{ width: '2rem' }}
           />
           <Column
@@ -489,18 +572,21 @@ const Appointments = () => {
             field="AppointmentNo"
             header="Appointment No."
             filter
+            filterMatchMode={FilterMatchMode.CONTAINS}
             // style={{ minWidth: "12rem" }}
           ></Column>
           <Column
             field="AppointmentTypeDesc"
             header="Appointment Type"
             filter
+            filterMatchMode={FilterMatchMode.CONTAINS}
             // style={{ minWidth: "12rem" }}
           ></Column>
           <Column
             field="Name"
             header="Name"
             filter
+            filterMatchMode={FilterMatchMode.CONTAINS}
             // style={{ minWidth: "12rem" }}
           ></Column>
           <Column
@@ -508,12 +594,14 @@ const Appointments = () => {
             header="Appointment Date"
             // style={{ minWidth: "12rem" }}
             filter
+            filterMatchMode={FilterMatchMode.CONTAINS}
           ></Column>
           <Column
             field="DateAdded"
             header="Date Added"
             // style={{ minWidth: "12rem" }}
             filter
+            filterMatchMode={FilterMatchMode.CONTAINS}
           ></Column>
 
           <Column
@@ -521,6 +609,7 @@ const Appointments = () => {
             header="Patient Company"
             // style={{ minWidth: "12rem" }}
             filter
+            filterMatchMode={FilterMatchMode.CONTAINS}
           ></Column>
           {/* <Column
             field="QueueNo"

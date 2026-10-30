@@ -1,0 +1,237 @@
+#psychology-print-report {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #psychology-print-report,
+  #psychology-print-report * {
+    visibility: visible !important;
+  }
+
+  #psychology-print-report {
+    display: block !important;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    color: #111;
+    font: 10pt Georgia, 'Times New Roman', serif;
+  }
+
+  .psychology-print-page {
+    min-height: 265mm;
+    break-after: page;
+  }
+
+  .psychology-print-page:last-child {
+    break-after: auto;
+  }
+
+  .psychology-print-header {
+    text-align: center;
+    margin-bottom: 7mm;
+  }
+
+  .psychology-print-header div {
+    font-size: 14pt;
+    font-weight: 700;
+  }
+
+  .psychology-print-header h1 {
+    margin: 4mm 0 0;
+    font-size: 13pt;
+    text-transform: uppercase;
+  }
+
+  .psychology-print-details {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 2mm 4mm;
+  }
+
+  .psychology-print-details div:nth-child(n + 4) {
+    grid-column: span 3;
+  }
+
+  #psychology-print-report h2 {
+    margin: 5mm 0 2mm;
+    font-size: 10pt;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .psychology-print-tests div {
+    margin: 1mm 0 1mm 6mm;
+  }
+
+  .psychology-levels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2mm;
+  }
+
+  .psychology-ratings-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 2mm 0 4mm;
+    break-inside: avoid;
+  }
+
+  .psychology-ratings-table th,
+  .psychology-ratings-table td {
+    border: 1px solid #333;
+    padding: 1mm 2mm;
+  }
+
+  .psychology-ratings-table th:first-child,
+  .psychology-ratings-table td:first-child {
+    width: 58%;
+    text-align: left;
+  }
+
+  .psychology-ratings-table th:not(:first-child),
+  .psychology-ratings-table td:not(:first-child) {
+    width: 6%;
+    text-align: center;
+  }
+
+  .psychology-print-paragraph {
+    white-space: pre-wrap;
+    min-height: 13mm;
+    margin: 2mm 0;
+  }
+
+  .psychology-print-decision-box {
+    border: 2px solid #333;
+    padding: 2mm 3mm;
+    margin: 2mm 0;
+    break-inside: avoid;
+  }
+
+  .psychology-print-decision-box p {
+    margin: 1mm 0 0 6mm;
+    white-space: pre-wrap;
+  }
+
+  .psychology-print-legend {
+    margin-top: 7mm;
+    font-size: 9pt;
+  }
+
+  .psychology-print-signatures {
+    display: flex;
+    justify-content: space-between;
+    gap: 10mm;
+    margin-top: 16mm;
+  }
+
+  .psychology-print-signature {
+    display: flex;
+    flex-direction: column;
+    width: 65mm;
+    text-align: center;
+    border-top: 1px solid #333;
+    padding-top: 1mm;
+  }
+
+  .psychology-local-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    text-align: right;
+    margin-bottom: 7mm;
+  }
+
+  .psychology-local-brand {
+    color: #557954;
+    font: bold 22pt Arial, sans-serif;
+    text-align: left;
+  }
+
+  .psychology-local-header h1 {
+    margin: 0;
+    text-decoration: underline;
+    font-size: 14pt;
+    text-transform: uppercase;
+  }
+
+  .psychology-local-header small { font-size: 7pt; }
+
+  .psychology-local-details {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 1mm 4mm;
+    margin-bottom: 6mm;
+  }
+
+  .psychology-local-level { margin: 5mm 0 6mm 8mm; }
+
+  .psychology-local-first-page-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7mm;
+    align-items: start;
+  }
+
+  .psychology-local-first-page-body .psychology-print-paragraph {
+    margin-top: 2mm;
+    line-height: 1.5;
+    text-align: justify;
+  }
+
+  .psychology-local-score-group {
+    display: grid;
+    grid-template-columns: 12mm 1fr;
+    border: 1px solid #333;
+    margin-bottom: 4mm;
+    break-inside: avoid;
+  }
+
+  .psychology-local-score-group-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    background: #d7eafa;
+    border-right: 1px solid #333;
+    font-size: 8pt;
+    text-align: center;
+  }
+
+  .psychology-local-score-rows { padding: 2mm; }
+  .psychology-local-score-row { margin-bottom: 2mm; }
+  .psychology-local-score-row:last-child { margin-bottom: 0; }
+  .psychology-local-score-row strong { font-size: 8pt; }
+
+  .psychology-local-score-track {
+    height: 7mm;
+    border-bottom: 1px solid #333;
+    background: repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 1px), #888 calc(10% - 1px), #888 10%);
+  }
+
+  .psychology-local-score-bar { height: 100%; background: #91c2e4; }
+  .psychology-local-score-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 6pt;
+  }
+
+  .psychology-local-second-page-scores { width: 52%; }
+  .psychology-local-legend {
+    display: grid;
+    grid-template-columns: 24mm 1fr;
+    width: 80mm;
+    margin: 6mm 0;
+  }
+
+  .psychology-local-legend strong { grid-row: span 5; }
+  .psychology-local-confidential { margin-top: 6mm; font-size: 7pt; font-style: italic; }
+}

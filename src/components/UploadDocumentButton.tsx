@@ -14,10 +14,12 @@ import {
 } from 'antd';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
+import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
 import { BiEdit, BiTrash } from 'react-icons/bi';
 import { FaUpload } from 'react-icons/fa6';
 import { isNullOrUndefinedOrBlank, PostData } from '../helpers';
+import { TAppointments, TDepartments, TPatientInformation } from '../types';
 import Loading from './loading';
 
 type UploadedPdfRecord = {
@@ -58,6 +60,9 @@ const UploadDocumentButton = ({
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [visibilityUpdatingId, setVisibilityUpdatingId] = useState(0);
+  const [patientInfo, setPatientInfo] = useState<TPatientInformation>();
+  const [appointmentInfo, setAppointmentInfo] = useState<TAppointments>();
+  const [departmentInfo, setDepartmentInfo] = useState<TDepartments>();
 
   const resolvedPatientId = Number(patientId ?? 0);
   const resolvedAppointmentId = Number(appointmentId ?? 0);
@@ -100,6 +105,57 @@ const UploadDocumentButton = ({
     setSelectedDocument((current) =>
       current ? list.find((document) => document.Id === current.Id) : undefined,
     );
+  };
+
+  const loadPatientDetails = async () => {
+    if (resolvedPatientId <= 0) {
+      setPatientInfo(undefined);
+      setAppointmentInfo(undefined);
+      setDepartmentInfo(undefined);
+      return;
+    }
+
+    try {
+      const [patientResponse, appointmentsResponse, departmentsResponse] =
+        await Promise.all([
+          PostData('GetRecords', {
+            sp: 'udp_GetPatientInformationById',
+            parameters: { Id: resolvedPatientId },
+          }),
+          PostData('GetRecords', {
+            sp: 'udp_GetAppointmentsPerPatient',
+            parameters: { Id: resolvedPatientId },
+          }),
+          PostData('GetRecords', {
+            sp: 'udp_GetDepartments',
+            parameters: {},
+          }),
+        ]);
+
+      const appointments = (appointmentsResponse?.parameters?.lst ??
+        []) as TAppointments[];
+      const departments = (departmentsResponse?.parameters?.lst ??
+        []) as TDepartments[];
+
+      setPatientInfo(patientResponse?.parameters?.lst?.[0]);
+      setAppointmentInfo(
+        appointments.find(
+          (appointment) =>
+            Number(appointment.Id) === resolvedAppointmentId,
+        ),
+      );
+      setDepartmentInfo(
+        departments.find(
+          (department) => Number(department.Id) === resolvedDepartmentId,
+        ),
+      );
+    } catch (error: any) {
+      notification.error({
+        message: error?.message ?? 'Unable to load patient details.',
+        placement: 'topRight',
+        duration: 3,
+      });
+    }
   };
 
   const blobToBase64 = (blob: Blob) =>
@@ -286,8 +342,14 @@ const UploadDocumentButton = ({
   useEffect(() => {
     if (!open) return;
     void loadDocuments();
+    void loadPatientDetails();
     resetEditor();
-  }, [open, resolvedAppointmentId, resolvedPatientId]);
+  }, [
+    open,
+    resolvedAppointmentId,
+    resolvedDepartmentId,
+    resolvedPatientId,
+  ]);
 
   useEffect(() => {
     if (!selectedDocument?.Id) {
@@ -328,6 +390,36 @@ const UploadDocumentButton = ({
         centered
         destroyOnClose
       >
+        <div className="mb-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Patient Details
+          </p>
+          <p className="text-xl font-semibold text-slate-900">
+            {patientInfo?.Name ?? 'Patient'}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2 text-sm">
+            <Tag color="blue">
+              Patient No. {patientInfo?.PatientNo ?? '-'}
+            </Tag>
+            <Tag>
+              Birthdate{' '}
+              {patientInfo?.DateOfBirth
+                ? dayjs(patientInfo.DateOfBirth).format('MM/DD/YYYY')
+                : '-'}
+            </Tag>
+            {appointmentInfo && (
+              <Tag color="geekblue">
+                {appointmentInfo.DateStr} {appointmentInfo.AppointmentType}
+              </Tag>
+            )}
+            {resolvedDepartmentId > 0 && (
+              <Tag color="cyan">
+                {departmentInfo?.Description ??
+                  `Department ${resolvedDepartmentId}`}
+              </Tag>
+            )}
+          </div>
+        </div>
         <div className="grid gap-4 lg:grid-cols-12">
           <div className="min-w-0 lg:col-span-7">
             <div className="mb-2 flex items-center justify-between">

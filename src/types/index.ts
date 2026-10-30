@@ -313,6 +313,7 @@ export type TAppointments = {
   Status?: string;
   CanDelete?: boolean;
   DeleteBlockReason?: string;
+  TotalCount?: number;
   ElapseTime?: number;
   Diagnosis?: string;
   DiscountType?: string;
@@ -470,6 +471,7 @@ export type TDoctors = {
   NameAndSpecialty?: string;
   Department?: string;
   Cardiologist: boolean;
+  Psychologist: boolean;
 };
 
 export type TCharges = {
@@ -490,6 +492,7 @@ export type TCharges = {
   fk_Payments_Main_Id?: number;
   AddedBy?: string;
   DateAdded?: string;
+  TransDate?: string;
   DeletedBy?: string;
   DateDeleted?: string;
   HmoCompany?: string;

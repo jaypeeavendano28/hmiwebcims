@@ -314,6 +314,10 @@ const Sider = () => {
               label: <Link to="/radtechs">Rad Techs.</Link>,
               key: 'mnuRadTechs',
             },
+            {
+              label: <Link to="/utilities/psychometricians">Psychometricians</Link>,
+              key: 'mnuPsychometricians',
+            },
 
             {
               label: <Link to="/users">Users</Link>,
